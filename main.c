@@ -16,6 +16,8 @@
 
 static bool Running;
 
+
+
 #define ArraySize(array) (sizeof(array) / sizeof((array)[0]))
 
 typedef enum
@@ -664,7 +666,7 @@ static void LoadAsset(asset_t *asset, const char *filename)
     unsigned char *data = stbi_load(filename, &asset->w, &asset->h, &channels, STBI_default);
     if (data == NULL)
     {
-        fprintf(stderr, "Failed to load files.\n");
+        fprintf(stderr, "Failed to load files: %s\n", filename);
         return;
     }
     
@@ -1063,18 +1065,101 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Failed in creating a new sound buffer.\n");
         return 1;
     } 
-   
+    /*
+   typedef struct wav_t
+{
+    u32 length;
+    u8 *buffer;
+    SDL_AudioSpec spec;
+    SDL_AudioDeviceID device_id;
+} wav_t;
+*/
+    typedef struct music_t
+    {
+        int volume;
+        wav_t music; 
+    } music_t;
 
+    typedef struct sfx_t
+    {
+        int volume;
+        wav_t sfx; 
+    } sfx_t;
+
+    typedef struct master_volume_t
+    {
+        // any audio output will only go as high as the master volume,
+        // if the sfx audio was maxed but master volume was set to 10%, it'll
+        // only be 10% as strong though it's maxed 
+        
+        int volume;
+
+        // array size will stay to be hardcoded in, why tf malloc?
+        music_t music[2]; 
+        sfx_t sfx[2];
+    } master_volume_t;
 
     
+    // 2 different music "files" 
+    music_t music_volume[2] = {0};
+    LoadWavFile(&music_volume[0].music, "assets/music/5. Smooth As Glass.wav");
+    LoadWavFile(&music_volume[1].music, "assets/music/4. Church of Order.wav");
 
+    // 2 different sfx "files"
+    sfx_t sfx_volume[2] = {0};
+    LoadWavFile(&sfx_volume[0].sfx, "assets/sfx/fire_a.wav"); 
+    LoadWavFile(&sfx_volume[1].sfx, "assets/sfx/fire_b.wav"); 
+
+    master_volume_t master_volume = {0};
+    master_volume.volume = 32;
+    for (int i = 0; i < 2; ++i)
+    {
+        master_volume.music[i] = music_volume[i];
+        master_volume.sfx[i] = sfx_volume[i];
+    }
+   
+    // master volume has control of music's volume
+
+
+    mix_audio_t mix = {0};
+    mix.format = AUDIO_S16LSB;
+    mix.audio = malloc(master_volume.music[0].music.length); // Free
+    if (!mix.audio)
+    {
+        fprintf(stderr, "Failed in creating a new sound buffer.\n");
+        return 1;
+    }
+
+    master_volume.music[0].volume = master_volume.volume;
+    SDL_MixAudioFormat(mix.audio,  // dst 
+                       master_volume.music[0].music.buffer,     // src 
+                       mix.format, // format
+                       master_volume.music[0].music.length,     // length
+                       master_volume.music[0].volume);           // volume
+   
+    
+    mix_audio_t sfx_mix = {0};
+    sfx_mix.format = AUDIO_S16LSB;
+    sfx_mix.audio = malloc(master_volume.sfx[0].sfx.length); // Free
+    if (!sfx_mix.audio)
+    {
+        fprintf(stderr, "Failed in creating a new sound buffer.\n");
+        return 1;
+    }
+
+    master_volume.sfx[0].volume = 0;
+    
 
     bool is_title_screen = true;
     bool is_new_game = false;
     bool is_class_select = false;
     bool is_confirmation = false;
     bool is_load_game = false;
+    
     bool is_settings = false;
+    bool is_settings_master_volume = false;
+    bool settings_test = false; 
+    
     bool is_exit = false;
     bool is_game_running = false;
     bool class_has_been_selected = false;
@@ -1310,7 +1395,6 @@ int main(int argc, char *argv[])
                             stat_options[1].asset.w, stat_options[1].asset.h);
 
 
-
     u8 *input = SDL_GetKeyboardState(NULL);
     input_t input_ = {0};
     input_.key = SDL_GetKeyboardState(NULL);
@@ -1318,7 +1402,7 @@ int main(int argc, char *argv[])
     int button_select = 0;
     int confirmation_select = 0;
     menu_item_t confirmation_buttons[2] = {
-        { "Yes", screen_center_x- 2, screen_center_y },
+        { "Yes", screen_center_x - 2, screen_center_y },
         { "No", screen_center_x, screen_center_y + 16 },
     };
   
@@ -1345,16 +1429,75 @@ int main(int argc, char *argv[])
     InitializeAssetToRender(&back_or_next_cursor[1].asset, screen_center_x + 96, screen_center_y - 108, 
                             back_or_next_cursor[1].asset.w, back_or_next_cursor[1].asset.h);
 
-    int questions_answered_index = 0;
+    int settings_option_index = 0;
+    menu_item_t settings_options[4] = {
+        { "Volume", screen_center_x - (GLYPH_WIDTH * strlen(settings_options[0].text) - 1) / 2, screen_center_y - 48 },
+        { "Master", screen_center_x - (GLYPH_WIDTH * strlen(settings_options[1].text) - 1) / 2, screen_center_y + 0 },
+        { "Music", screen_center_x - (GLYPH_WIDTH * strlen(settings_options[2].text) - 1) / 2, screen_center_y + 24 },
+        { "SFX", screen_center_x - (GLYPH_WIDTH * strlen(settings_options[3].text) - 1) / 2, screen_center_y + 48 },
+    };
+
+    // TODO: create a highlight to indicate the player is currently "hovering" or selecting a bar to change
+    // TODO: create an array of volume bars in respect 
+    SDL_Rect master_volume_bar = {0};
+    master_volume_bar.x = screen_center_x - ((96/2));
+    master_volume_bar.y = settings_options[1].y + 10;
+    master_volume_bar.w = 96; 
+    master_volume_bar.h = GLYPH_HEIGHT + 2;
+    
+    SDL_Rect music_volume_bar = {0};
+    music_volume_bar.x = screen_center_x - ((96/2));
+    music_volume_bar.y = settings_options[2].y + 10;
+    music_volume_bar.w = 96; 
+    music_volume_bar.h = GLYPH_HEIGHT + 2;
+
+    SDL_Rect sfx_volume_bar = {0};
+    sfx_volume_bar.x = screen_center_x - ((96/2));
+    sfx_volume_bar.y = settings_options[3].y + 10;
+    sfx_volume_bar.w = 96; 
+    sfx_volume_bar.h = GLYPH_HEIGHT + 2;
+
+    int block_size = 0;
+    int block_index = 0;
+    SDL_Rect volume_bar_blocks[5] = {0};
+    for (int i = 0; i < ArraySize(volume_bar_blocks); ++i)
+    {
+        volume_bar_blocks[i].x = master_volume_bar.x + block_size;
+        volume_bar_blocks[i].y = master_volume_bar.y;
+        volume_bar_blocks[i].w = master_volume_bar.w / 4;
+        volume_bar_blocks[i].h = master_volume_bar.h;
+        
+        block_size += (master_volume_bar.w / 4);
+    }
+    
+
+
+    // min -> 0 
+    // max -> 128
+    // divided into blocks of 4, size of 32 each
+
+    // Master Volume [ |  |  |  ]
+    // ...
 
 
     // Start event
+    bool some_input = true;
+    int questions_answered_index = 0;
     is_title_screen = true;
     Running = true;
+    int volume = 32;
     while (Running)
     {
-        frame_start = SDL_GetTicks(); 
-
+        frame_start = SDL_GetTicks();
+    
+        // TODO: Figure out how to update sound
+        master_volume.sfx[0].volume = volume;
+        SDL_MixAudioFormat(sfx_mix.audio,  // dst 
+                   master_volume.sfx[0].sfx.buffer,     // src 
+                   sfx_mix.format, // format
+                   master_volume.sfx[0].sfx.length,     // length
+                   master_volume.sfx[0].volume);           // volume      
+                                                           
         // Poll events
         while (SDL_PollEvent(&SDLWindow.e))
         {
@@ -1377,8 +1520,14 @@ int main(int argc, char *argv[])
                                 option_index--;
                                 if (option_index < 0)
                                     option_index = ArraySize(menu_items) - 1;
-                                PlaySFX(&sfx_option);  
+                                //PlaySFX(&sfx_option);  
+                                SDL_ClearQueuedAudio(master_volume.sfx[0].sfx.device_id);
+                                SDL_QueueAudio(master_volume.sfx[0].sfx.device_id, sfx_mix.audio,          
+                                               master_volume.sfx[0].sfx.length);
+                                SDL_PauseAudioDevice(master_volume.sfx[0].sfx.device_id, 0);  
+
                             }
+                            
                             if (is_new_game)
                             {
                                 button_select--;
@@ -1395,6 +1544,12 @@ int main(int argc, char *argv[])
                                 PlaySFX(&sfx_option);
                             }
 
+                            if (is_settings)
+                            {
+                                settings_option_index--;
+                                if (settings_option_index < 0)
+                                    settings_option_index = ArraySize(settings_options) - 1;
+                            }
                         
                             break;
                         case SDLK_s:
@@ -1405,7 +1560,11 @@ int main(int argc, char *argv[])
                                 option_index++;
                                 if (option_index >= ArraySize(menu_items))
                                     option_index = 0;
-                                PlaySFX(&sfx_option);  
+                                //PlaySFX(&sfx_option);  
+                                SDL_ClearQueuedAudio(master_volume.sfx[0].sfx.device_id);
+                                SDL_QueueAudio(master_volume.sfx[0].sfx.device_id, sfx_mix.audio,          
+                                               master_volume.sfx[0].sfx.length);
+                                SDL_PauseAudioDevice(master_volume.sfx[0].sfx.device_id, 0);  
                             }
 
                             if (is_new_game)
@@ -1424,7 +1583,14 @@ int main(int argc, char *argv[])
                                 PlaySFX(&sfx_option);
                             }
 
-                             
+                            if (is_settings)
+                            {
+                                settings_option_index++;
+                                if (settings_option_index >= ArraySize(settings_options))
+                                    settings_option_index = ArraySize(settings_options) - 1;
+                            }
+                            
+
 
                             break;
                         case SDLK_a:
@@ -1445,6 +1611,25 @@ int main(int argc, char *argv[])
                                     stat_option_select = ArraySize(stat_options) - 1;
                                 PlaySFX(&sfx_option);
                             }
+                       
+                            if (is_settings)
+                            {
+                                block_index--;
+                                if (block_index < 0)
+                                    block_index = 0;
+
+                                volume -= 32;
+                                if (volume <= 0)
+                                {
+                                    volume = 0;
+                                }
+                                SDL_ClearQueuedAudio(master_volume.sfx[0].sfx.device_id);
+                                SDL_QueueAudio(master_volume.sfx[0].sfx.device_id, sfx_mix.audio,          
+                                               master_volume.sfx[0].sfx.length);
+                                SDL_PauseAudioDevice(master_volume.sfx[0].sfx.device_id, 0);  
+
+                                printf("left -> block_index: %d\n", block_index);
+                            } 
 
                             break;
                         case SDLK_d:
@@ -1463,6 +1648,24 @@ int main(int argc, char *argv[])
                                 if (stat_option_select >= ArraySize(stat_options))
                                     stat_option_select = 0;
                                 PlaySFX(&sfx_option);
+                            }
+
+                            if (is_settings)
+                            {
+                                block_index++;
+                                if (block_index > ArraySize(settings_options))
+                                    block_index = ArraySize(settings_options);
+                               
+                                volume += 32;
+                                if (volume >= 128)
+                                {
+                                    volume = 128;
+                                }
+                                SDL_ClearQueuedAudio(master_volume.sfx[0].sfx.device_id);
+                                SDL_QueueAudio(master_volume.sfx[0].sfx.device_id, sfx_mix.audio,          
+                                               master_volume.sfx[0].sfx.length);
+                                SDL_PauseAudioDevice(master_volume.sfx[0].sfx.device_id, 0);  
+                                printf("right -> block_index: %d\n", block_index);
                             }
 
                             break;
@@ -1491,7 +1694,11 @@ int main(int argc, char *argv[])
                                 }
                                 
                             }
-                           
+                          
+                            if (!some_input)
+                            {
+                                is_settings_master_volume = true;
+                            }
 
                         } break;
                         case SDLK_TAB:
@@ -1523,9 +1730,17 @@ int main(int argc, char *argv[])
         {
             // Update
             //PlayMusic(&title_screen_theme);
-        
+            //PlayMusic(&master_volume.music[0].music);
+            if (SDL_GetQueuedAudioSize(music_volume[0].music.device_id) == 0)
+            {
+                SDL_QueueAudio(music_volume[0].music.device_id, mix.audio, music_volume[0].music.length);            
+            }
+            SDL_PauseAudioDevice(music_volume[0].music.device_id, 0);
+            
+            //MixedAudio(&title_screen_theme, &theme_title_mixed, 20);
             if (input[SDL_SCANCODE_RETURN] && option_index == 0)
             {
+                is_title_screen = false;
                 is_new_game = true;
             }
 
@@ -1538,7 +1753,8 @@ int main(int argc, char *argv[])
     
             if (input[SDL_SCANCODE_RETURN] && option_index == 2)
             {
-                
+                is_title_screen = false;
+                is_settings = true;
             }
             
             if (input[SDL_SCANCODE_RETURN] && option_index == 3)
@@ -1561,10 +1777,86 @@ int main(int argc, char *argv[])
             RenderAndUpdateAsset(&right_cursor_asset);
 
         }
+    
+        if (is_settings)
+        {
+            SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                
+            CursorForItems(&settings_options[settings_option_index], &right_cursor_asset, 6, 1);
+            RenderAndUpdateAsset(&right_cursor_asset);
+            
+            for (int i = 0; i < ArraySize(settings_options); ++i) 
+            {
+                RenderText(SDLWindow.Renderer, font_atlas,
+                           settings_options[i].x, 
+                           settings_options[i].y,
+                           settings_options[i].text, 
+                           white);
+            }
+
+            SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
+            SDL_RenderDrawRect(SDLWindow.Renderer, &master_volume_bar);
+            SDL_RenderDrawRect(SDLWindow.Renderer, &music_volume_bar);
+            SDL_RenderDrawRect(SDLWindow.Renderer, &sfx_volume_bar);
+          
+            if (settings_option_index == 1)
+            {
+                settings_test = true;
+            }
+        }
+        
+        if (settings_test)
+        {
+            for (int i = 0; i < ArraySize(volume_bar_blocks); ++i)
+            {
+                if (block_index == 1)
+                {
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[0]);
+                }
+                
+                if (block_index == 2)
+                {
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[0]);
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[1]);
+                }
+                
+                if (block_index == 3)
+                {
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[0]);
+                    
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[1]);
+                    
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 165, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[2]);
+                }
+
+                if (block_index == 4)
+                {
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[0]);
+                    
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[1]);
+                    
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 165, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[2]);
+                
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[3]);
+
+                }
+            }
+        }
+
+
 
         if (is_new_game)
         {
-            is_title_screen = false;
             PauseAudio(&title_screen_theme);
             SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
 
@@ -1715,7 +2007,6 @@ int main(int argc, char *argv[])
         if (is_game_running)
         {
             //PlayMusic(&ambience);
-            MixedAudio(&title_screen_theme, &theme_title_mixed, 0);
             UpdatePlayer(&player_asset, enemy_arr, &sfx_move);
             for (int i = 0; i < ArraySize(enemy_arr); ++i)
             {
