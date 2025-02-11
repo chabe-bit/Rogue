@@ -32,15 +32,6 @@ typedef enum
 } game_state_e;
 game_state_e game_state = GAME_STATE_TITLE_SCREEN;
 
-typedef enum 
-{
-    TITLE_NEW_GAME,
-    TITLE_LOAD_GAME,
-    TITLE_SETTINGS,
-    TITLE_EXIT,
-    TITLE_UNKNOWN,
-} title_screen_state_e;
-title_screen_state_e title_screen_state = TITLE_UNKNOWN;
 
 typedef enum
 {
@@ -115,6 +106,31 @@ typedef struct wav_t
     SDL_AudioDeviceID device_id;
 } wav_t;
 
+typedef struct music_t
+{
+    int volume;
+    wav_t music; 
+} music_t;
+
+typedef struct sfx_t
+{
+    int volume;
+    wav_t sfx; 
+} sfx_t;
+
+typedef struct master_volume_t
+{
+    // any audio output will only go as high as the master volume,
+    // if the sfx audio was maxed but master volume was set to 10%, it'll
+    // only be 10% as strong though it's maxed 
+    
+    int volume;
+
+    // array size will stay to be hardcoded in, why tf malloc?
+    music_t music[2]; 
+    sfx_t sfx[2];
+} master_volume_t;
+
 static void
 LoadWavFile(wav_t *wav, const char *file_name)
 {
@@ -181,6 +197,15 @@ PlaySFX(wav_t *sound)
     SDL_QueueAudio(sound->device_id, sound->buffer,          
                    sound->length);
     SDL_PauseAudioDevice(sound->device_id, 0);  
+}
+
+static void 
+PlayMixedSFX(master_volume_t *master_volume, mix_audio_t *sfx_mix)
+{
+    SDL_ClearQueuedAudio(master_volume->sfx[0].sfx.device_id);
+    SDL_QueueAudio(master_volume->sfx[0].sfx.device_id, sfx_mix->audio,          
+                   master_volume->sfx[0].sfx.length);
+    SDL_PauseAudioDevice(master_volume->sfx[0].sfx.device_id, 0);  
 }
 
 static void 
@@ -928,7 +953,16 @@ typedef struct input_t
     u8 *key;
 } input_t;
 
-typedef struct title_screen_t
+
+// Probobaly don't have to use a linked list for creating a list of screens, and can instead opt for an array but 
+// let's try it out. 
+// Title screen (root) -> [new game, load game, settings, exit] 
+//                     -> new game -> character creation ...
+//                     -> load game -> load file'
+//                     -> settings -> volume options
+//                     -> exit -> quit game 
+
+typedef struct screen_t
 {
     int index;
     input_t input;
@@ -938,76 +972,47 @@ typedef struct title_screen_t
     asset_t cursor;
     SDL_Color color;
     menu_item_t menu[4];
-} title_screen_t;
+} screen_t;
 
-void UpdateTitleScreen(title_screen_t *title_screen)
+typedef enum 
 {
-    if (title_screen->input.key[SDL_SCANCODE_RETURN])
-    {
-        if (title_screen->index == TITLE_NEW_GAME)
-        {
-            game_state = GAME_STATE_NEW_GAME;
-        }
-        
-        if (title_screen->index == TITLE_LOAD_GAME)
-        {
-            game_state = GAME_STATE_LOAD_GAME;
-        }
+    TITLE_NONE,
+    TITLE_NEW_GAME,
+    TITLE_LOAD_GAME,
+    TITLE_SETTINGS,
+    TITLE_EXIT,
+} title_screen;
+title_screen title_screen_state = TITLE_NONE;
 
-    }
-    
-    PlayMusic(&title_screen->theme); 
-    int index = title_screen->index;
-    CursorForItems(&title_screen->menu[index], &title_screen->cursor, 4, 1);
-}
-
-void RenderTitleScreen(title_screen_t *title_screen)
+typedef enum
 {
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
-    SDL_RenderClear(SDLWindow.Renderer);
-    SDL_RenderCopy(SDLWindow.Renderer, title_screen->screen.texture, NULL, &title_screen->screen.body);
+    VOL_SETTINGS_NONE,
+    VOL_SETTINGS_MASTER,
+    VOL_SETTINGS_MUSIC,
+    VOL_SETTINGS_SFX
+} volume_settings;
+volume_settings volume_settings_state = VOL_SETTINGS_NONE;
 
-    RenderAndUpdateAsset(&title_screen->cursor);
-    for (int i = 0; i < ArraySize(title_screen->menu); ++i)
-    {
-        RenderText(SDLWindow.Renderer, title_screen->font.font_atlas, title_screen->menu[i].x, title_screen->menu[i].y,
-                   title_screen->menu[i].text, title_screen->color);
-    }
-}
+typedef enum
+{
+    VOL_LEVEL_NONE,
+    VOL_LEVEL_GREEN,
+    VOL_LEVEL_YELLOW,
+    VOL_LEVEL_ORANGE,
+    VOL_LEVEL_RED
+} volume_level;
+volume_level volume_level_state = VOL_LEVEL_NONE;
 
-typedef struct new_game_screen_t
+typedef struct title_screen_t
 {
     int index;
-    input_t input;
-    font_t font;
-    wav_t theme;
-    asset_t screen;
-    asset_t cursor;
-    SDL_Color color;
-    menu_item_t menu[2];   
-} new_game_screen_t;
+    bool active;
 
-void UpdateNewGameScreen(new_game_screen_t *new_game_screen)
+} title_screen_t;
+
+void UpdateTitleScreenControls(title_screen_t *title)
 {
-    int index = new_game_screen->index;
-    CursorForItems(&new_game_screen->menu[index], &new_game_screen->cursor, 4, 1);
 }
-
-void RenderNewGameScreen(new_game_screen_t *new_game_screen)
-{
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
-    SDL_RenderClear(SDLWindow.Renderer);
-    SDL_RenderCopy(SDLWindow.Renderer, new_game_screen->screen.texture, NULL, &new_game_screen->screen.body);
-
-
-    RenderAndUpdateAsset(&new_game_screen->cursor);
-    for (int i = 0; i < ArraySize(new_game_screen->menu); ++i)
-    {
-        RenderText(SDLWindow.Renderer, new_game_screen->font.font_atlas, new_game_screen->menu[i].x, new_game_screen->menu[i].y,
-                    new_game_screen->menu[i].text, new_game_screen->color);
-    }
-}
-
 
 int main(int argc, char *argv[])
 {
@@ -1073,7 +1078,7 @@ int main(int argc, char *argv[])
     SDL_AudioSpec spec;
     SDL_AudioDeviceID device_id;
 } wav_t;
-*/
+
     typedef struct music_t
     {
         int volume;
@@ -1098,18 +1103,46 @@ int main(int argc, char *argv[])
         music_t music[2]; 
         sfx_t sfx[2];
     } master_volume_t;
-
+*/
     
     // 2 different music "files" 
     music_t music_volume[2] = {0};
     LoadWavFile(&music_volume[0].music, "assets/music/5. Smooth As Glass.wav");
     LoadWavFile(&music_volume[1].music, "assets/music/4. Church of Order.wav");
 
+    music_volume[0].music.spec.freq = 48000;
+    music_volume[0].music.spec.format = AUDIO_S16LSB;
+    music_volume[0].music.spec.channels = 2;
+    music_volume[0].music.spec.samples = 512;
+    
+
     // 2 different sfx "files"
     sfx_t sfx_volume[2] = {0};
     LoadWavFile(&sfx_volume[0].sfx, "assets/sfx/fire_a.wav"); 
     LoadWavFile(&sfx_volume[1].sfx, "assets/sfx/fire_b.wav"); 
 
+    sfx_volume[0].sfx.device_id; 
+    SDL_memset(&sfx_volume[0].sfx.spec, 0, sizeof(sfx_volume[0].sfx.spec));
+    
+    /*
+    sfx_volume[0].sfx.spec.freq = 48000;
+    sfx_volume[0].sfx.spec.format = AUDIO_S16LSB;
+    sfx_volume[0].sfx.spec.channels = 2;
+    sfx_volume[0].sfx.spec.samples = 512;
+    sfx_volume[0].sfx.spec.callback = NULL;
+    sfx_volume[0].sfx.spec.userdata = NULL;
+    SDL_AudioSpec have;
+    sfx_volume[0].sfx.device_id = SDL_OpenAudioDevice(NULL, 0, &sfx_volume[0].sfx.spec, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    if (sfx_volume[0].sfx.device_id == 0)
+    {
+        SDL_Log("Failed to open audio: %s\n", SDL_GetError());
+        return 1;
+    }
+    int audio_length = 4096;
+    sfx_volume[0].sfx.buffer[audio_length];
+    sfx_volume[0].sfx.length = audio_length;
+
+*/
     master_volume_t master_volume = {0};
     master_volume.volume = 32;
     for (int i = 0; i < 2; ++i)
@@ -1119,8 +1152,6 @@ int main(int argc, char *argv[])
     }
    
     // master volume has control of music's volume
-
-
     mix_audio_t mix = {0};
     mix.format = AUDIO_S16LSB;
     mix.audio = malloc(master_volume.music[0].music.length); // Free
@@ -1147,8 +1178,17 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    master_volume.sfx[0].volume = 0;
+    // TODO: Figure out how to update sound
+    master_volume.sfx[0].volume = master_volume.volume;
+    SDL_MixAudioFormat(sfx_mix.audio,  // dst 
+               master_volume.sfx[0].sfx.buffer,     // src 
+               sfx_mix.format, // format
+               master_volume.sfx[0].sfx.length,     // length
+               master_volume.sfx[0].volume);           // volume     
     
+
+
+    bool updated_sound = false;
 
     bool is_title_screen = true;
     bool is_new_game = false;
@@ -1232,12 +1272,10 @@ int main(int argc, char *argv[])
     InitializeAssetToRender(&player_asset, 10 * 16, 16 * 24, player_asset.w, player_asset.h);
     InitializeAssetStats(&player_asset, &player_stats);
 
-    
     const char *enemy_filenames[2] = {
         "assets/enemy1.png",
         "assets/enemy2.png"
     };
-    
     
     asset_t enemy_arr[3];
     asset_t enemy_arr2[3];
@@ -1458,7 +1496,7 @@ int main(int argc, char *argv[])
     sfx_volume_bar.h = GLYPH_HEIGHT + 2;
 
     int block_size = 0;
-    int block_index = 0;
+    int volume_block_index = 0;
     SDL_Rect volume_bar_blocks[5] = {0};
     for (int i = 0; i < ArraySize(volume_bar_blocks); ++i)
     {
@@ -1480,24 +1518,20 @@ int main(int argc, char *argv[])
     // ...
 
 
+    bool volume_one = false;
+    bool volume_two = false;
+    bool volume_three = false;
+    bool volume_four = false;
+
     // Start event
     bool some_input = true;
     int questions_answered_index = 0;
     is_title_screen = true;
     Running = true;
-    int volume = 32;
     while (Running)
     {
         frame_start = SDL_GetTicks();
-    
-        // TODO: Figure out how to update sound
-        master_volume.sfx[0].volume = volume;
-        SDL_MixAudioFormat(sfx_mix.audio,  // dst 
-                   master_volume.sfx[0].sfx.buffer,     // src 
-                   sfx_mix.format, // format
-                   master_volume.sfx[0].sfx.length,     // length
-                   master_volume.sfx[0].volume);           // volume      
-                                                           
+                                                              
         // Poll events
         while (SDL_PollEvent(&SDLWindow.e))
         {
@@ -1565,6 +1599,13 @@ int main(int argc, char *argv[])
                                 SDL_QueueAudio(master_volume.sfx[0].sfx.device_id, sfx_mix.audio,          
                                                master_volume.sfx[0].sfx.length);
                                 SDL_PauseAudioDevice(master_volume.sfx[0].sfx.device_id, 0);  
+                
+                                //SDL_ClearQueuedAudio(sfx_volume[0].sfx.device_id);
+                                //SDL_QueueAudio(sfx_volume[0].sfx.device_id, sfx_volume[0].sfx.buffer,          
+                                //               sfx_volume[0].sfx.length);
+                                //SDL_PauseAudioDevice(sfx_volume[0].sfx.device_id, 0);  
+
+
                             }
 
                             if (is_new_game)
@@ -1612,23 +1653,12 @@ int main(int argc, char *argv[])
                                 PlaySFX(&sfx_option);
                             }
                        
-                            if (is_settings)
+                            if (is_settings && settings_option_index == 1)
                             {
-                                block_index--;
-                                if (block_index < 0)
-                                    block_index = 0;
-
-                                volume -= 32;
-                                if (volume <= 0)
-                                {
-                                    volume = 0;
-                                }
-                                SDL_ClearQueuedAudio(master_volume.sfx[0].sfx.device_id);
-                                SDL_QueueAudio(master_volume.sfx[0].sfx.device_id, sfx_mix.audio,          
-                                               master_volume.sfx[0].sfx.length);
-                                SDL_PauseAudioDevice(master_volume.sfx[0].sfx.device_id, 0);  
-
-                                printf("left -> block_index: %d\n", block_index);
+                                volume_block_index--;
+                                if (volume_block_index < 0)
+                                    volume_block_index = 0;
+                                PlaySFX(&sfx_option);
                             } 
 
                             break;
@@ -1650,29 +1680,15 @@ int main(int argc, char *argv[])
                                 PlaySFX(&sfx_option);
                             }
 
-                            if (is_settings)
+                            if (is_settings && settings_option_index == 1)
                             {
-                                block_index++;
-                                if (block_index > ArraySize(settings_options))
-                                    block_index = ArraySize(settings_options);
-                               
-                                volume += 32;
-                                if (volume >= 128)
-                                {
-                                    volume = 128;
-                                }
-                                SDL_ClearQueuedAudio(master_volume.sfx[0].sfx.device_id);
-                                SDL_QueueAudio(master_volume.sfx[0].sfx.device_id, sfx_mix.audio,          
-                                               master_volume.sfx[0].sfx.length);
-                                SDL_PauseAudioDevice(master_volume.sfx[0].sfx.device_id, 0);  
-                                printf("right -> block_index: %d\n", block_index);
+                                volume_block_index++;
+                                if (volume_block_index > ArraySize(settings_options))
+                                    volume_block_index = ArraySize(settings_options);
+                                PlaySFX(&sfx_option);
                             }
 
                             break;
-                        case SDLK_q:
-                        {
-
-                        } break;
                         case SDLK_RETURN:
                         {
                             if (is_class_select && !is_confirmation)
@@ -1700,6 +1716,32 @@ int main(int argc, char *argv[])
                                 is_settings_master_volume = true;
                             }
 
+
+                            // TEST
+                            switch (option_index)
+                            {
+                                case 0:
+                                {
+                                    title_screen_state = TITLE_NEW_GAME;
+                                } break;
+                                case 1:
+                                {
+                                    title_screen_state = TITLE_LOAD_GAME;
+                                } break;
+                                case 2:
+                                {
+                                    title_screen_state = TITLE_SETTINGS;
+                                } break;
+                                case 3:
+                                {
+                                    title_screen_state = TITLE_EXIT;
+                                } break;
+                                default:
+                                {
+                                    title_screen_state = TITLE_NONE;
+                                } break;
+                            }
+
                         } break;
                         case SDLK_TAB:
                         {       
@@ -1725,57 +1767,45 @@ int main(int argc, char *argv[])
         
         SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
         SDL_RenderClear(SDLWindow.Renderer);
+        
+        switch (title_screen_state)
+        {
+            case TITLE_NEW_GAME:
+            {
+                is_new_game = true;
+            } break;
+            case TITLE_LOAD_GAME:
+            {
+                is_game_running = true; 
+            } break;
+            case TITLE_SETTINGS:
+            {
+                is_settings = true;
+            } break;
+            case TITLE_EXIT:
+            {
+                ExitOption();
+            } break;
+            default:
+            {
+                MixedAudio(&title_screen_theme, &theme_title_mixed, 20);
+                
+                SDL_RenderCopy(SDLWindow.Renderer, title_screen_asset.texture, NULL, &title_screen_asset.body);
+                CursorForItems(&menu_items[option_index], &right_cursor_asset, 4, 1);
+                RenderAndUpdateAsset(&right_cursor_asset);
+                
+                // Render options
+                for (int i = 0; i < ArraySize(menu_items); ++i)
+                {
+                    RenderText(SDLWindow.Renderer, font_atlas, menu_items[i].x, menu_items[i].y,
+                               menu_items[i].text, white);
+                }
+            } break;
+        }       
 
         if (is_title_screen)
         {
-            // Update
-            //PlayMusic(&title_screen_theme);
-            //PlayMusic(&master_volume.music[0].music);
-            if (SDL_GetQueuedAudioSize(music_volume[0].music.device_id) == 0)
-            {
-                SDL_QueueAudio(music_volume[0].music.device_id, mix.audio, music_volume[0].music.length);            
-            }
-            SDL_PauseAudioDevice(music_volume[0].music.device_id, 0);
-            
-            //MixedAudio(&title_screen_theme, &theme_title_mixed, 20);
-            if (input[SDL_SCANCODE_RETURN] && option_index == 0)
-            {
-                is_title_screen = false;
-                is_new_game = true;
-            }
-
-            if (input[SDL_SCANCODE_RETURN] && option_index == 1)
-            {
-                is_title_screen = false;
-                is_game_running = true;
-                PauseAudio(&title_screen_theme);
-            }
-    
-            if (input[SDL_SCANCODE_RETURN] && option_index == 2)
-            {
-                is_title_screen = false;
-                is_settings = true;
-            }
-            
-            if (input[SDL_SCANCODE_RETURN] && option_index == 3)
-            {
-                // TODO: Properly handle exit 
-                ExitOption();
-            }
-
-            CursorForItems(&menu_items[option_index], &right_cursor_asset, 4, 1);
-            
-            // Render
-            SDL_RenderCopy(SDLWindow.Renderer, title_screen_asset.texture, NULL, &title_screen_asset.body);
-            
-            for (int i = 0; i < ArraySize(menu_items); ++i)
-            {
-                RenderText(SDLWindow.Renderer, font_atlas, menu_items[i].x, menu_items[i].y,
-                           menu_items[i].text, white);
-            }
-    
-            RenderAndUpdateAsset(&right_cursor_asset);
-
+                    
         }
     
         if (is_settings)
@@ -1802,56 +1832,68 @@ int main(int argc, char *argv[])
             if (settings_option_index == 1)
             {
                 settings_test = true;
+                volume_settings_state = VOL_SETTINGS_MASTER;
             }
         }
-        
+      
         if (settings_test)
         {
-            for (int i = 0; i < ArraySize(volume_bar_blocks); ++i)
+            switch (volume_settings_state)
             {
-                if (block_index == 1)
+                case VOL_SETTINGS_NONE:
                 {
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[0]);
-                }
-                
-                if (block_index == 2)
-                {
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[0]);
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[1]);
-                }
-                
-                if (block_index == 3)
-                {
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[0]);
                     
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[1]);
-                    
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 165, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[2]);
-                }
+                } break;
+                case VOL_SETTINGS_MASTER:
+                {
+                    // Update volume block's color based on it's index
+                    switch (volume_block_index)
+                    {
+                        case 1:
+                        {
+                            SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+                        } break;
+                        case 2:
+                        {
+                            SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 0, 255);
+                        } break;
+                        case 3:
+                        {
+                            SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 165, 0, 255);
+                        } break;
+                        case 4:
+                        {
+                            SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
+                        } break;
+                        default:
+                        {
+                            
+                        } break;
+                    }
 
-                if (block_index == 4)
-                {
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[0]);
-                    
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[1]);
-                    
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 165, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[2]);
-                
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[3]);
+                    // Render updated volume blocks and its color
+                    for (int i = 0; i < volume_block_index; ++i)
+                    {
+                        SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[i]);
+                    }
 
-                }
+                } break; 
+                default:
+                {
+                    volume_settings_state = VOL_SETTINGS_NONE;
+                } break;
             }
         }
+
+
+
+
+
+
+
+
+
+
 
 
 
