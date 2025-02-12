@@ -972,11 +972,6 @@ typedef struct screen_t
     menu_item_t menu[4];
 } screen_t;
 
-typedef struct
-{
-    u32 r, g, b, a;
-} color_t;
-
 typedef enum 
 {
     TITLE_NONE,
@@ -1025,26 +1020,90 @@ typedef enum
 } yes_or_no_buttons;
 yes_or_no_buttons yes_or_no_buttons_state =  CONFIRMATION_NONE;
 
-void UpdateAndRenderVolumeBars(SDL_Rect *volume_bar_blocks, int index)
+typedef struct
 {
-    // Update volume block's color based on it's index
-    switch (index)
+    u32 r, g, b, a;
+} color_t;
+
+typedef struct
+{
+    bool mute;
+    bool one;
+    bool two;
+    bool three;
+    bool max;
+    bool apply;
+
+    int index;
+    int volume_size_bars;
+    int volume;
+    color_t colors;
+    SDL_Rect blocks[4];
+} volume_controller_t;
+
+void UpdateAndRenderVolumeBars(volume_controller_t *volume_controller)
+{
+    switch (volume_controller->index)
     {
+        case 0:
+        {
+            if (volume_controller->mute)
+            {
+                volume_controller->volume = 0;
+                volume_controller->mute = false;
+            }
+        } break;
         case 1:
         {
-            SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+            volume_controller->colors.r = 0;
+            volume_controller->colors.g = 255;
+            volume_controller->colors.b = 0;
+            volume_controller->colors.a = 255;
+            
+            if (volume_controller->one)
+            {
+                volume_controller->volume = 32;
+                volume_controller->one = false;
+            }
         } break;
         case 2:
         {
-            SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 0, 255);
+            volume_controller->colors.r = 255;
+            volume_controller->colors.g = 255;
+            volume_controller->colors.b = 0;
+            volume_controller->colors.a = 255;
+
+            if (volume_controller->two)
+            {
+                volume_controller->volume = 64;
+                volume_controller->two = false;
+            }
         } break;
         case 3:
         {
-            SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 165, 0, 255);
+            volume_controller->colors.r = 255;
+            volume_controller->colors.g = 165;
+            volume_controller->colors.b = 0;
+            volume_controller->colors.a = 255;
+
+            if (volume_controller->three)
+            {
+                volume_controller->volume = 96;
+                volume_controller->three = false;
+            }
         } break;
         case 4:
         {
-            SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
+            volume_controller->colors.r = 255;
+            volume_controller->colors.g = 0;
+            volume_controller->colors.b = 0;
+            volume_controller->colors.a = 255;
+            
+            if (volume_controller->max)
+            {
+                volume_controller->volume = SDL_MIX_MAXVOLUME;
+                volume_controller->max = false;
+            }
         } break;
         default:
         {
@@ -1053,9 +1112,15 @@ void UpdateAndRenderVolumeBars(SDL_Rect *volume_bar_blocks, int index)
     }
 
     // Render updated volume blocks and its color
-    for (int i = 0; i < index; ++i)
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 
+                           volume_controller->colors.r, 
+                           volume_controller->colors.g, 
+                           volume_controller->colors.b, 
+                           volume_controller->colors.a);
+
+    for (int i = 0; i < volume_controller->index; ++i)
     {
-        SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[i]);
+        SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller->blocks[i]);
     }
 }
 
@@ -1592,15 +1657,6 @@ int main(int argc, char *argv[])
         block_size += (master_volume_bar.w / 4);
     }
     
-
-
-    // min -> 0 
-    // max -> 128
-    // divided into blocks of 4, size of 32 each
-
-    // Master Volume [ |  |  |  ]
-    // ...
-
     bool volume_zero = false;
     bool volume_one = false;
     bool volume_two = false;
@@ -1609,10 +1665,27 @@ int main(int argc, char *argv[])
     bool volume_apply = false;
 
     color_t volume_colors = {0};
-    volume_colors.r = 255;
-    volume_colors.g = 255;
-    volume_colors.b = 255;
-    volume_colors.a = 255;
+
+    volume_controller_t volume_controller[3] = {0};
+    for (int i = 0; i < ArraySize(volume_controller[0].blocks); ++i)
+    {
+        volume_controller[0].blocks[i].x = master_volume_bar.x + volume_controller[0].volume_size_bars;
+        volume_controller[0].blocks[i].y = master_volume_bar.y;
+        volume_controller[0].blocks[i].w = master_volume_bar.w / 4;
+        volume_controller[0].blocks[i].h = master_volume_bar.h;
+        
+        volume_controller[0].volume_size_bars += (master_volume_bar.w / 4);
+    }
+
+    for (int i = 0; i < ArraySize(volume_controller[1].blocks); ++i)
+    {
+        volume_controller[1].blocks[i].x = music_volume_bar.x + volume_controller[1].volume_size_bars;
+        volume_controller[1].blocks[i].y = music_volume_bar.y;
+        volume_controller[1].blocks[i].w = music_volume_bar.w / 4;
+        volume_controller[1].blocks[i].h = music_volume_bar.h;
+        
+        volume_controller[1].volume_size_bars += (music_volume_bar.w / 4);
+    }
 
     // Start event
     int audio_volume = 0;
@@ -1738,9 +1811,17 @@ int main(int argc, char *argv[])
                        
                             if (is_settings && settings_option_index == 1)
                             {
-                                volume_block_index--;
-                                if (volume_block_index < 0)
-                                    volume_block_index = 0;
+                                volume_controller[0].index--;
+                                if (volume_controller[0].index < 0)
+                                    volume_controller[0].index = 0;
+                                PlaySFX(&sfx_option);
+                            }
+
+                            if (is_settings && settings_option_index == 2)
+                            {
+                                volume_controller[1].index--;
+                                if (volume_controller[1].index < 0)
+                                    volume_controller[1].index = 0;
                                 PlaySFX(&sfx_option);
                             } 
 
@@ -1758,33 +1839,41 @@ int main(int argc, char *argv[])
                                     } break;
                                 }
 
-                                switch (volume_block_index)
+                                for (int i = 0; i < 2; ++i)
                                 {
-                                    case 0:
+                                    switch (volume_controller[i].index)
                                     {
-                                        volume_zero = true;
-                                        // mute?
-                                    } break;
-                                    case 1: // green
-                                    {
-                                        volume_one = true;
-                                    } break;
-                                    case 2: // green
-                                    {
-                                        volume_two = true;
-                                    } break;
-                                    case 3: // green
-                                    {
-                                        volume_three = true;
-                                    } break;
-                                    case 4: // green
-                                    {
-                                        volume_four = true;
-                                    } break;
-                                    default:
-                                    {
+                                        case 0:
+                                        {
+                                            //volume_zero = true;
+                                            volume_controller[i].mute = true;
+                                            // mute?
+                                        } break;
+                                        case 1: // green
+                                        {
+                                            //volume_one = true;
+                                            volume_controller[i].one = true;
+                                        } break;
+                                        case 2: // green
+                                        {
+                                            //volume_two = true;
+                                            volume_controller[i].two = true;
+                                        } break;
+                                        case 3: // green
+                                        {
+                                            //volume_three = true;
+                                            volume_controller[i].three = true;
+                                        } break;
+                                        case 4: // green
+                                        {
+                                            //volume_four = true;
+                                            volume_controller[i].max = true;
+                                        } break;
+                                        default:
+                                        {
 
-                                    } break;
+                                        } break;
+                                    }
                                 }
                             }
                             break;
@@ -1808,9 +1897,17 @@ int main(int argc, char *argv[])
 
                             if (is_settings && settings_option_index == 1)
                             {
-                                volume_block_index++;
-                                if (volume_block_index >= ArraySize(settings_options))
-                                    volume_block_index = ArraySize(settings_options) - 1;
+                                volume_controller[0].index++;
+                                if (volume_controller[0].index >= ArraySize(settings_options))
+                                    volume_controller[0].index = ArraySize(settings_options) - 1;
+                                PlaySFX(&sfx_option);
+                            }
+                            
+                            if (is_settings && settings_option_index == 2)
+                            {
+                                volume_controller[1].index++;
+                                if (volume_controller[1].index >= ArraySize(settings_options))
+                                    volume_controller[1].index = ArraySize(settings_options) - 1;
                                 PlaySFX(&sfx_option);
                             }
 
@@ -1826,35 +1923,47 @@ int main(int argc, char *argv[])
                                     {
                                         volume_settings_state = VOL_SETTINGS_MASTER;
                                     } break;
+                                    case 2:
+                                    {
+                                        volume_settings_state = VOL_SETTINGS_MUSIC;
+                                    } break;
                                 }
 
-                                switch (volume_block_index)
+                                for (int i = 0; i < 2; ++i)
                                 {
-                                    case 0:
+                                    switch (volume_controller[i].index)
                                     {
-                                        volume_zero = true;
-                                        // mute?
-                                    } break;
-                                    case 1: // green
-                                    {
-                                        volume_one = true;
-                                    } break;
-                                    case 2: // green
-                                    {
-                                        volume_two = true;
-                                    } break;
-                                    case 3: // green
-                                    {
-                                        volume_three = true;
-                                    } break;
-                                    case 4: // green
-                                    {
-                                        volume_four = true;
-                                    } break;
-                                    default:
-                                    {
+                                        case 0:
+                                        {
+                                            //volume_zero = true;
+                                            volume_controller[i].mute = true;
+                                            // mute?
+                                        } break;
+                                        case 1: // green
+                                        {
+                                            //volume_one = true;
+                                            volume_controller[i].one = true;
+                                        } break;
+                                        case 2: // green
+                                        {
+                                            //volume_two = true;
+                                            volume_controller[i].two = true;
+                                        } break;
+                                        case 3: // green
+                                        {
+                                            //volume_three = true;
+                                            volume_controller[i].three = true;
+                                        } break;
+                                        case 4: // green
+                                        {
+                                            //volume_four = true;
+                                            volume_controller[i].max = true;
+                                        } break;
+                                        default:
+                                        {
 
-                                    } break;
+                                        } break;
+                                    }
                                 }
                             }
                             
@@ -1942,7 +2051,6 @@ int main(int argc, char *argv[])
                             if (is_settings)
                             {
                                 
-
                                 switch (settings_option_index)
                                 {
                                     case 4: // green
@@ -2051,84 +2159,66 @@ int main(int argc, char *argv[])
                 } break;
                 case VOL_SETTINGS_MASTER:
                 {
-                    // TODO: Still need to update the sound accordingly
-                    // Update volume block's color based on it's index
-                    switch (volume_block_index)
+                    switch (volume_controller[0].index)
                     {
                         case 0:
                         {
-                            if (volume_zero)
+                            if (volume_controller[0].mute)
                             {
-                                //music_volume[0].music.volume = 0;
-                                audio_volume = 0;
-                                printf("volume_zero\n");
-                                volume_zero = false;
+                                volume_controller[0].volume = 0;
+                                volume_controller[0].mute = false;
                             }
                         } break;
                         case 1:
                         {
-                            //SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-                            volume_colors.r = 0;
-                            volume_colors.g = 255;
-                            volume_colors.b = 0;
-                            volume_colors.a = 255;
-                            if (volume_one)
+                            volume_controller[0].colors.r = 0;
+                            volume_controller[0].colors.g = 255;
+                            volume_controller[0].colors.b = 0;
+                            volume_controller[0].colors.a = 255;
+                            
+                            if (volume_controller[0].one)
                             {
-                                //music_volume[0].music.volume = 64;
-                                printf("volume_one\n");
-                                audio_volume = 32;
-                                volume_one = false;
+                                volume_controller[0].volume = 32;
+                                volume_controller[0].one = false;
                             }
                         } break;
                         case 2:
                         {
-                            //SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 0, 255);
-                            volume_colors.r = 255;
-                            volume_colors.g = 255;
-                            volume_colors.b = 0;
-                            volume_colors.a = 255;
+                            volume_controller[0].colors.r = 255;
+                            volume_controller[0].colors.g = 255;
+                            volume_controller[0].colors.b = 0;
+                            volume_controller[0].colors.a = 255;
 
-
-                            if (volume_two)
+                            if (volume_controller[0].two)
                             {
-                                //music_volume[0].music.volume = 80;
-                                printf("volume_two\n");
-                                audio_volume = 64;
-                                volume_two = false;
+                                volume_controller[0].volume = 64;
+                                volume_controller[0].two = false;
                             }
                         } break;
                         case 3:
                         {
-                            //SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 165, 0, 255);
-                            volume_colors.r = 255;
-                            volume_colors.g = 165;
-                            volume_colors.b = 0;
-                            volume_colors.a = 255;
+                            volume_controller[0].colors.r = 255;
+                            volume_controller[0].colors.g = 165;
+                            volume_controller[0].colors.b = 0;
+                            volume_controller[0].colors.a = 255;
 
-
-                            if (volume_three)
+                            if (volume_controller[0].three)
                             {
-                                //music_volume[0].music.volume = 96;
-                                printf("volume_three\n");
-                                audio_volume = 96;
-                                volume_three = false;
+                                volume_controller[0].volume = 96;
+                                volume_controller[0].three = false;
                             }
                         } break;
                         case 4:
                         {
-                            //SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
-                            volume_colors.r = 255;
-                            volume_colors.g = 0;
-                            volume_colors.b = 0;
-                            volume_colors.a = 255;
+                            volume_controller[0].colors.r = 255;
+                            volume_controller[0].colors.g = 0;
+                            volume_controller[0].colors.b = 0;
+                            volume_controller[0].colors.a = 255;
                             
-
-                            if (volume_four)
+                            if (volume_controller[0].max)
                             {
-                                //music_volume[0].music.volume = SDL_MIX_MAXVOLUME;
-                                printf("volume_four\n");
-                                audio_volume = SDL_MIX_MAXVOLUME;
-                                volume_four = false;
+                                volume_controller[0].volume = SDL_MIX_MAXVOLUME;
+                                volume_controller[0].max = false;
                             }
                         } break;
                         default:
@@ -2138,10 +2228,20 @@ int main(int argc, char *argv[])
                     }
 
                     // Render updated volume blocks and its color
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_colors.r, volume_colors.g, volume_colors.b, volume_colors.a);
-                    for (int i = 0; i < volume_block_index; ++i)
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_controller[0].colors.r, volume_controller[0].colors.g, volume_controller[0].colors.b, volume_controller[0].colors.a);
+                    for (int i = 0; i < volume_controller[0].index; ++i)
                     {
-                        SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[i]);
+                        //SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[i]);
+                        SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[0].blocks[i]);
+                    }
+                } break;
+                case VOL_SETTINGS_MUSIC:
+                {
+                    UpdateAndRenderVolumeBars(&volume_controller[1]);
+                    for (int i = 0; i < volume_controller[0].index; ++i)
+                    {
+                        //SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[i]);
+                        SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[0].blocks[i]);
                     }
                 } break;
                 case VOL_SETTINGS_APPLY:
@@ -2154,7 +2254,7 @@ int main(int argc, char *argv[])
                             if (volume_apply)
                             {
                                 printf("volume_apply\n");
-                                music_volume[0].music.volume = audio_volume;
+                                music_volume[0].music.volume = volume_controller[0].volume;
                                 volume_apply = false;
                             }
                         }
@@ -2163,16 +2263,17 @@ int main(int argc, char *argv[])
 
                         } break;
                     }
-                    // Render updated volume blocks and its color
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_colors.r, volume_colors.g, volume_colors.b, volume_colors.a);
-                    for (int i = 0; i < volume_block_index; ++i)
+
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_controller[0].colors.r, volume_controller[0].colors.g, volume_controller[0].colors.b, volume_controller[0].colors.a);
+                    for (int i = 0; i < volume_controller[0].index; ++i)
                     {
-                        SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[i]);
+                        //SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[i]);
+                        SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[0].blocks[i]);
                     }
                 } break;
                 default:
                 {
-                    //volume_settings_state = VOL_SETTINGS_NONE;
+                    volume_settings_state = VOL_SETTINGS_NONE;
                 } break;
             }
         }
