@@ -1112,15 +1112,15 @@ void UpdateAndRenderVolumeBars(volume_controller_t *volume_controller)
     }
 
     // Render updated volume blocks and its color
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 
+    /*SDL_SetRenderDrawColor(SDLWindow.Renderer, 
                            volume_controller->colors.r, 
                            volume_controller->colors.g, 
                            volume_controller->colors.b, 
-                           volume_controller->colors.a);
+                           volume_controller->colors.a);*/
 
     for (int i = 0; i < volume_controller->index; ++i)
     {
-        SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller->blocks[i]);
+        //SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller->blocks[i]);
     }
 }
 
@@ -1667,6 +1667,7 @@ int main(int argc, char *argv[])
     color_t volume_colors = {0};
 
     volume_controller_t volume_controller[3] = {0};
+    // For now, initialize seperately
     for (int i = 0; i < ArraySize(volume_controller[0].blocks); ++i)
     {
         volume_controller[0].blocks[i].x = master_volume_bar.x + volume_controller[0].volume_size_bars;
@@ -1685,6 +1686,16 @@ int main(int argc, char *argv[])
         volume_controller[1].blocks[i].h = music_volume_bar.h;
         
         volume_controller[1].volume_size_bars += (music_volume_bar.w / 4);
+    }
+
+    for (int i = 0; i < ArraySize(volume_controller[2].blocks); ++i)
+    {
+        volume_controller[2].blocks[i].x = sfx_volume_bar.x + volume_controller[2].volume_size_bars;
+        volume_controller[2].blocks[i].y = sfx_volume_bar.y;
+        volume_controller[2].blocks[i].w = sfx_volume_bar.w / 4;
+        volume_controller[2].blocks[i].h = sfx_volume_bar.h;
+        
+        volume_controller[2].volume_size_bars += (sfx_volume_bar.w / 4);
     }
 
     // Start event
@@ -1823,6 +1834,14 @@ int main(int argc, char *argv[])
                                 if (volume_controller[1].index < 0)
                                     volume_controller[1].index = 0;
                                 PlaySFX(&sfx_option);
+                            }
+
+                            if (is_settings && settings_option_index == 3)
+                            {
+                                volume_controller[2].index--;
+                                if (volume_controller[2].index < 0)
+                                    volume_controller[2].index = 0;
+                                PlaySFX(&sfx_option);
                             } 
 
                             if (is_settings)
@@ -1837,9 +1856,17 @@ int main(int argc, char *argv[])
                                     {
                                         volume_settings_state = VOL_SETTINGS_MASTER;
                                     } break;
+                                    case 2:
+                                    {
+                                        volume_settings_state = VOL_SETTINGS_MUSIC;
+                                    } break;
+                                    case 3:
+                                    {
+                                        volume_settings_state = VOL_SETTINGS_SFX;
+                                    } break;
                                 }
 
-                                for (int i = 0; i < 2; ++i)
+                                for (int i = 0; i < 3; ++i)
                                 {
                                     switch (volume_controller[i].index)
                                     {
@@ -1911,6 +1938,14 @@ int main(int argc, char *argv[])
                                 PlaySFX(&sfx_option);
                             }
 
+                            if (is_settings && settings_option_index == 3)
+                            {
+                                volume_controller[2].index++;
+                                if (volume_controller[2].index >= ArraySize(settings_options))
+                                    volume_controller[2].index = ArraySize(settings_options) - 1;
+                                PlaySFX(&sfx_option);
+                            }
+
                             if (is_settings)
                             {
                                 switch (settings_option_index)
@@ -1927,9 +1962,13 @@ int main(int argc, char *argv[])
                                     {
                                         volume_settings_state = VOL_SETTINGS_MUSIC;
                                     } break;
+                                    case 3:
+                                    {
+                                        volume_settings_state = VOL_SETTINGS_SFX;
+                                    } break;
                                 }
 
-                                for (int i = 0; i < 2; ++i)
+                                for (int i = 0; i < 3; ++i)
                                 {
                                     switch (volume_controller[i].index)
                                     {
@@ -2228,21 +2267,54 @@ int main(int argc, char *argv[])
                     }
 
                     // Render updated volume blocks and its color
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_controller[0].colors.r, volume_controller[0].colors.g, volume_controller[0].colors.b, volume_controller[0].colors.a);
-                    for (int i = 0; i < volume_controller[0].index; ++i)
+                    
+                    for (int j = 0; j < 3; ++j)
                     {
-                        //SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[i]);
-                        SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[0].blocks[i]);
+                        for (int i = 0; i < volume_controller[j].index; ++i)
+                        {
+                            SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_controller[j].colors.r, volume_controller[j].colors.g, volume_controller[j].colors.b, volume_controller[j].colors.a);
+                            SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[j].blocks[i]);
+                        }
                     }
                 } break;
                 case VOL_SETTINGS_MUSIC:
                 {
                     UpdateAndRenderVolumeBars(&volume_controller[1]);
+
+                    // this will have to do!
+                    for (int j = 0; j < 3; ++j)
+                    {
+                        for (int i = 0; i < volume_controller[j].index; ++i)
+                        {
+                            SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_controller[j].colors.r, volume_controller[j].colors.g, volume_controller[j].colors.b, volume_controller[j].colors.a);
+                            SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[j].blocks[i]);
+                        }
+                    }
+                    /*
                     for (int i = 0; i < volume_controller[0].index; ++i)
                     {
                         //SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[i]);
                         SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[0].blocks[i]);
                     }
+                    for (int i = 0; i < volume_controller[1].index; ++i)
+                    {
+                        //SDL_RenderFillRect(SDLWindow.Renderer, &volume_bar_blocks[i]);
+                        SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[1].blocks[i]);
+                    }
+                    */
+                } break;
+                case VOL_SETTINGS_SFX:
+                {
+                    UpdateAndRenderVolumeBars(&volume_controller[2]);
+                    for (int j = 0; j < 3; ++j)
+                    {
+                        for (int i = 0; i < volume_controller[j].index; ++i)
+                        {
+                            SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_controller[j].colors.r, volume_controller[j].colors.g, volume_controller[j].colors.b, volume_controller[j].colors.a);
+                            SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[j].blocks[i]);
+                        }
+                    }
+
                 } break;
                 case VOL_SETTINGS_APPLY:
                 {
