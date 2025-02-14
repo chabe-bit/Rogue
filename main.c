@@ -1582,14 +1582,17 @@ int main(int argc, char *argv[])
 
     ////////////////////////////////////////////////////////////////////////////
 
-    const char *stat_options_name[2] = {
+    const char *stat_options_name[3] = {
+        // Have to play with the spacing to center the cursor from below to text
         "Personality\n   Test",
+        "  Preset\n  ",
         "  Manual\nAllocation",
     };
     
-    const char *stat_options_description[2] = {
+    const char *stat_options_description[3] = {
         "Take a personality test to determine your point allocation.",
-        "Manually allocate your points."
+        "A preset allocation of your selected class.",
+        "Manually allocate your points.",
     };
 
    
@@ -1607,46 +1610,34 @@ int main(int argc, char *argv[])
             asset_t asset;
             const char *name;
             const char *description;
-        } info[2]; // personality test, manual allocation, presets
+        } info[3]; // personality test, manual allocation, presets
 
     } character_allocation_select_screen_t; 
 
     character_allocation_select_screen_t character_allocation_select_screen = {0};
     for (int i = 0; i < ArraySize(character_allocation_select_screen.info); ++i)
     {
+        // Room for loading an icon per option
         character_allocation_select_screen.info[i].name = stat_options_name[i];
         character_allocation_select_screen.info[i].description = stat_options_description[i];
-        
     }
 
-    InitializeAssetToRender(&character_allocation_select_screen.info[0].asset, screen_center_x - 96, screen_center_y + 32, 
+    InitializeAssetToRender(&character_allocation_select_screen.info[0].asset, screen_center_x - 104, screen_center_y, 
                             character_allocation_select_screen.info[0].asset.w, character_allocation_select_screen.info[0].asset.h);
-    InitializeAssetToRender(&character_allocation_select_screen.info[1].asset, screen_center_x + 36, screen_center_y + 32, 
+    InitializeAssetToRender(&character_allocation_select_screen.info[1].asset, screen_center_x - 28, screen_center_y, 
                             character_allocation_select_screen.info[1].asset.w, character_allocation_select_screen.info[1].asset.h);
-    
-    
+    InitializeAssetToRender(&character_allocation_select_screen.info[2].asset, screen_center_x + 42, screen_center_y, 
+                            character_allocation_select_screen.info[2].asset.w, character_allocation_select_screen.info[2].asset.h);
+
+    character_allocation_select_screen.description_box.x = screen_center_x - 112; // 16px padding from start of X
+    character_allocation_select_screen.description_box.y = screen_center_y + 48;
+    character_allocation_select_screen.description_box.w = 224; // 16px padding from end of X
+    character_allocation_select_screen.description_box.h = 64;
+
     //////////////////////////////////////////////////////////////////////////////////////////
 
-
-    int stat_option_select = 0;
-    class_select_t stat_options[2] = {0};
-    for (int i = 0; i < ArraySize(stat_options); ++i)
-    {
-        stat_options[i].name = stat_options_name[i];
-        stat_options[i].description = stat_options_description[i];
-
-    }
     
 
-    InitializeAssetToRender(&stat_options[0].asset, screen_center_x - 96, screen_center_y + 32, 
-                            stat_options[0].asset.w, stat_options[0].asset.h);
-    InitializeAssetToRender(&stat_options[1].asset, screen_center_x + 36, screen_center_y + 32, 
-                            stat_options[1].asset.w, stat_options[1].asset.h);
-
-
-    u8 *input = SDL_GetKeyboardState(NULL);
-    input_t input_ = {0};
-    input_.key = SDL_GetKeyboardState(NULL);
 
     int button_select = 0;
     int confirmation_select = 0;
@@ -1864,7 +1855,7 @@ int main(int argc, char *argv[])
                             }
 
 
-                            if (class_has_been_selected)
+                            if (character_allocation_select_screen.is_active)
                             {
                                 /*
                                 stat_option_select--;
@@ -1873,7 +1864,7 @@ int main(int argc, char *argv[])
                                 PlaySFX(&sfx_option);*/
                                 character_allocation_select_screen.index--;
                                 if (character_allocation_select_screen.index < 0)
-                                    character_allocation_select_screen.index = ArraySize(character_allocation_select_screen.info) - 11;
+                                    character_allocation_select_screen.index = ArraySize(character_allocation_select_screen.info) - 1;
                                 PlaySFX(&sfx_option);
                             }
                       
@@ -1967,7 +1958,7 @@ int main(int argc, char *argv[])
                                 PlaySFX(&sfx_option);
                             }
 
-                            if (class_has_been_selected)
+                            if (character_allocation_select_screen.is_active)
                             {
                                 /*stat_option_select++;
                                 if (stat_option_select >= ArraySize(stat_options))
@@ -2161,7 +2152,7 @@ int main(int argc, char *argv[])
                                 {
                                     case 0:
                                     {
-                                        class_has_been_selected = true;
+                                        character_allocation_select_screen.is_active = true;
                                     } break;
                                     case 1:
                                     {
@@ -2480,7 +2471,6 @@ int main(int argc, char *argv[])
                 }
                 
 
-
                 SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
                 SDL_RenderDrawRect(SDLWindow.Renderer, &character_creation_screen.description_box);
             
@@ -2531,7 +2521,7 @@ int main(int argc, char *argv[])
 
             }
 
-            if (class_has_been_selected)
+            if (character_allocation_select_screen.is_active)
             {
                 character_creation_screen.is_active = false;
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
@@ -2541,7 +2531,7 @@ int main(int argc, char *argv[])
                 
                 RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
                            (ASPECT_WIDTH / 2) - 80,
-                           (ASPECT_HEIGHT / 2) - 32,
+                           (ASPECT_HEIGHT / 2) - 48,
                            "How will you allocate your\npoints for your character?",
                            white,
                            2);
@@ -2555,18 +2545,7 @@ int main(int argc, char *argv[])
                                white);
                     RenderAndUpdateAsset(&back_or_next_cursor[i].asset);
                 }
-/*
-                for (int i = 0; i < ArraySize(stat_options); ++i)
-                {
-                    RenderTextWithNewlines(SDLWindow.Renderer, font_atlas, 
-                               stat_options[i].asset.x, 
-                               stat_options[i].asset.y, 
-                               stat_options[i].name, 
-                               white, 
-                               2);
-                    RenderAndUpdateAsset(&stat_options[i].asset);
-                }
-*/
+
     
                 for (int i = 0; i < ArraySize(character_allocation_select_screen.info); ++i)
                 {
@@ -2576,12 +2555,24 @@ int main(int argc, char *argv[])
                                character_allocation_select_screen.info[i].name, 
                                white, 
                                2);
+    
+                    RenderWrappedText(SDLWindow.Renderer, font_atlas, 
+                                      character_allocation_select_screen.info[character_allocation_select_screen.index].description, white, 
+                                      character_allocation_select_screen.description_box.x + 2,
+                                      character_allocation_select_screen.description_box.y + 8, // containerX, containerY
+                                      character_allocation_select_screen.description_box.w, 
+                                      character_allocation_select_screen.description_box.h,    // containerW, containerH
+                                      4);          // lineSpacing
+
                     RenderAndUpdateAsset(&character_allocation_select_screen.info[i].asset);
                 }
-                   
-            }
-            
+                  
+                SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
+                SDL_RenderDrawRect(SDLWindow.Renderer, &character_allocation_select_screen.description_box);
+             
 
+
+            }
         }
 
         
