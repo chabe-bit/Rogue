@@ -554,9 +554,10 @@ void RenderTextWithNewlines(SDL_Renderer *renderer, SDL_Texture *fontAtlas,
 
 // Personality Test inspired by DQ3 Remake
 // https://game8.co/games/Dragon-Quest-3/archives/464271
-const char *question_table[49] = 
+const char *question_table[50] = 
 {
     // Starting questions 
+    "",
     "Do you find life boring?",
     "Do you believe that the sun in the sky above is the king of all nature...?",
     "Is adventuring a hardship?",
@@ -1011,6 +1012,16 @@ typedef enum
     CLASS_ARCHER
 } character_class_selection;
 character_class_selection character_class_selection_state = CLASS_NONE;
+
+typedef enum 
+{
+    CLASS_POINTS_NONE,
+    CLASS_POINTS_PERSONALITY,
+    CLASS_POINTS_PRESET,
+    CLASS_POINTS_MANUAL,
+} character_class_point_allocation_method;
+character_class_point_allocation_method character_class_point_allocation_method_state = CLASS_POINTS_NONE;
+
 
 typedef enum
 {
@@ -1640,6 +1651,8 @@ int main(int argc, char *argv[])
     {
         int index;
         bool is_active;
+        SDL_Rect box;
+        SDL_Rect box_border;
 
         struct
         {
@@ -1658,6 +1671,15 @@ int main(int argc, char *argv[])
     confirmation.info.buttons[1].x = screen_center_x;
     confirmation.info.buttons[1].y = screen_center_y + 16;
 
+    confirmation.box.x = screen_center_x - 18; // x render pos
+    confirmation.box.y = screen_center_y - 18; // y render pos
+    confirmation.box.w = 48;
+    confirmation.box.h = 56;
+
+    confirmation.box_border.x = screen_center_x - 19; // shift the x render pos 1 pixel back
+    confirmation.box_border.y = screen_center_y - 19; // shift the y render pos 1 pixel up
+    confirmation.box_border.w = 50; // padding of 1px per side for x 
+    confirmation.box_border.h = 58; // padding of 1px per side for y
 
     int button_select = 0;
     int confirmation_select = 0;
@@ -1760,7 +1782,7 @@ int main(int argc, char *argv[])
 
     // Start event
     bool some_input = true;
-    int questions_answered_index = 0;
+    int questions_answered_index = 1;
     is_title_screen = true;
     Running = true;
     while (Running)
@@ -2165,29 +2187,80 @@ int main(int argc, char *argv[])
                                     } break;
                                 }
                             }
-                            
-                            if (confirmation.is_active)
+                           
+                            if (character_allocation_select_screen.is_active)
                             {
-                                switch (confirmation.index)
+                                switch (character_allocation_select_screen.index)
                                 {
                                     case 0:
                                     {
-                                        character_allocation_select_screen.is_active = true;
+                                        character_class_point_allocation_method_state = CLASS_POINTS_PERSONALITY; 
                                     } break;
                                     case 1:
                                     {
-                                        confirmation.is_active = false; 
-                                        character_class_selection_state = CLASS_NONE;
+                                        character_class_point_allocation_method_state = CLASS_POINTS_PRESET; 
+                                    } break;
+                                    case 2:
+                                    {
+                                        character_class_point_allocation_method_state = CLASS_POINTS_MANUAL; 
                                     } break;
                                     default:
                                     {
-                                        yes_or_no_buttons_state = CONFIRMATION_NONE;
+                                        character_class_point_allocation_method_state = CLASS_POINTS_PERSONALITY; 
                                     } break;
                                 }
                             }
-                            
 
+                            if (confirmation.is_active)
+                            {
+                                if (character_creation_screen.is_active)
+                                {
+                                    switch (confirmation.index)
+                                    {
+                                        case 0:
+                                        {
+                                            character_creation_screen.is_active = false;
+                                            character_allocation_select_screen.is_active = true;
+                                            confirmation.is_active = false; 
+                                        } break;
+                                        case 1:
+                                        {
+                                            confirmation.is_active = false; 
+                                            character_class_selection_state = CLASS_NONE;
+                                        } break;
+                                        default:
+                                        {
+                                            yes_or_no_buttons_state = CONFIRMATION_NONE;
+                                        } break;
+                                    }
+                                }
+                                 
+                                if (character_allocation_select_screen.is_active)
+                                {
+                                    switch (confirmation.index)
+                                    {
+                                        case 0:
+                                        {
+                                            //character_allocation_select_screen.is_active = false;
+                                            //is_personality_test = true;
+                                            confirmation.is_active = false; 
+                                        } break;
+                                        case 1:
+                                        {
+                                            confirmation.is_active = false;
+                                            character_class_point_allocation_method_state = CLASS_POINTS_NONE;
+                                        } break;
+                                        default:
+                                        {
+                                            yes_or_no_buttons_state = CONFIRMATION_NONE;
+                                        } break;
+                                    }
+                                }
+
+
+                            }
                             
+                                                       
 
                             if (is_settings)
                             {
@@ -2503,7 +2576,8 @@ int main(int argc, char *argv[])
                     } break;
                     case CLASS_KNIGHT:
                     {
-                       confirmation.is_active = true; 
+                        printf("knight!\n");
+                        confirmation.is_active = true; 
                     } break;
                     case CLASS_PALADIN:
                     {
@@ -2523,22 +2597,17 @@ int main(int argc, char *argv[])
                     } break;
                 }
         
-                // TODO: Fix input to accept return
                 if (confirmation.is_active)
                 {
-                    //CursorForItems(&confirmation_buttons[confirmation_select], &right_cursor_asset, 4, 1);
+                    // Box border
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
+                    SDL_RenderDrawRect(SDLWindow.Renderer, &confirmation.box_border);
+                    // Border
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &confirmation.box);
+
                     CursorForItems(&confirmation.info.buttons[confirmation.index], &right_cursor_asset, 4, 1);
                     RenderAndUpdateAsset(&right_cursor_asset);
-                    /*for (int i = 0; i < ArraySize(confirmation_buttons); ++i) 
-                    {
-                        RenderText(SDLWindow.Renderer, font_atlas,
-                                   confirmation_buttons[i].x, 
-                                   confirmation_buttons[i].y,
-                                   confirmation_buttons[i].text, 
-                                   white);
-                    }*/
-
-    
                     for (int i = 0; i < ArraySize(confirmation.info.buttons); ++i) 
                     {
                         RenderText(SDLWindow.Renderer, font_atlas,
@@ -2553,7 +2622,6 @@ int main(int argc, char *argv[])
 
             if (character_allocation_select_screen.is_active)
             {
-                character_creation_screen.is_active = false;
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
        
                 CursorForAssets(&character_allocation_select_screen.info[character_allocation_select_screen.index].asset, &up_cursor_asset, 24, 20);
@@ -2599,16 +2667,59 @@ int main(int argc, char *argv[])
                   
                 SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
                 SDL_RenderDrawRect(SDLWindow.Renderer, &character_allocation_select_screen.description_box);
-             
+            
+                switch (character_class_point_allocation_method_state)
+                {
+                    case CLASS_POINTS_NONE:
+                    {
 
+                    } break;
+                    case CLASS_POINTS_PERSONALITY:
+                    {
+                        confirmation.is_active = true;
+                    } break;
+                    case CLASS_POINTS_PRESET:
+                    {
+                        confirmation.is_active = true;
+                    } break;
+                    case CLASS_POINTS_MANUAL:
+                    {
+                        confirmation.is_active = true;
+                    } break;
+                    default:
+                    {
+                        character_class_point_allocation_method_state = CLASS_POINTS_NONE;
+                    } break;
+                };
+                    
 
+                if (confirmation.is_active)
+                {
+                    // TODO: Above the confirmation modal, prompt what the player is confirming for, ex: "You selected X, are you sure?"
+
+                    // Box border
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
+                    SDL_RenderDrawRect(SDLWindow.Renderer, &confirmation.box_border);
+                    // Border
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
+                    SDL_RenderFillRect(SDLWindow.Renderer, &confirmation.box);
+                    
+                    CursorForItems(&confirmation.info.buttons[confirmation.index], &right_cursor_asset, 4, 1);
+                    RenderAndUpdateAsset(&right_cursor_asset);
+                    for (int i = 0; i < ArraySize(confirmation.info.buttons); ++i) 
+                    {
+                        RenderText(SDLWindow.Renderer, font_atlas,
+                                   confirmation.info.buttons[i].x, 
+                                   confirmation.info.buttons[i].y,
+                                   confirmation.info.buttons[i].text, 
+                                   white);
+                    }
+                }
             }
         }
 
         
         // Character name is the last screen where input will be entering it in letter by letter like FF8 or pokemon   
-
-
         if (is_personality_test)
         {
             static int rand_index = 0;
@@ -2639,6 +2750,7 @@ int main(int argc, char *argv[])
                     rand_index = rand() % 5;
                     first_question_selected = true;
                 }
+                    
                 
             }  
 
@@ -2651,6 +2763,23 @@ int main(int argc, char *argv[])
                                   256, 240,    // containerW, containerH
                                   2);          // lineSpacing
 
+            switch (questions_answered_index)
+            {
+                case 0:
+                {
+                } break;
+                case 1:
+                {
+                    
+                } break;
+                default:
+                {
+                    
+                } break;
+            }
+
+
+            /*
             CursorForItems(&confirmation_buttons[button_select], &right_cursor_asset, 12, 1);
             RenderAndUpdateAsset(&right_cursor_asset);
             for (int i = 0; i < ArraySize(confirmation_buttons); ++i)
@@ -2663,9 +2792,25 @@ int main(int argc, char *argv[])
             
                 
             }
+*/
+    
+           
+        
 
-            if (questions_answered_index == 1)
-                questions_answered_index = 7;
+            if (confirmation.is_active)
+            {
+                CursorForItems(&confirmation.info.buttons[confirmation.index], &right_cursor_asset, 4, 1);
+                RenderAndUpdateAsset(&right_cursor_asset);
+                for (int i = 0; i < ArraySize(confirmation.info.buttons); ++i) 
+                {
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               confirmation.info.buttons[i].x, 
+                               confirmation.info.buttons[i].y,
+                               confirmation.info.buttons[i].text, 
+                               white);
+                }
+            }
+
 
         }
 
