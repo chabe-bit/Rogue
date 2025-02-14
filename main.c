@@ -611,6 +611,34 @@ const char *question_table[50] =
     "Do you trip on a boulder and blame youself?"
 };
 
+const char *village_scenario[1] = {
+    "Silver coins drop from the hanging bag of an elderly man's pocket\n as he walks through the market. What do you do?"
+    // Steal the coins openly with pride. -> Show-off
+    // Steal the coins sneakily. -> Slippery Devil
+    // Don't steal the coins and return them. -> Shrinking Violet
+};
+
+const char *desert_scenario[1] = {
+    "You carry with yourself a canteen of water with only a few sips worth left. In the harsh and unforgiving desert terrain, you come across two men stranded, where one is near death from thirst. What do you do?"
+    // Finish the canteen -> Thug
+    // Give the man the canteen -> Daredevil
+    // Carry the man home -> Idealist
+};
+
+const char *monster_scenario[1] = {
+    "You are a man by day and a beast by night. You prey off human flesh and blood to survive. You come across a small and quiet village. What do you do?"
+    // Kill fewer than three people -> Paragon
+    // Kill three or more people, including women and the elderly, but don't kill the children -> Wimpy
+    // Kill three or more people, but don't kill the women, the elderly, or children -> Spoilt Brat
+    // Kill three or more poeple, including children -> Egghead
+    // Kill nine or more people, but don't kill the man by the inn -> Klutz (did you know? the lore is so they accuse the man of missing people, because they're the only ones at night to see people)
+};
+
+const char *tower_scenario[1] = {
+
+};
+
+
 void AskStartingQuestion(SDL_Renderer *renderer, SDL_Texture *font_atlas)
 {
     SDL_Color white = {255, 255, 255, 255};
