@@ -620,9 +620,9 @@ const char *village_scenario[1] = {
 
 const char *desert_scenario[1] = {
     "You carry with yourself a canteen of water with only a few sips worth left. In the harsh and unforgiving desert terrain, you come across two men stranded, where one is near death from thirst. What do you do?"
-    // Finish the canteen -> Thug
-    // Give the man the canteen -> Daredevil
-    // Carry the man home -> Idealist
+    // Finish the canteen and leave -> Thug
+    // Give the man the canteen and head to town -> Daredevil
+    // Carry the man to town -> Idealist
 };
 
 const char *monster_scenario[1] = {
@@ -635,6 +635,67 @@ const char *monster_scenario[1] = {
 };
 
 const char *tower_scenario[1] = {
+    "You are disoriented and awake at the top of a seemingly endless tower. You see a staircase besides you that leads down to the unknown. What do you do?"
+    // Take the stairs -> Socialite
+    // Jump -> Daydreamer
+};
+
+const char *cave_scenario[1] = {
+    "You are near the end of your quest in saving the princess, where the entrance to her prison is in front of you. But two doors fork to the left and right, a door to take you deeper in and a door to a room of treasures. What do you do?"
+    // Save the princess -> Straight Arrow 
+    // Take the door to go deeper -> Mule 
+    // Take the door to the room of treasures then go deeper -> Scatterbrain
+    // Take the door to the room of treasures then leave -> Narcissist
+    // Ignore everything and leave -> Sore Loser
+};
+
+const char *forest_scenario[1] = {
+    // Idea of doing a repetivie and menial task, something not fun. This is idea similar to pushing a rock, so the player will be given a set of inputs to follow and complete, something simple. Then asked to repeat. Number of times they repeat is their result.
+    
+};
+
+const char *theater_scenario[1] = {
+    "You are a priest, and dressed nicely for the night's stage show. You walk into the theater and a man recognizes you as the town's priest. He immediately begs you to marry the women of life, of which they had only just met and he claims is love at first sight. What do you do?"
+    // Ignore the man the leave -> Free spirit 
+    // Say yes -> Crybaby
+    // Say no -> Lone Wolf
+    // Play dumb and say you're not the town's priest -> Lout
+};
+
+const char *castle_scenario[] = {
+    "You are a soldier, who overhears the newly crowned queen in her room discussing her plan to assasinate the king once he announces to open the lands' borders. Soon later that night you are pulled over by a man, who asks you two simple questions.",
+    
+    // (1) He asks...
+    "The orders of a king must be obeyed, even if they are misguided, correct?",
+    
+    // (1) if yes 
+    "You truly believe the orders of a king are to be set in stone?",
+        // (1) if yes 
+        "I see...then I know what I must do.", // Ends
+        // (1) if no
+        "You really think so? So you believe that misguided orders need not to be followed?",
+            // (1) if yes
+                // Returns to -> "I see...then I know what I must do.", // Ends
+            // (1) if no
+            "...So you think even the orders of a king, if mistaken, need not to be followed?",
+                // (1) if yes
+                "Then I suppose what one's idea of what is a mistake or correct is entirely personal...",
+                    // (1) if yes
+                    "So you believe it's better to do what you see fit than blindly follow orders of the king?",
+                        // (1) if yes
+                        // (1) if no
+                        "So at times such as this, I must have faith in my king, and follow his orders?",
+                            // (1) if yes
+                                // Returns to the start of (1) -> You truly believe...
+                            // (1) if no
+                // (1) if no 
+                "What silliness is this? Are you even listening to me?",
+                    // (1) if yes
+                    "...Your answers are wilful...But perhaps those are necessary sometimes, then I know what I must do.", // End
+                    // (1) if no
+    // (1) if no
+    "...So you think even the orders of a king, if mistaken, need not to be followed?",
+        
 
 };
 
