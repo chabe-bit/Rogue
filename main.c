@@ -1636,7 +1636,27 @@ int main(int argc, char *argv[])
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    
+    typedef struct
+    {
+        int index;
+        bool is_active;
+
+        struct
+        {
+            menu_item_t buttons[2];
+        } info;
+
+    } confirmation_buttons_t;
+
+
+    confirmation_buttons_t confirmation = {0};
+    confirmation.info.buttons[0].text = "Yes";
+    confirmation.info.buttons[0].x = screen_center_x - 2;
+    confirmation.info.buttons[0].y = screen_center_y;
+
+    confirmation.info.buttons[1].text = "No";
+    confirmation.info.buttons[1].x = screen_center_x;
+    confirmation.info.buttons[1].y = screen_center_y + 16;
 
 
     int button_select = 0;
@@ -1785,11 +1805,11 @@ int main(int argc, char *argv[])
                                 PlaySFX(&sfx_option);
                             }
                             
-                            if (is_confirmation)
+                            if (confirmation.is_active)
                             {
-                                confirmation_select--;
-                                if (confirmation_select < 0)
-                                    confirmation_select = ArraySize(confirmation_buttons) - 1;
+                                confirmation.index--;
+                                if (confirmation.index < 0)
+                                    confirmation.index = ArraySize(confirmation.info.buttons) - 1;
                                 PlaySFX(&sfx_option);
                             }
 
@@ -1824,11 +1844,11 @@ int main(int argc, char *argv[])
                                 PlaySFX(&sfx_option);
                             }
     
-                            if (is_confirmation)
+                            if (confirmation.is_active)
                             {
-                                confirmation_select++;
-                                if (confirmation_select >= ArraySize(confirmation_buttons))
-                                    confirmation_select = 0;
+                                confirmation.index++;
+                                if (confirmation.index >= ArraySize(confirmation.info.buttons))
+                                    confirmation.index = 0;
                                 PlaySFX(&sfx_option);
                             }
 
@@ -2146,9 +2166,9 @@ int main(int argc, char *argv[])
                                 }
                             }
                             
-                            if (is_confirmation)
+                            if (confirmation.is_active)
                             {
-                                switch (confirmation_select)
+                                switch (confirmation.index)
                                 {
                                     case 0:
                                     {
@@ -2156,7 +2176,7 @@ int main(int argc, char *argv[])
                                     } break;
                                     case 1:
                                     {
-                                        is_confirmation = false; 
+                                        confirmation.is_active = false; 
                                         character_class_selection_state = CLASS_NONE;
                                     } break;
                                     default:
@@ -2483,19 +2503,19 @@ int main(int argc, char *argv[])
                     } break;
                     case CLASS_KNIGHT:
                     {
-                       is_confirmation = true; 
+                       confirmation.is_active = true; 
                     } break;
                     case CLASS_PALADIN:
                     {
-                       is_confirmation = true; 
+                       confirmation.is_active = true; 
                     } break;
                     case CLASS_MAGE:
                     {
-                       is_confirmation = true; 
+                       confirmation.is_active = true; 
                     } break;
                     case CLASS_ARCHER:
                     {
-                       is_confirmation = true; 
+                       confirmation.is_active = true; 
                     } break;
                     default:
                     {
@@ -2504,19 +2524,29 @@ int main(int argc, char *argv[])
                 }
         
                 // TODO: Fix input to accept return
-                if (is_confirmation)
+                if (confirmation.is_active)
                 {
-                    CursorForItems(&confirmation_buttons[confirmation_select], &right_cursor_asset, 4, 1);
+                    //CursorForItems(&confirmation_buttons[confirmation_select], &right_cursor_asset, 4, 1);
+                    CursorForItems(&confirmation.info.buttons[confirmation.index], &right_cursor_asset, 4, 1);
                     RenderAndUpdateAsset(&right_cursor_asset);
-                    for (int i = 0; i < ArraySize(confirmation_buttons); ++i) 
+                    /*for (int i = 0; i < ArraySize(confirmation_buttons); ++i) 
                     {
                         RenderText(SDLWindow.Renderer, font_atlas,
                                    confirmation_buttons[i].x, 
                                    confirmation_buttons[i].y,
                                    confirmation_buttons[i].text, 
                                    white);
-                    }
+                    }*/
 
+    
+                    for (int i = 0; i < ArraySize(confirmation.info.buttons); ++i) 
+                    {
+                        RenderText(SDLWindow.Renderer, font_atlas,
+                                   confirmation.info.buttons[i].x, 
+                                   confirmation.info.buttons[i].y,
+                                   confirmation.info.buttons[i].text, 
+                                   white);
+                    }
                 }
 
             }
