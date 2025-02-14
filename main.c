@@ -1540,31 +1540,6 @@ int main(int argc, char *argv[])
         "Wield the power of the bow. Prioritizes in speed and accuracy."
     };
 
-
-    int selected_character_index = 0;
-    class_select_t class_select[4] = {0};
-    for (int i = 0; i < ArraySize(class_select); ++i)
-    {
-        LoadAsset(&class_select[i].asset, class_files[i]);
-        class_select[i].name = class_names[i];
-        class_select[i].description = class_description[i];
-    }
-
-    InitializeAssetToRender(&class_select[0].asset, screen_center_x - 96, screen_center_y, 
-                            class_select[0].asset.w, class_select[0].asset.h);
-    InitializeAssetToRender(&class_select[1].asset, screen_center_x - 36, screen_center_y, 
-                            class_select[1].asset.w, class_select[1].asset.h);
-    InitializeAssetToRender(&class_select[2].asset, screen_center_x + 28, screen_center_y, 
-                           class_select[2].asset.w, class_select[2].asset.h);
-    InitializeAssetToRender(&class_select[3].asset, screen_center_x + 80, screen_center_y, 
-                            class_select[3].asset.w, class_select[3].asset.h);
-
-    SDL_Rect description_box;
-    description_box.x = screen_center_x - 112; // 16px padding from start of X
-    description_box.y = screen_center_y + 48;
-    description_box.w = 224; // 16px padding from end of X
-    description_box.h = 64;
-
     typedef struct
     {
         // overall instance
@@ -1576,7 +1551,7 @@ int main(int argc, char *argv[])
         // multiple instances
         struct 
         {
-            asset_t class_asset;
+            asset_t asset;
             const char *name;
             const char *description;
         } info[4];
@@ -1586,19 +1561,19 @@ int main(int argc, char *argv[])
     character_creation_screen_t character_creation_screen = {0};
     for (int i = 0; i < ArraySize(character_creation_screen.info); ++i)
     {
-        LoadAsset(&character_creation_screen.info[i].class_asset, class_files[i]);
+        LoadAsset(&character_creation_screen.info[i].asset, class_files[i]);
         character_creation_screen.info[i].name = class_names[i];
         character_creation_screen.info[i].description = class_description[i];
     }
     
-    InitializeAssetToRender(&character_creation_screen.info[0].class_asset, screen_center_x - 96, screen_center_y, 
-                            character_creation_screen.info[0].class_asset.w, character_creation_screen.info[0].class_asset.h);
-    InitializeAssetToRender(&character_creation_screen.info[1].class_asset, screen_center_x - 36, screen_center_y, 
-                            character_creation_screen.info[1].class_asset.w, character_creation_screen.info[1].class_asset.h);  
-    InitializeAssetToRender(&character_creation_screen.info[2].class_asset, screen_center_x + 28, screen_center_y, 
-                            character_creation_screen.info[2].class_asset.w, character_creation_screen.info[2].class_asset.h);
-    InitializeAssetToRender(&character_creation_screen.info[3].class_asset, screen_center_x + 80, screen_center_y, 
-                            character_creation_screen.info[3].class_asset.w, character_creation_screen.info[3].class_asset.h);
+    InitializeAssetToRender(&character_creation_screen.info[0].asset, screen_center_x - 96, screen_center_y, 
+                            character_creation_screen.info[0].asset.w, character_creation_screen.info[0].asset.h);
+    InitializeAssetToRender(&character_creation_screen.info[1].asset, screen_center_x - 36, screen_center_y, 
+                            character_creation_screen.info[1].asset.w, character_creation_screen.info[1].asset.h);  
+    InitializeAssetToRender(&character_creation_screen.info[2].asset, screen_center_x + 28, screen_center_y, 
+                            character_creation_screen.info[2].asset.w, character_creation_screen.info[2].asset.h);
+    InitializeAssetToRender(&character_creation_screen.info[3].asset, screen_center_x + 80, screen_center_y, 
+                            character_creation_screen.info[3].asset.w, character_creation_screen.info[3].asset.h);
 
     character_creation_screen.description_box.x = screen_center_x - 112; // 16px padding from start of X
     character_creation_screen.description_box.y = screen_center_y + 48;
@@ -1609,7 +1584,7 @@ int main(int argc, char *argv[])
 
     const char *stat_options_name[2] = {
         "Personality\n   Test",
-        "  Manual\nAllocation"
+        "  Manual\nAllocation",
     };
     
     const char *stat_options_description[2] = {
@@ -1617,16 +1592,49 @@ int main(int argc, char *argv[])
         "Manually allocate your points."
     };
 
+   
+    typedef struct
+    {
+        // overall instance
+        int index;
+        bool is_active;
+        asset_t cursor;
+        SDL_Rect description_box; 
+
+        // multiple instances
+        struct 
+        {
+            asset_t asset;
+            const char *name;
+            const char *description;
+        } info[2]; // personality test, manual allocation, presets
+
+    } character_allocation_select_screen_t; 
+
+    character_allocation_select_screen_t character_allocation_select_screen = {0};
+    for (int i = 0; i < ArraySize(character_allocation_select_screen.info); ++i)
+    {
+        character_allocation_select_screen.info[i].name = stat_options_name[i];
+        character_allocation_select_screen.info[i].description = stat_options_description[i];
+        
+    }
+
+    InitializeAssetToRender(&character_allocation_select_screen.info[0].asset, screen_center_x - 96, screen_center_y + 32, 
+                            character_allocation_select_screen.info[0].asset.w, character_allocation_select_screen.info[0].asset.h);
+    InitializeAssetToRender(&character_allocation_select_screen.info[1].asset, screen_center_x + 36, screen_center_y + 32, 
+                            character_allocation_select_screen.info[1].asset.w, character_allocation_select_screen.info[1].asset.h);
     
+    
+    //////////////////////////////////////////////////////////////////////////////////////////
+
+
     int stat_option_select = 0;
     class_select_t stat_options[2] = {0};
     for (int i = 0; i < ArraySize(stat_options); ++i)
     {
-        //LoadAsset(&stat_options[i].asset, "assets/up_cursor.png");
         stat_options[i].name = stat_options_name[i];
         stat_options[i].description = stat_options_description[i];
-        stat_options[i].asset.w = 81;
-        stat_options[i].asset.h = 81;
+
     }
     
 
@@ -1846,14 +1854,8 @@ int main(int argc, char *argv[])
                         case SDLK_a:
                         {
                             Orientation.left = true;
-                            //if (is_class_select && !is_confirmation)
                             if (character_creation_screen.is_active && !is_confirmation)
                             {
-                                /*
-                                selected_character_index--;
-                                if (selected_character_index < 0)
-                                    selected_character_index = ArraySize(class_select) - 1;
-                                PlaySFX(&sfx_option);*/
                                 character_creation_screen.index--;
                                 if (character_creation_screen.index < 0)
                                     character_creation_screen.index = ArraySize(character_creation_screen.info) - 1;
@@ -1864,9 +1866,14 @@ int main(int argc, char *argv[])
 
                             if (class_has_been_selected)
                             {
+                                /*
                                 stat_option_select--;
                                 if (stat_option_select < 0)
                                     stat_option_select = ArraySize(stat_options) - 1;
+                                PlaySFX(&sfx_option);*/
+                                character_allocation_select_screen.index--;
+                                if (character_allocation_select_screen.index < 0)
+                                    character_allocation_select_screen.index = ArraySize(character_allocation_select_screen.info) - 11;
                                 PlaySFX(&sfx_option);
                             }
                       
@@ -1952,14 +1959,8 @@ int main(int argc, char *argv[])
                         case SDLK_d:
                         {
                             Orientation.right = true;
-                            //if (is_class_select && !is_confirmation)
                             if (character_creation_screen.is_active && !is_confirmation)
                             {
-                                /*
-                                selected_character_index++;
-                                if (selected_character_index >= ArraySize(class_select))
-                                    selected_character_index = 0;
-                                PlaySFX(&sfx_option);*/
                                 character_creation_screen.index++;
                                 if (character_creation_screen.index >= ArraySize(character_creation_screen.info))
                                     character_creation_screen.index = 0;
@@ -1968,9 +1969,13 @@ int main(int argc, char *argv[])
 
                             if (class_has_been_selected)
                             {
-                                stat_option_select++;
+                                /*stat_option_select++;
                                 if (stat_option_select >= ArraySize(stat_options))
                                     stat_option_select = 0;
+                                PlaySFX(&sfx_option);*/
+                                character_allocation_select_screen.index++;
+                                if (character_allocation_select_screen.index >= ArraySize(character_allocation_select_screen.info))
+                                    character_allocation_select_screen.index = 0;
                                 PlaySFX(&sfx_option);
                             }
 
@@ -2123,10 +2128,8 @@ int main(int argc, char *argv[])
                                 }
                             }
                             
-                            //if (is_class_select)
                             if (character_creation_screen.is_active)
                             {
-                                //switch (selected_character_index)
                                 switch (character_creation_screen.index)
                                 {
                                     case 0:
@@ -2234,7 +2237,6 @@ int main(int argc, char *argv[])
                 {   
                     is_title_screen = false;
                     is_new_game = true;
-                    //is_class_select = true;
                     character_creation_screen.is_active = true;
                 } break;
                 case TITLE_LOAD_GAME:
@@ -2447,41 +2449,10 @@ int main(int argc, char *argv[])
         if (is_new_game)
         {
             SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-            /*
-            CursorForAssets(&class_select[selected_character_index].asset, &up_cursor_asset, 4, 16);
-            RenderAndUpdateAsset(&up_cursor_asset);
-            for (int i = 0; i < ArraySize(back_or_next_cursor); ++i)
-            {
-                RenderText(SDLWindow.Renderer, font_atlas, 
-                           back_or_next_cursor[i].asset.x - 12,
-                           back_or_next_cursor[i].asset.y + 16,
-                           back_or_next_cursor[i].name,
-                           white);
-                RenderAndUpdateAsset(&back_or_next_cursor[i].asset);
-            }
-*/
 
-/*
-            for (int i = 0; i < ArraySize(class_select); ++i)
-            {
-                RenderText(SDLWindow.Renderer, font_atlas, class_select[i].asset.x - 8, class_select[i].asset.y - 16, 
-                           class_select[i].name, white);
-                RenderWrappedText(SDLWindow.Renderer, font_atlas, 
-                                          //class_select[selected_character_index].description, white, 
-                                          character_creation_screen.info[character_creation_screen.index].description, white, 
-                                          description_box.x + 2,
-                                          description_box.y + 8, // containerX, containerY
-                                          description_box.w, 
-                                          description_box.h,    // containerW, containerH
-                                          4);          // lineSpacing
-
-                RenderAndUpdateAsset(&class_select[i].asset);
-            }
-*/           
-            //if (is_class_select)
             if (character_creation_screen.is_active)
             {
-                CursorForAssets(&character_creation_screen.info[character_creation_screen.index].class_asset, &up_cursor_asset, 4, 16);
+                CursorForAssets(&character_creation_screen.info[character_creation_screen.index].asset, &up_cursor_asset, 4, 16);
                 RenderAndUpdateAsset(&up_cursor_asset);
                 for (int i = 0; i < ArraySize(back_or_next_cursor); ++i)
                 {
@@ -2495,7 +2466,7 @@ int main(int argc, char *argv[])
 
                 for (int i = 0; i < ArraySize(character_creation_screen.info); ++i)
                 {
-                    RenderText(SDLWindow.Renderer, font_atlas, character_creation_screen.info[i].class_asset.x - 8, character_creation_screen.info[i].class_asset.y - 16, 
+                    RenderText(SDLWindow.Renderer, font_atlas, character_creation_screen.info[i].asset.x - 8, character_creation_screen.info[i].asset.y - 16, 
                                character_creation_screen.info[i].name, white);
                     RenderWrappedText(SDLWindow.Renderer, font_atlas, 
                                               character_creation_screen.info[character_creation_screen.index].description, white, 
@@ -2505,7 +2476,7 @@ int main(int argc, char *argv[])
                                               character_creation_screen.description_box.h,    // containerW, containerH
                                               4);          // lineSpacing
 
-                    RenderAndUpdateAsset(&character_creation_screen.info[i].class_asset);
+                    RenderAndUpdateAsset(&character_creation_screen.info[i].asset);
                 }
                 
 
@@ -2565,7 +2536,7 @@ int main(int argc, char *argv[])
                 character_creation_screen.is_active = false;
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
        
-                CursorForAssets(&stat_options[stat_option_select].asset, &up_cursor_asset, 24, -20);
+                CursorForAssets(&character_allocation_select_screen.info[character_allocation_select_screen.index].asset, &up_cursor_asset, 24, 20);
                 RenderAndUpdateAsset(&up_cursor_asset);
                 
                 RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
@@ -2584,7 +2555,7 @@ int main(int argc, char *argv[])
                                white);
                     RenderAndUpdateAsset(&back_or_next_cursor[i].asset);
                 }
-
+/*
                 for (int i = 0; i < ArraySize(stat_options); ++i)
                 {
                     RenderTextWithNewlines(SDLWindow.Renderer, font_atlas, 
@@ -2595,7 +2566,22 @@ int main(int argc, char *argv[])
                                2);
                     RenderAndUpdateAsset(&stat_options[i].asset);
                 }
+*/
+    
+                for (int i = 0; i < ArraySize(character_allocation_select_screen.info); ++i)
+                {
+                    RenderTextWithNewlines(SDLWindow.Renderer, font_atlas, 
+                               character_allocation_select_screen.info[i].asset.x, 
+                               character_allocation_select_screen.info[i].asset.y, 
+                               character_allocation_select_screen.info[i].name, 
+                               white, 
+                               2);
+                    RenderAndUpdateAsset(&character_allocation_select_screen.info[i].asset);
+                }
+                   
             }
+            
+
         }
 
         
