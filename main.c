@@ -1022,13 +1022,21 @@ typedef enum
 } character_class_point_allocation_method;
 character_class_point_allocation_method character_class_point_allocation_method_state = CLASS_POINTS_NONE;
 
+// ENTIRELY BASED on DQ3 remaster
+// https://game8.co/games/Dragon-Quest-3/archives/464271
 typedef enum
 {
-    CLASS_CHOICE_NONE,
-    CLASS_CHOICE_YES,
-    CLASS_CHOICE_NO
-} character_class_personality_test_choice;
-character_class_personality_test_choice character_class_personality_test_choice_state = CLASS_CHOICE_NONE;
+    CLASS_PERSONALITY_RESULT_NONE,
+    CLASS_PERSONALITY_RESULT_VILLAGE,
+    CLASS_PERSONALITY_RESULT_MONSTER,
+    CLASS_PERSONALITY_RESULT_FOREST,
+    CLASS_PERSONALITY_RESULT_CAVE,
+    CLASS_PERSONALITY_RESULT_DESERT,
+    CLASS_PERSONALITY_RESULT_TOWER,
+    CLASS_PERSONALITY_RESULT_THEATER,
+    CLASS_PERSONALITY_RESULT_CASTLE,
+} character_class_personality_test_result;
+character_class_personality_test_result character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_NONE;
 
 typedef enum
 {
@@ -1793,8 +1801,16 @@ int main(int argc, char *argv[])
     is_title_screen = true;
     Running = true;
 
-    int answer = 0;
-    while (Running)
+    bool is_final_question = false;
+    bool is_village = false;
+    bool is_monster = false;
+    bool is_forest = false;
+    bool is_cave = false;
+    bool is_desert = false;
+    bool is_tower = false;
+    bool is_theater = false;
+    bool is_castle = false;
+    while (Running) 
     {
         frame_start = SDL_GetTicks();
                                                               
@@ -2273,7 +2289,7 @@ int main(int argc, char *argv[])
                             {
                                 switch (confirmation.index)
                                 {
-                                    case 0:
+                                    case 0: // yes
                                     {
                                         // turn into a function
                                         switch (questions_answered_index)
@@ -2304,23 +2320,225 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 7:
                                             {
-                                                questions_answered_index = 14;
+                                                questions_answered_index = 10;
                                             } break;
                                             case 8:
                                             {
-                                                questions_answered_index = 6;
+                                                questions_answered_index = 10;
                                             } break;
                                             case 9:
                                             {
-                                                questions_answered_index = 15;
+                                                questions_answered_index = 11;
                                             } break;
                                             case 10:
                                             {
-                                                questions_answered_index = 8;
+                                                questions_answered_index = 14;
                                             } break;
                                             case 11:
                                             {
-                                                questions_answered_index = 7;
+                                                questions_answered_index = 14;
+                                            } break;
+                                            case 12:
+                                            {
+                                                questions_answered_index = 31;
+                                            } break;
+                                            case 13:
+                                            {
+                                                questions_answered_index = 25;
+                                            } break;
+                                            case 14:
+                                            {
+                                                questions_answered_index = 18;
+                                            } break;
+                                            case 15:
+                                            {
+                                                questions_answered_index = 16;
+                                            } break;
+                                            case 16:
+                                            {
+                                                questions_answered_index = 17;
+                                            } break;
+                                            case 17:
+                                            {
+                                                questions_answered_index = 21;
+                                            } break;
+                                            case 18:
+                                            {
+                                                questions_answered_index = 19;
+                                            } break;
+                                            case 19:
+                                            {
+                                                questions_answered_index = 20;
+                                            } break;
+                                            case 20:
+                                            {
+                                                questions_answered_index = 21;
+                                            } break; 
+                                            case 21:
+                                            {
+                                                questions_answered_index = 23;
+                                            } break;
+                                            case 22:
+                                            {
+                                                questions_answered_index = 38;
+                                            } break;
+                                            case 23:
+                                            {
+                                                questions_answered_index = 24;
+                                            } break;
+                                            case 24:
+                                            {
+                                                questions_answered_index = 34;
+                                            } break;
+                                            case 25:
+                                            {
+                                                questions_answered_index = 31;
+                                            } break;
+                                            case 26:
+                                            {
+                                                questions_answered_index = 27;
+                                            } break;
+                                            case 27:
+                                            {
+                                                questions_answered_index = 28;
+                                            } break;
+                                            case 28:
+                                            {
+                                                questions_answered_index = 29;
+                                            } break;
+                                            case 29:
+                                            {
+                                                questions_answered_index = 30;
+                                            } break;
+                                            case 30:
+                                            {
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_VILLAGE; // final question
+                                            } break;
+                                            case 31:
+                                            {
+                                                questions_answered_index = 32;
+                                            } break;
+                                            case 32:
+                                            {
+                                                questions_answered_index = 33;
+                                            } break;
+                                            case 33:
+                                            {
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_DESERT; // final question
+                                            } break;
+                                            case 34:
+                                            {
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_MONSTER; // final question
+                                            } break;
+                                            case 35:
+                                            {
+                                                questions_answered_index = 0; // final question
+                                            } break;
+                                            case 36:
+                                            {
+                                                questions_answered_index = 37;
+                                            } break;
+                                            case 37:
+                                            {
+                                                questions_answered_index = 43;
+                                            } break;
+                                            case 38:
+                                            {
+                                                questions_answered_index = 39;
+                                            } break;
+                                            case 39:
+                                            {
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_TOWER;
+                                            } break;
+                                            case 40:
+                                            {
+                                                questions_answered_index = 42;
+                                            } break; 
+                                            case 41:
+                                            {
+                                                questions_answered_index = 43;
+                                            } break;
+                                            case 42:
+                                            {
+                                                questions_answered_index = 43;
+                                            } break;
+                                            case 43:
+                                            {
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST; 
+                                            } break;
+                                            case 44:
+                                            {
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_THEATER; 
+                                            } break;
+                                            case 45:
+                                            {
+                                                questions_answered_index = 47;
+                                            } break;
+                                            case 46:
+                                            {
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CAVE; 
+                                            } break;
+                                            case 47:
+                                            {
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CAVE; 
+                                            } break;
+                                            case 48:
+                                            {
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CASTLE;
+                                            } break;
+                                            case 49:
+                                            {
+                                               character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CASTLE; 
+                                            } break;
+                                        }
+                                    } break;
+                                    case 1: // no
+                                    {
+                                        switch (questions_answered_index)
+                                        {
+                                            case 1:
+                                            {
+                                                questions_answered_index = 9;
+                                            } break;
+                                            case 2:
+                                            {
+                                                questions_answered_index = 8;
+                                            } break;
+                                            case 3:
+                                            {
+                                                questions_answered_index = 8;
+                                            } break;
+                                            case 4:
+                                            {
+                                                questions_answered_index = 6;
+                                            } break;
+                                            case 5:
+                                            {
+                                                questions_answered_index = 16;
+                                            } break;
+                                            case 6:
+                                            {
+                                                questions_answered_index = 8;
+                                            } break;
+                                            case 7:
+                                            {
+                                                questions_answered_index = 5;
+                                            } break;
+                                            case 8:
+                                            {
+                                                questions_answered_index = 9;
+                                            } break;
+                                            case 9:
+                                            {
+                                                questions_answered_index = 12;
+                                            } break;
+                                            case 10:
+                                            {
+                                                questions_answered_index = 13;
+                                            } break;
+                                            case 11:
+                                            {
+                                                questions_answered_index = 13;
                                             } break;
                                             case 12:
                                             {
@@ -2328,169 +2546,156 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 13:
                                             {
-                                                questions_answered_index = 6;
+                                                questions_answered_index = 15;
                                             } break;
                                             case 14:
                                             {
-                                                questions_answered_index = 15;
+                                                questions_answered_index = 19;
                                             } break;
                                             case 15:
                                             {
-                                                questions_answered_index = 8;
+                                                questions_answered_index = 20;
                                             } break;
                                             case 16:
                                             {
-                                                questions_answered_index = 7;
+                                                questions_answered_index = 22;
                                             } break;
                                             case 17:
                                             {
-                                                questions_answered_index = 14;
+                                                questions_answered_index = 25;
                                             } break;
                                             case 18:
                                             {
-                                                questions_answered_index = 6;
+                                                questions_answered_index = 23;
                                             } break;
                                             case 19:
                                             {
-                                                questions_answered_index = 15;
+                                                questions_answered_index = 25;
                                             } break;
                                             case 20:
                                             {
-                                                questions_answered_index = 8;
+                                                questions_answered_index = 22;
                                             } break; 
                                             case 21:
                                             {
-                                                questions_answered_index = 7;
+                                                questions_answered_index = 23;
                                             } break;
                                             case 22:
                                             {
-                                                questions_answered_index = 14;
+                                                questions_answered_index = 38;
                                             } break;
                                             case 23:
-                                            {
-                                                questions_answered_index = 6;
+                                            { 
+                                                questions_answered_index = 40;
                                             } break;
                                             case 24:
                                             {
-                                                questions_answered_index = 15;
+                                                questions_answered_index = 25;
                                             } break;
                                             case 25:
                                             {
-                                                questions_answered_index = 8;
+                                                questions_answered_index = 26;
                                             } break;
                                             case 26:
                                             {
-                                                questions_answered_index = 7;
+                                                questions_answered_index = 28;
                                             } break;
                                             case 27:
                                             {
-                                                questions_answered_index = 14;
+                                                questions_answered_index = 29;
                                             } break;
                                             case 28:
                                             {
-                                                questions_answered_index = 6;
+                                                questions_answered_index = 30;
                                             } break;
                                             case 29:
                                             {
-                                                questions_answered_index = 15;
+                                                questions_answered_index = 30;
                                             } break;
                                             case 30:
                                             {
-                                                questions_answered_index = 8;
+                                                questions_answered_index = 40; 
                                             } break;
                                             case 31:
                                             {
-                                                questions_answered_index = 7;
+                                                questions_answered_index = 34;
                                             } break;
                                             case 32:
                                             {
-                                                questions_answered_index = 14;
+                                                questions_answered_index = 36;
                                             } break;
                                             case 33:
                                             {
-                                                questions_answered_index = 6;
+                                                questions_answered_index = 36;
                                             } break;
                                             case 34:
                                             {
-                                                questions_answered_index = 15;
+                                                questions_answered_index = 36;
                                             } break;
                                             case 35:
                                             {
-                                                questions_answered_index = 8;
+                                                questions_answered_index = 36; 
                                             } break;
                                             case 36:
                                             {
-                                                questions_answered_index = 7;
+                                                questions_answered_index = 48;
                                             } break;
                                             case 37:
                                             {
-                                                questions_answered_index = 14;
+                                                questions_answered_index = 49;
                                             } break;
                                             case 38:
                                             {
-                                                questions_answered_index = 6;
+                                                questions_answered_index = 40;
                                             } break;
                                             case 39:
                                             {
-                                                questions_answered_index = 15;
+                                                questions_answered_index = 41; 
                                             } break;
                                             case 40:
                                             {
-                                                questions_answered_index = 8;
+                                                questions_answered_index = 41;
                                             } break; 
                                             case 41:
                                             {
-                                                questions_answered_index = 8;
+                                                questions_answered_index = 42;
                                             } break;
                                             case 42:
                                             {
-                                                questions_answered_index = 7;
+                                                questions_answered_index = 44;
                                             } break;
                                             case 43:
                                             {
-                                                questions_answered_index = 14;
+                                                questions_answered_index = 45; 
                                             } break;
                                             case 44:
                                             {
-                                                questions_answered_index = 6;
+                                                questions_answered_index = 45;
                                             } break;
                                             case 45:
                                             {
-                                                questions_answered_index = 15;
+                                                questions_answered_index = 46;
                                             } break;
                                             case 46:
                                             {
-                                                questions_answered_index = 8;
+                                                questions_answered_index = 47; 
                                             } break;
                                             case 47:
                                             {
-                                                questions_answered_index = 7;
+                                                questions_answered_index = 0; 
                                             } break;
                                             case 48:
                                             {
-                                                questions_answered_index = 14;
+                                                questions_answered_index = 49;
                                             } break;
                                             case 49:
                                             {
-                                                questions_answered_index = 6;
-                                            } break;
-                                            case 50:
-                                            {
-                                                questions_answered_index = 15;
+                                                questions_answered_index = 0;
                                             } break;
                                         }
-                                       
-
-
-
-                                    } break;
-                                    default:
-                                    {
-
                                     } break;
                                 }
                             }
-
                                                        
 
                             if (is_settings)
@@ -2510,12 +2715,12 @@ int main(int argc, char *argv[])
                                          
                                     } break;
                                 }
-                           }
-                           
-
+                            }
                         } break;
                         default:
-                            break;
+                        {
+
+                        } break;
                     }
                 } break;
                 default:
@@ -2994,23 +3199,47 @@ int main(int argc, char *argv[])
                                   256, 240,    // containerW, containerH
                                   2);          // lineSpacing
 
-            switch (character_class_personality_test_choice_state)
+            switch (character_class_personality_test_result_state)
             {
-                case CLASS_CHOICE_NONE:
+                case CLASS_PERSONALITY_RESULT_NONE:
                 {
                     confirmation.is_active = true;
                 } break;
-                case CLASS_CHOICE_YES:
+                case CLASS_PERSONALITY_RESULT_VILLAGE:
                 {
-                    
+                    is_village = true;
                 } break;
-                case CLASS_CHOICE_NO:
+                case CLASS_PERSONALITY_RESULT_MONSTER:
                 {
-                    
+                    is_monster = true;
+                } break;
+                case CLASS_PERSONALITY_RESULT_FOREST:
+                {
+                    is_forest = true;
+                } break;
+                case CLASS_PERSONALITY_RESULT_CAVE:
+                {
+                    is_cave = true;
+                } break;
+                case CLASS_PERSONALITY_RESULT_DESERT:
+                {
+                    is_desert = true;
+                } break;
+                case CLASS_PERSONALITY_RESULT_TOWER:
+                {
+                    is_tower = true;
+                } break;
+                case CLASS_PERSONALITY_RESULT_THEATER:
+                {
+                    is_theater = true;
+                } break;
+                case CLASS_PERSONALITY_RESULT_CASTLE:
+                {
+                    is_castle = true;
                 } break;
                 default:
                 {
-                    character_class_personality_test_choice_state = CLASS_CHOICE_NONE;
+                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_NONE;
                 } break;
             }
 
@@ -3029,7 +3258,38 @@ int main(int argc, char *argv[])
                 }
             }
 
-
+            if (is_village)
+            {
+                printf("is_village!\n");
+            }
+            if (is_monster)
+            {
+                printf("is_monster!\n");
+            }
+            if (is_forest)
+            {
+                printf("is_forest!\n");
+            }
+            if (is_cave)
+            {
+                printf("is_cave!\n");
+            }
+            if (is_desert)
+            {
+                printf("is_desert!\n");
+            }
+            if (is_tower)
+            {
+                printf("is_tower!\n");
+            }
+            if (is_theater)
+            {
+                printf("is_theater!\n");
+            }
+            if (is_castle)
+            {
+                printf("is_castle!\n");
+            }
         }
 
         if (is_game_running)
