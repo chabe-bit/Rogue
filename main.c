@@ -285,43 +285,6 @@ SDL_Texture* CreateFontAtlas(SDL_Renderer *renderer) {
     return fontAtlas;
 }
 
-void TestRenderText(SDL_Renderer *renderer, text_t *text_data, const char *text, int x, int y, SDL_Color color)
-{
-    // Since our atlas is white, we can tint it by setting the texture color mod.
-    SDL_SetTextureColorMod(text_data->font_atlas, color.r, color.g, color.b);
-    SDL_SetTextureAlphaMod(text_data->font_atlas, color.a);
-
-    const int atlas_cols = 16;
-
-    // For each character in the text:
-    for (const char *p = text; *p != '\0'; p++) {
-        u1 ascii = (u1)*p;
-        // Look up the corresponding glyph index.
-        // (Assuming ASCII2Font is defined for your ASCII range.)
-        u1 glyph_index = ASCII2Font[ascii];
-
-        // Compute source rectangle in the atlas.
-        SDL_Rect src;
-        src.x = (glyph_index % atlas_cols) * GLYPH_WIDTH;
-        src.y = (glyph_index / atlas_cols) * GLYPH_HEIGHT;
-        src.w = GLYPH_WIDTH;
-        src.h = GLYPH_HEIGHT;
-
-        // Destination rectangle on screen.
-        SDL_Rect dst;
-        dst.x = x;
-        dst.y = y;
-        dst.w = GLYPH_WIDTH;
-        dst.h = GLYPH_HEIGHT;
-
-        // Render this glyph.
-        SDL_RenderCopy(renderer, text_data->font_atlas, &src, &dst);
-
-        // Advance the x position.
-        x += GLYPH_WIDTH;
-    }
-}
-
 void RenderText(SDL_Renderer *renderer, SDL_Texture *fontAtlas, int x, int y,
                 const char *text, SDL_Color color)
 {
@@ -570,7 +533,7 @@ const char *question_table[50] =
     "Do you spend more on weapons than armor?",
     "Do you help people in trouble?",
     "Rather than an expensive nearby inn, would you go to a cheap inn that's far away?",
-    "Do you have trouble sleeping because you are thining too much?",
+    "Do you have trouble sleeping because you are thinking too much?",
     "Do you prefer the mountains to the sea?",
     "Do you find bordem annoying?",
     "Do you dream often?",
@@ -699,51 +662,6 @@ const char *castle_scenario[] = {
 
 };
 
-
-void AskStartingQuestion(SDL_Renderer *renderer, SDL_Texture *font_atlas)
-{
-    SDL_Color white = {255, 255, 255, 255};
-
-    // Only the starting questions
-    static bool first_question_selected = false;
-    static int rand_index = -1;
-    if (!first_question_selected)
-    {
-        rand_index = rand() % 5;
-        first_question_selected = true;
-    }
-    
-    char buffer[512];
-    
-    int i = 1;
-    snprintf(buffer, ArraySize(question_table) + 100, "%d. %s", i, question_table[rand_index]);
-
-    // Skips past the starting questions
-    static bool follow_up_question_select = false;
-    static int rand_index2 = -1;
-    if (!follow_up_question_select)
-    {
-        int skip_count = 5;
-        int total = ArraySize(question_table) - skip_count;
-        rand_index2 = skip_count + (rand() % total);
-        follow_up_question_select = true;
-    }
-
-    RenderWrappedTextCentered(renderer, font_atlas, 
-                          buffer, white, 
-                          0, -32,        // containerX, containerY
-                          256, 240,    // containerW, containerH
-                          2);          // lineSpacing
-   
-
-    ++i;
-    
-    
-
-
-    printf("%s\n", question_table[rand_index]);
-}
-
 typedef struct menu_item_t
 {
     const char *text;
@@ -760,12 +678,6 @@ void CursorForAssets(asset_t *asset, asset_t *cursor, int x_offset, int y_offset
 {
     cursor->body.x = asset->x + x_offset;
     cursor->body.y = asset->y + (asset->body.h / 2) + y_offset;
-}
-
-void NewGameOption()
-{
-    // Implement logic on new_game select
-    
 }
 
 void ExitOption()
@@ -1004,63 +916,6 @@ void DestroyAssets(asset_t *assets)
 {
     SDL_DestroyTexture(assets->texture);
 }
-
-// New game screen
-typedef struct new_game_data_t
-{
-    bool class_has_been_selected;
-    
-    /* Values of stats can be negative if debuffs are applied, thus using ints */
-
-    // STR determines the physical damage of your character from weapons
-    int strength;
-    
-    // DEX determines the accuracy and evasiveness of your character
-    int dexterity;
-
-    // END determines the defense of your character
-    int toughness;
-
-    // VIT determines the amount of health of your character
-    int vitality;
-
-    // INT determines the magic damage and amount of mana of your character
-    int intelligense;
-
-    const char name[64];
-} new_game_data_t;
-
-typedef struct font_t
-{
-    SDL_Texture *font_atlas;
-} font_t;
-
-
-typedef struct input_t
-{
-    u8 *key;
-} input_t;
-
-
-// Probobaly don't have to use a linked list for creating a list of screens, and can instead opt for an array but 
-// let's try it out. 
-// Title screen (root) -> [new game, load game, settings, exit] 
-//                     -> new game -> character creation ...
-//                     -> load game -> load file'
-//                     -> settings -> volume options
-//                     -> exit -> quit game 
-
-typedef struct screen_t
-{
-    int index;
-    input_t input;
-    font_t font;
-    wav_t theme;
-    asset_t screen;
-    asset_t cursor;
-    SDL_Color color;
-    menu_item_t menu[4];
-} screen_t;
 
 typedef enum 
 {
@@ -1343,17 +1198,45 @@ LoadWavFileTest(wav_t *wav, const char *filename)
 }
 
 
-typedef struct
+#define NAME_LIMIT 10
+// general push and pop function
+void PushCharStack(char *array, char value)
 {
-    // hardcode the screens in
-} new_game_screens_t;
+    int size = strlen(array);
+    int limit = NAME_LIMIT;
+    printf("size: %d - char: %c\n", size, value);
+    if (limit > 0)
+    {
+        limit--; // do we decrement first? i'm thinking we do because we need to have a pocket of space first, otherwise fail
+        array[size] = value;
+        array[size + 1] = '\0';
+    }
+    
+    // TODO: limit needs to be out of this function's scope to consider 0
+    if (limit == 0)
+    {
+        printf("Name limit!\n");
+    }
+}
 
+void PopStack(char *array)
+{
+    int size = strlen(array);
+    if (size == 0)
+    {
+        printf("Cannot pop an empty string.\n");
+        return;
+    }
+
+    char popped = array[size - 1];
+    printf("popped: %c\n", popped);
+
+    array[size - 1] = '\0';
+}
 
 
 int main(int argc, char *argv[])
 {
-    srand(time(NULL));
-
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
         fprintf(stderr, "Failed to init sdl: %s\n", SDL_GetError());
@@ -1482,6 +1365,8 @@ int main(int argc, char *argv[])
     bool class_has_been_selected = false;
     bool is_personality_test = false;
     bool question_confirmation = false;
+
+    bool is_name_submission = false;
 
     asset_t blank_screen_asset = {0};
     LoadAsset(&blank_screen_asset, "assets/blank_screen.png");
@@ -1705,9 +1590,9 @@ int main(int argc, char *argv[])
     };
     
     const char *stat_options_description[3] = {
-        "Take a personality test to determine your point allocation.",
+        "A personality test to determine your class's point allocation.",
         "A preset allocation of your selected class.",
-        "Manually allocate your points.",
+        "Manually allocate your class's points.",
     };
 
    
@@ -1725,7 +1610,7 @@ int main(int argc, char *argv[])
             asset_t asset;
             const char *name;
             const char *description;
-        } info[3]; // personality test, manual allocation, presets
+        } info[3]; // personality test, manual allocation, presets, randomizer?
 
     } character_allocation_select_screen_t; 
 
@@ -1884,6 +1769,101 @@ int main(int argc, char *argv[])
         volume_controller[2].volume_size_bars += (sfx_volume_bar.w / 4);
     }
 
+
+
+    ////////////// Enter name grid 
+
+    char str_array[NAME_LIMIT] = "";
+    PushCharStack(str_array, 'e');
+    PushCharStack(str_array, 'e');
+    PushCharStack(str_array, 'e');
+    PushCharStack(str_array, 'e');
+    PushCharStack(str_array, 'e');
+    PushCharStack(str_array, 'e');
+    PushCharStack(str_array, 'e');
+    PushCharStack(str_array, 'e');
+    PushCharStack(str_array, 'e');
+    PushCharStack(str_array, 'e');
+
+    PopStack(str_array);
+    printf("%s\n", str_array);
+
+    int glyph_count = ArraySize(GUIFontData); // 141
+    printf("%d\n", glyph_count);
+
+    int glyph_index = 0;
+    menu_item_t glyph_grid[50] = {
+        // 10x5 grid
+        // Every glyph has a padding of 12px around itself
+        
+        // Upper case
+        { "A", screen_center_x - 52 , screen_center_y - 8 }, 
+        { "B", screen_center_x - 40 , screen_center_y - 8 },
+        { "C", screen_center_x - 28, screen_center_y - 8 }, 
+        { "D", screen_center_x - 16, screen_center_y - 8 }, 
+        { "E", screen_center_x - 4, screen_center_y - 8 }, 
+        { "F", screen_center_x + 16, screen_center_y - 8 }, 
+        { "G", screen_center_x + 28, screen_center_y - 8 }, 
+        { "H", screen_center_x + 40, screen_center_y - 8 }, 
+        { "I", screen_center_x + 52, screen_center_y - 8 }, 
+        { "J", screen_center_x + 64, screen_center_y - 8 }, 
+
+        { "K", screen_center_x - 52, screen_center_y + 2 }, 
+        { "L", screen_center_x - 40, screen_center_y + 2 }, 
+        { "M", screen_center_x - 28, screen_center_y + 2 }, 
+        { "N", screen_center_x - 16, screen_center_y + 2 }, 
+        { "O", screen_center_x - 4, screen_center_y + 2 }, 
+        { "P", screen_center_x + 16, screen_center_y + 2 }, 
+        { "Q", screen_center_x + 28, screen_center_y + 2 }, 
+        { "R", screen_center_x + 40, screen_center_y + 2 }, 
+        { "S", screen_center_x + 52, screen_center_y + 2 }, 
+        { "T", screen_center_x + 64, screen_center_y + 2 },
+
+        { "U", screen_center_x - 52, screen_center_y + 14 }, 
+        { "V", screen_center_x - 40, screen_center_y + 14 }, 
+        { "W", screen_center_x - 28, screen_center_y + 14 }, 
+        { "X", screen_center_x - 16, screen_center_y + 14 }, 
+        { "Y", screen_center_x - 4, screen_center_y + 14 }, 
+        { "Z", screen_center_x + 16, screen_center_y + 14 }, 
+        { "", screen_center_x + 28, screen_center_y + 14 }, // Unused 
+        { "", screen_center_x + 40, screen_center_y + 14 }, // Unused
+        { "", screen_center_x + 52, screen_center_y + 14 }, // Unused
+        { "", screen_center_x + 64, screen_center_y + 14 }, // Unused
+  
+
+        // Special characters 
+        { "[", screen_center_x - 52, screen_center_y + 26 }, 
+        { "]", screen_center_x - 40, screen_center_y + 26 }, 
+        { ".", screen_center_x - 28, screen_center_y + 26 }, 
+        { ",", screen_center_x - 16, screen_center_y + 26 }, 
+        { "!", screen_center_x - 4, screen_center_y + 26 }, 
+        { "?", screen_center_x + 16, screen_center_y + 26 }, 
+        { "-", screen_center_x + 28, screen_center_y + 26 }, 
+        { "_", screen_center_x + 40, screen_center_y + 26 }, 
+        { ":", screen_center_x + 52, screen_center_y + 26 }, 
+        { ";", screen_center_x + 60, screen_center_y + 26 }, 
+        
+        // Nums
+        { "0", screen_center_x - 52, screen_center_y + 38 }, 
+        { "1", screen_center_x - 40, screen_center_y + 38 }, 
+        { "2", screen_center_x - 28, screen_center_y + 38 }, 
+        { "3", screen_center_x - 16, screen_center_y + 38 }, 
+        { "4", screen_center_x - 4, screen_center_y + 38 }, 
+        { "5", screen_center_x + 16, screen_center_y + 38 }, 
+        { "6", screen_center_x + 28, screen_center_y + 38 }, 
+        { "7", screen_center_x + 40, screen_center_y + 38 }, 
+        { "8", screen_center_x + 52, screen_center_y + 38 }, 
+        { "9", screen_center_x + 64, screen_center_y + 38 },
+
+        // Buttons (seperate?) -> Also should not be hardcoded to say keyboard keys
+        //{ "Confirm", screen_center_x, screen_center_y },
+    };
+
+
+    printf("%d\n", ArraySize(glyph_grid));
+
+
+
     // Start event
     bool some_input = true;
     int questions_answered_index = 1;
@@ -1891,6 +1871,7 @@ int main(int argc, char *argv[])
     Running = true;
 
     bool is_final_question = false;
+    bool is_quiz = false;
     bool is_village = false;
     bool is_monster = false;
     bool is_forest = false;
@@ -1956,6 +1937,12 @@ int main(int argc, char *argv[])
                                     settings_option_index = ArraySize(settings_options) - 1;
                             }
                         
+                            if (is_name_submission)
+                            {
+                                glyph_index -= 10; // wrap it so it to goes up
+                                if (glyph_index <= ArraySize(glyph_grid))
+                                    glyph_index = 0;
+                            }
                         } break;
                         case SDLK_s:
                         {
@@ -1995,13 +1982,18 @@ int main(int argc, char *argv[])
                                     settings_option_index = ArraySize(settings_options) - 1;
                             }
                             
-
+                            if (is_name_submission)
+                            {
+                                glyph_index += 10; // wrap it so it to goes down
+                                if (glyph_index >= ArraySize(glyph_grid))
+                                    glyph_index = 0;
+                            }
 
                         } break;
                         case SDLK_a:
                         {
                             Orientation.left = true;
-                            if (character_creation_screen.is_active && !is_confirmation)
+                            if (character_creation_screen.is_active && !confirmation.is_active)
                             {
                                 character_creation_screen.index--;
                                 if (character_creation_screen.index < 0)
@@ -2011,13 +2003,8 @@ int main(int argc, char *argv[])
                             }
 
 
-                            if (character_allocation_select_screen.is_active)
+                            if (character_allocation_select_screen.is_active && !confirmation.is_active)
                             {
-                                /*
-                                stat_option_select--;
-                                if (stat_option_select < 0)
-                                    stat_option_select = ArraySize(stat_options) - 1;
-                                PlaySFX(&sfx_option);*/
                                 character_allocation_select_screen.index--;
                                 if (character_allocation_select_screen.index < 0)
                                     character_allocation_select_screen.index = ArraySize(character_allocation_select_screen.info) - 1;
@@ -2102,11 +2089,18 @@ int main(int argc, char *argv[])
                                     }
                                 }
                             }
+
+                            if (is_name_submission)
+                            {
+                                glyph_index--; // wrap it so it to goes up
+                                if (glyph_index < 0)
+                                    glyph_index = ArraySize(glyph_grid) - 1;
+                            }
                         } break;
                         case SDLK_d:
                         {
                             Orientation.right = true;
-                            if (character_creation_screen.is_active && !is_confirmation)
+                            if (character_creation_screen.is_active && !confirmation.is_active)
                             {
                                 character_creation_screen.index++;
                                 if (character_creation_screen.index >= ArraySize(character_creation_screen.info))
@@ -2114,12 +2108,8 @@ int main(int argc, char *argv[])
                                 PlaySFX(&sfx_option);
                             }
 
-                            if (character_allocation_select_screen.is_active)
+                            if (character_allocation_select_screen.is_active && !confirmation.is_active)
                             {
-                                /*stat_option_select++;
-                                if (stat_option_select >= ArraySize(stat_options))
-                                    stat_option_select = 0;
-                                PlaySFX(&sfx_option);*/
                                 character_allocation_select_screen.index++;
                                 if (character_allocation_select_screen.index >= ArraySize(character_allocation_select_screen.info))
                                     character_allocation_select_screen.index = 0;
@@ -2194,7 +2184,16 @@ int main(int argc, char *argv[])
                                     }
                                 }
                             }
+                           
                             
+                            if (is_name_submission)
+                            {
+                                glyph_index++;
+                                if (glyph_index >= ArraySize(glyph_grid))
+                                    glyph_index = 0;
+                            }
+
+
                         } break;
                         case SDLK_q:
                         {
@@ -2338,6 +2337,7 @@ int main(int argc, char *argv[])
                                         case 1:
                                         {
                                             confirmation.is_active = false; 
+                                            confirmation.index = 0;
                                             character_class_selection_state = CLASS_NONE;
                                         } break;
                                         default:
@@ -2358,6 +2358,7 @@ int main(int argc, char *argv[])
                                         {
                                             character_allocation_select_screen.is_active = false;
                                             is_personality_test = true;
+                                            is_quiz = true;
                                         }
                                         
                                         confirmation.is_active = false; 
@@ -2365,6 +2366,7 @@ int main(int argc, char *argv[])
                                     case 1:
                                     {
                                         confirmation.is_active = false;
+                                        confirmation.index = 0;
                                         character_class_point_allocation_method_state = CLASS_POINTS_NONE;
                                     } break;
                                     default:
@@ -2374,7 +2376,7 @@ int main(int argc, char *argv[])
                                 }
                             }
 
-                            if (is_personality_test && confirmation.is_active)
+                            if (is_personality_test && is_quiz && confirmation.is_active)
                             {
                                 switch (confirmation.index)
                                 {
@@ -3241,143 +3243,196 @@ int main(int argc, char *argv[])
                     }
                 }
             }
-        }
 
         
-        // Character name is the last screen where input will be entering it in letter by letter like FF8 or pokemon   
-        if (is_personality_test)
-        {
-            static int rand_index = 0;
-
-            if (question_confirmation)
+            // Character name is the last screen where input will be entering it in letter by letter like FF8 or pokemon   
+            if (is_personality_test)
             {
-                printf("TRUE!\n");
-                question_confirmation = false;
-                ++questions_answered_index;
-                
-                static bool follow_up_question_selected = false;
-                if (!follow_up_question_selected)
-                {
-                    int skip_count = 5;
-                    int total = ArraySize(question_table) - skip_count;
-                    rand_index = skip_count + (rand() % total);
-                    follow_up_question_selected = true;
-                }
+                static int rand_index = 0;
 
-            }
-            else
-            {
-        
-                // Only the starting questions
-                static bool first_question_selected = false;
-                if (!first_question_selected)
+                if (question_confirmation)
                 {
-                    rand_index = rand() % 5;
-                    first_question_selected = true;
-                }
+                    printf("TRUE!\n");
+                    question_confirmation = false;
+                    ++questions_answered_index;
                     
-                
-            }  
+                    static bool follow_up_question_selected = false;
+                    if (!follow_up_question_selected)
+                    {
+                        int skip_count = 5;
+                        int total = ArraySize(question_table) - skip_count;
+                        rand_index = skip_count + (rand() % total);
+                        follow_up_question_selected = true;
+                    }
 
-            char buffer[512];
-            snprintf(buffer, ArraySize(question_table) + 512, "%d. %s", questions_answered_index, question_table[questions_answered_index]);
-            SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-            RenderWrappedTextCentered(SDLWindow.Renderer, font_atlas, 
-                                  buffer, white, 
-                                  0, -32,        // containerX, containerY
-                                  256, 240,    // containerW, containerH
-                                  2);          // lineSpacing
+                }
+                else
+                {
+            
+                    // Only the starting questions
+                    static bool first_question_selected = false;
+                    if (!first_question_selected)
+                    {
+                        rand_index = rand() % 5;
+                        first_question_selected = true;
+                    }
+                        
+                    
+                }  
 
-            switch (character_class_personality_test_result_state)
-            {
-                case CLASS_PERSONALITY_RESULT_NONE:
+                char buffer[512];
+                snprintf(buffer, ArraySize(question_table) + 512, "%d. %s", questions_answered_index, question_table[questions_answered_index]);
+                SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                RenderWrappedTextCentered(SDLWindow.Renderer, font_atlas, 
+                                      //buffer, white, 
+                                      question_table[questions_answered_index], white, 
+                                      0, -32,        // containerX, containerY
+                                      256, 240,    // containerW, containerH
+                                      2);          // lineSpacing
+
+                if (is_quiz)
                 {
-                    confirmation.is_active = true;
-                } break;
-                case CLASS_PERSONALITY_RESULT_VILLAGE:
+                    switch (character_class_personality_test_result_state)
+                    {
+                        case CLASS_PERSONALITY_RESULT_NONE:
+                        {
+                            confirmation.is_active = true;
+                        } break;
+                        case CLASS_PERSONALITY_RESULT_VILLAGE:
+                        {
+                            is_village = true;
+                            is_quiz = false;
+                        } break;
+                        case CLASS_PERSONALITY_RESULT_MONSTER:
+                        {
+                            is_monster = true;
+                            is_quiz = false;
+                        } break;
+                        case CLASS_PERSONALITY_RESULT_FOREST:
+                        {
+                            is_forest = true;
+                            is_quiz = false;
+                        } break;
+                        case CLASS_PERSONALITY_RESULT_CAVE:
+                        {
+                            is_cave = true;
+                            is_quiz = false;
+                        } break;
+                        case CLASS_PERSONALITY_RESULT_DESERT:
+                        {
+                            is_desert = true;
+                            is_quiz = false;
+                        } break;
+                        case CLASS_PERSONALITY_RESULT_TOWER:
+                        {
+                            is_tower = true;
+                            is_quiz = false;
+                        } break;
+                        case CLASS_PERSONALITY_RESULT_THEATER:
+                        {
+                            is_theater = true;
+                            is_quiz = false;
+                        } break;
+                        case CLASS_PERSONALITY_RESULT_CASTLE:
+                        {
+                            is_castle = true;
+                            is_quiz = false;
+                        } break;
+                        default:
+                        {
+                            character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_NONE;
+                        } break;
+                    }
+                }
+
+                if (confirmation.is_active)
                 {
-                    is_village = true;
-                } break;
-                case CLASS_PERSONALITY_RESULT_MONSTER:
+                    CursorForItems(&confirmation.info.buttons[confirmation.index], &right_cursor_asset, 4, 1);
+                    RenderAndUpdateAsset(&right_cursor_asset);
+                    for (int i = 0; i < ArraySize(confirmation.info.buttons); ++i) 
+                    {
+                        RenderText(SDLWindow.Renderer, font_atlas,
+                                   confirmation.info.buttons[i].x, 
+                                   confirmation.info.buttons[i].y,
+                                   confirmation.info.buttons[i].text, 
+                                   white);
+                    }
+                }
+
+                if (is_village)
                 {
-                    is_monster = true;
-                } break;
-                case CLASS_PERSONALITY_RESULT_FOREST:
+                    printf("is_village!\n");
+
+                    SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                    RenderWrappedTextCentered(SDLWindow.Renderer, font_atlas, 
+                                              village_scenario[0], white, 
+                                              0, -32,        // containerX, containerY
+                                              256, 240,    // containerW, containerH
+                                              2);          // lineSpacing
+
+                }
+                if (is_monster)
                 {
-                    is_forest = true;
-                } break;
-                case CLASS_PERSONALITY_RESULT_CAVE:
+                    printf("is_monster!\n");
+                    SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                    RenderWrappedTextCentered(SDLWindow.Renderer, font_atlas, 
+                                              village_scenario[0], white, 
+                                              0, -32,        // containerX, containerY
+                                              256, 240,    // containerW, containerH
+                                              2);          // lineSpacing
+                    
+                    // Simply for testing purposes, delay the screen for 5 seconds until the next, where we should have the repsective options for this result to go on.
+                    is_monster = false;
+                    is_name_submission = true;
+                }
+                if (is_forest)
                 {
-                    is_cave = true;
-                } break;
-                case CLASS_PERSONALITY_RESULT_DESERT:
+                    printf("is_forest!\n");
+                }
+                if (is_cave)
                 {
-                    is_desert = true;
-                } break;
-                case CLASS_PERSONALITY_RESULT_TOWER:
+                    printf("is_cave!\n");
+                }
+                if (is_desert)
                 {
-                    is_tower = true;
-                } break;
-                case CLASS_PERSONALITY_RESULT_THEATER:
+                    printf("is_desert!\n");
+                }
+                if (is_tower)
                 {
-                    is_theater = true;
-                } break;
-                case CLASS_PERSONALITY_RESULT_CASTLE:
+                    printf("is_tower!\n");
+                }
+                if (is_theater)
                 {
-                    is_castle = true;
-                } break;
-                default:
+                    printf("is_theater!\n");
+                }
+                if (is_castle)
                 {
-                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_NONE;
-                } break;
+                    printf("is_castle!\n");
+                }  
             }
 
-
-            if (confirmation.is_active)
+            if (is_name_submission) // enter name screen
             {
-                CursorForItems(&confirmation.info.buttons[confirmation.index], &right_cursor_asset, 4, 1);
+                SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                printf("Entered name submission\n");
+
+                // Create a grid of glyphs to iterate over either with menu_items_t or class_items_t so
+                // we can iterate through each one with the cursor. Entering a glyph will push that onto 
+                // a stack, where that stack is the name bar where you spell out your name. Deleting a 
+                // glyph will pop it off the stack. Name limit can be set.
+               
+                CursorForItems(&glyph_grid[glyph_index], &right_cursor_asset, 4, 1);
                 RenderAndUpdateAsset(&right_cursor_asset);
-                for (int i = 0; i < ArraySize(confirmation.info.buttons); ++i) 
+                for (int i = 0; i < ArraySize(glyph_grid); ++i)
                 {
                     RenderText(SDLWindow.Renderer, font_atlas,
-                               confirmation.info.buttons[i].x, 
-                               confirmation.info.buttons[i].y,
-                               confirmation.info.buttons[i].text, 
-                               white);
-                }
-            }
+                            glyph_grid[i].x, 
+                            glyph_grid[i].y,
+                            glyph_grid[i].text, 
+                            white);
 
-            if (is_village)
-            {
-                printf("is_village!\n");
-            }
-            if (is_monster)
-            {
-                printf("is_monster!\n");
-            }
-            if (is_forest)
-            {
-                printf("is_forest!\n");
-            }
-            if (is_cave)
-            {
-                printf("is_cave!\n");
-            }
-            if (is_desert)
-            {
-                printf("is_desert!\n");
-            }
-            if (is_tower)
-            {
-                printf("is_tower!\n");
-            }
-            if (is_theater)
-            {
-                printf("is_theater!\n");
-            }
-            if (is_castle)
-            {
-                printf("is_castle!\n");
+                }
+                
             }
         }
 
