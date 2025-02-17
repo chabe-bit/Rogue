@@ -1793,7 +1793,7 @@ int main(int argc, char *argv[])
     PushCharStack(str_array, 'e');
 
     PopStack(str_array);
-    printf("%s\n", str_array);
+    printf("%s\n", (const char *)str_array);
 
     typedef struct
     {
@@ -1801,21 +1801,72 @@ int main(int argc, char *argv[])
         int x, y;
     } glyph_grid_t;
 
-    glyph_grid_t test_glyph_grid[1] = 
+    glyph_grid_t test_glyph_grid[50] = 
     {
         { 'A', screen_center_x - 52 , screen_center_y - 8 }, 
+        { 'B', screen_center_x - 40 , screen_center_y - 8 },
+        { 'C', screen_center_x - 28, screen_center_y - 8 }, 
+        { 'D', screen_center_x - 16, screen_center_y - 8 }, 
+        { 'E', screen_center_x - 4, screen_center_y - 8 }, 
+        { 'F', screen_center_x + 16, screen_center_y - 8 }, 
+        { 'G', screen_center_x + 28, screen_center_y - 8 }, 
+        { 'H', screen_center_x + 40, screen_center_y - 8 }, 
+        { 'I', screen_center_x + 52, screen_center_y - 8 }, 
+        { 'J', screen_center_x + 64, screen_center_y - 8 }, 
+
+        { 'K', screen_center_x - 52, screen_center_y + 2 }, 
+        { 'L', screen_center_x - 40, screen_center_y + 2 }, 
+        { 'M', screen_center_x - 28, screen_center_y + 2 }, 
+        { 'N', screen_center_x - 16, screen_center_y + 2 }, 
+        { 'O', screen_center_x - 4, screen_center_y + 2 }, 
+        { 'P', screen_center_x + 16, screen_center_y + 2 }, 
+        { 'Q', screen_center_x + 28, screen_center_y + 2 }, 
+        { 'R', screen_center_x + 40, screen_center_y + 2 }, 
+        { 'S', screen_center_x + 52, screen_center_y + 2 }, 
+        { 'T', screen_center_x + 64, screen_center_y + 2 },
+
+        { 'U', screen_center_x - 52, screen_center_y + 14 }, 
+        { 'V', screen_center_x - 40, screen_center_y + 14 }, 
+        { 'W', screen_center_x - 28, screen_center_y + 14 }, 
+        { 'X', screen_center_x - 16, screen_center_y + 14 }, 
+        { 'Y', screen_center_x - 4, screen_center_y + 14 }, 
+        { 'Z', screen_center_x + 16, screen_center_y + 14 }, 
+        { ' ', screen_center_x + 28, screen_center_y + 14 }, // Unused 
+        { ' ', screen_center_x + 40, screen_center_y + 14 }, // Unused
+        { ' ', screen_center_x + 52, screen_center_y + 14 }, // Unused
+        { ' ', screen_center_x + 624, screen_center_y + 14 }, // Unused
+  
+
+        // Special characters 
+        { '[', screen_center_x - 52, screen_center_y + 26 }, 
+        { ']', screen_center_x - 40, screen_center_y + 26 }, 
+        { '.', screen_center_x - 28, screen_center_y + 26 }, 
+        { ',', screen_center_x - 16, screen_center_y + 26 }, 
+        { '!', screen_center_x - 4, screen_center_y + 26 }, 
+        { '?', screen_center_x + 16, screen_center_y + 26 }, 
+        { '-', screen_center_x + 28, screen_center_y + 26 }, 
+        { '_', screen_center_x + 40, screen_center_y + 26 }, 
+        { ':', screen_center_x + 52, screen_center_y + 26 }, 
+        { ';', screen_center_x + 60, screen_center_y + 26 }, 
+        
+        // Nums
+        { '0', screen_center_x - 52, screen_center_y + 38 }, 
+        { '1', screen_center_x - 40, screen_center_y + 38 }, 
+        { '2', screen_center_x - 28, screen_center_y + 38 }, 
+        { '3', screen_center_x - 16, screen_center_y + 38 }, 
+        { '4', screen_center_x - 4, screen_center_y + 38 }, 
+        { '5', screen_center_x + 16, screen_center_y + 38 }, 
+        { '6', screen_center_x + 28, screen_center_y + 38 }, 
+        { '7', screen_center_x + 40, screen_center_y + 38 }, 
+        { '8', screen_center_x + 52, screen_center_y + 38 }, 
+        { '9', screen_center_x + 64, screen_center_y + 38 },
+
     };
-
-    char temp_glyph;
-    const char name_array[12] = "";
-
-
 
     int glyph_index = 0;
     menu_item_t glyph_grid[50] = {
         // 10x5 grid
         // Every glyph has a padding of 12px around itself
-        
         // Upper case
         { "A", screen_center_x - 52 , screen_center_y - 8 }, 
         { "B", screen_center_x - 40 , screen_center_y - 8 },
@@ -1848,7 +1899,7 @@ int main(int argc, char *argv[])
         { "", screen_center_x + 28, screen_center_y + 14 }, // Unused 
         { "", screen_center_x + 40, screen_center_y + 14 }, // Unused
         { "", screen_center_x + 52, screen_center_y + 14 }, // Unused
-        { "", screen_center_x + 64, screen_center_y + 14 }, // Unused
+        { "", screen_center_x + 624, screen_center_y + 14 }, // Unused
   
 
         // Special characters 
@@ -1879,6 +1930,53 @@ int main(int argc, char *argv[])
         //{ "Confirm", screen_center_x, screen_center_y },
     };
 
+    // Something maybe unnecessary, but lines underneath the to be entered glyphs to indicate where the player is entering their name
+    menu_item_t name_bar_underline[NAME_LIMIT] = {
+        { "_", screen_center_x - 32, screen_center_y - 28 }, 
+        { "_", screen_center_x - 24, screen_center_y - 28 }, 
+        { "_", screen_center_x - 16, screen_center_y - 28 }, 
+        { "_", screen_center_x - 8, screen_center_y - 28 }, 
+        { "_", screen_center_x - 0, screen_center_y - 28 }, 
+        { "_", screen_center_x + 8, screen_center_y - 28 }, 
+        { "_", screen_center_x + 16, screen_center_y - 28 }, 
+        { "_", screen_center_x + 24, screen_center_y - 28 }, 
+        { "_", screen_center_x + 32, screen_center_y - 28 }, 
+        { "_", screen_center_x + 40, screen_center_y - 28 }, 
+    };
+
+    int name_pos = 0; 
+    int name_limit = NAME_LIMIT;
+    char temp_glyph;
+
+    typedef struct 
+    {
+        char str[1];
+        int x, y;
+    } i_want_to_see_t;
+
+    i_want_to_see_t name_array[NAME_LIMIT] = {
+        { "", screen_center_x - 32, screen_center_y - 28 }, 
+        { "", screen_center_x - 24, screen_center_y - 28 }, 
+        { "", screen_center_x - 16, screen_center_y - 28 }, 
+        { "", screen_center_x - 8, screen_center_y - 28 }, 
+        { "", screen_center_x - 0, screen_center_y - 28 }, 
+        { "", screen_center_x + 8, screen_center_y - 28 }, 
+        { "", screen_center_x + 16, screen_center_y - 28 }, 
+        { "", screen_center_x + 24, screen_center_y - 28 }, 
+        { "", screen_center_x + 32, screen_center_y - 28 }, 
+        { "", screen_center_x + 40, screen_center_y - 28 }, 
+    };
+
+    char a = 'A';
+    char b = 'B';
+    char ab[2] = "";
+    PushCharStack(ab, a); 
+    PushCharStack(ab, b); 
+    
+    printf("%s\n", ab);
+
+
+    /////////////////////////////////////////////////////////////////////////
 
     // Start event
     bool some_input = true;
@@ -2837,6 +2935,216 @@ int main(int argc, char *argv[])
                                         entering_glyph = true;
                                         character_class_name_submission_state = CLASS_NAME_ENTER;
                                     } break;
+                                    case 1:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 2:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 3:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 4:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 5:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 6:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 7:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 8:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 9:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 10:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 19:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 20:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 21:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 22:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 23:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 24:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 25:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 26:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 27:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 28:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 29:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 30:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 31:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break; 
+                                    case 32:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 33:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 34:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 35:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 36:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 37:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 38:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 39:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 40:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 41:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 42:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 43:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 44:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 45:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 46:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 47:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 48:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 49:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    case 50:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
                                     default:
                                     {
 
@@ -3492,31 +3800,47 @@ int main(int argc, char *argv[])
                 }
                 
 
-                if (is_glyph_selected)
+                if (is_glyph_selected )
                 {
                     // TODO: Remove selected glyph
                     // Render selected glyph
-                    /*RenderText(SDLWindow.Renderer, font_atlas,
-                            glyph_grid[glyph_index].x, 
-                            glyph_grid[glyph_index].y - 32,
-                            glyph_grid[glyph_index].text, 
-                            white);*/
-                    
-                    temp_glyph = test_glyph_grid[0].glyph;
-                    PushCharStack(name_array, temp_glyph);
-                               
-                    printf("%s\n", name_array);
-                    
+                                        
+                    if (name_limit > 0 && name_pos <= 10)
+                    {
+                        temp_glyph = test_glyph_grid[glyph_index].glyph;
+                        PushCharStack(name_array[name_pos].str, temp_glyph);
+                        name_limit--;
+                        name_pos++;
+                    }
 
+
+
+                    printf("name_limit: %d\n", name_limit);
                     is_glyph_selected = false;
                 }
-               
-                // Local array that holds an array of chars. For every glyph that we've pressed enter on, we push it into that array
-                RenderText(SDLWindow.Renderer, font_atlas,
-                           glyph_grid[glyph_index].x, 
-                           glyph_grid[glyph_index].y - 32,
-                           name_array, 
+             
+
+                for (int i = 0; i < ArraySize(name_bar_underline); ++i)
+                {
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                           name_bar_underline[i].x,
+                           name_bar_underline[i].y,
+                           name_bar_underline[i].text,
                            white);
+                }
+                
+
+                // Array sitting outside to hold an array of chars that's passed in for every glyph we've pressed enter on, from which we pushed into
+                for (int i = 0; i < ArraySize(name_array); ++i)
+                {
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               name_bar_underline[i].x, 
+                               name_bar_underline[i].y - 4,
+                               name_array[i].str, 
+                               white);
+                }
+               
+
 
             }
         }
