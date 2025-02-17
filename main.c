@@ -1241,9 +1241,29 @@ void PopStack(char *array)
     array[size - 1] = '\0';
 }
 
+// small helper function
+void PushString(char *dest, char *src)
+{
+    int index = 0;
+    int size = strlen(src);
+    for (int i = 0; i < size; ++i)
+    {
+        dest[index] = src[i];
+        dest[index + 1] = '\0';
+        ++index;
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
+    char open[2] = "";
+    char close[2] = "fe";
+    PushString(open, close);
+    
+    printf("%s\n", open);
+
+
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
         fprintf(stderr, "Failed to init sdl: %s\n", SDL_GetError());
@@ -1608,7 +1628,6 @@ int main(int argc, char *argv[])
         // overall instance
         int index;
         bool is_active;
-        asset_t cursor;
         SDL_Rect description_box; 
 
         // multiple instances
@@ -1834,7 +1853,7 @@ int main(int argc, char *argv[])
         { ' ', screen_center_x + 28, screen_center_y + 14 }, // Unused 
         { ' ', screen_center_x + 40, screen_center_y + 14 }, // Unused
         { ' ', screen_center_x + 52, screen_center_y + 14 }, // Unused
-        { ' ', screen_center_x + 624, screen_center_y + 14 }, // Unused
+        { ' ', screen_center_x + 64, screen_center_y + 14 }, // Unused
   
 
         // Special characters 
@@ -1862,82 +1881,6 @@ int main(int argc, char *argv[])
         { '9', screen_center_x + 64, screen_center_y + 38 },
 
     };
-
-    int example_grid_row = 0;
-    int example_grid_col = 0;
-    menu_item_t example_grid[5][10] = {
-        // 10x5 grid
-        // Every glyph has a padding of 12px around itself
-        // Upper case
-        {
-            { "A", screen_center_x - 52 , screen_center_y - 8 }, 
-            { "B", screen_center_x - 40 , screen_center_y - 8 },
-            { "C", screen_center_x - 28, screen_center_y - 8 }, 
-            { "D", screen_center_x - 16, screen_center_y - 8 }, 
-            { "E", screen_center_x - 4, screen_center_y - 8 }, 
-            { "F", screen_center_x + 16, screen_center_y - 8 }, 
-            { "G", screen_center_x + 28, screen_center_y - 8 }, 
-            { "H", screen_center_x + 40, screen_center_y - 8 }, 
-            { "I", screen_center_x + 52, screen_center_y - 8 }, 
-            { "J", screen_center_x + 64, screen_center_y - 8 }, 
-        },
-        
-        {
-            { "K", screen_center_x - 52, screen_center_y + 2 }, 
-            { "L", screen_center_x - 40, screen_center_y + 2 }, 
-            { "M", screen_center_x - 28, screen_center_y + 2 }, 
-            { "N", screen_center_x - 16, screen_center_y + 2 }, 
-            { "O", screen_center_x - 4, screen_center_y + 2 }, 
-            { "P", screen_center_x + 16, screen_center_y + 2 }, 
-            { "Q", screen_center_x + 28, screen_center_y + 2 }, 
-            { "R", screen_center_x + 40, screen_center_y + 2 }, 
-            { "S", screen_center_x + 52, screen_center_y + 2 }, 
-            { "T", screen_center_x + 64, screen_center_y + 2 },
-        },
-
-        {
-            { "U", screen_center_x - 52, screen_center_y + 14 }, 
-            { "V", screen_center_x - 40, screen_center_y + 14 }, 
-            { "W", screen_center_x - 28, screen_center_y + 14 }, 
-            { "X", screen_center_x - 16, screen_center_y + 14 }, 
-            { "Y", screen_center_x - 4, screen_center_y + 14 }, 
-            { "Z", screen_center_x + 16, screen_center_y + 14 }, 
-            { "", screen_center_x + 28, screen_center_y + 14 }, // Unused 
-            { "", screen_center_x + 40, screen_center_y + 14 }, // Unused
-            { "", screen_center_x + 52, screen_center_y + 14 }, // Unused
-            { "", screen_center_x + 624, screen_center_y + 14 }, // Unused
-        },
-  
-
-        // Special characters 
-        {
-            { "[", screen_center_x - 52, screen_center_y + 26 }, 
-            { "]", screen_center_x - 40, screen_center_y + 26 }, 
-            { ".", screen_center_x - 28, screen_center_y + 26 }, 
-            { ",", screen_center_x - 16, screen_center_y + 26 }, 
-            { "!", screen_center_x - 4, screen_center_y + 26 }, 
-            { "?", screen_center_x + 16, screen_center_y + 26 }, 
-            { "-", screen_center_x + 28, screen_center_y + 26 }, 
-            { "_", screen_center_x + 40, screen_center_y + 26 }, 
-            { ":", screen_center_x + 52, screen_center_y + 26 }, 
-            { ";", screen_center_x + 60, screen_center_y + 26 }, 
-        },
-        
-        // Nums
-        {
-            { "0", screen_center_x - 52, screen_center_y + 38 }, 
-            { "1", screen_center_x - 40, screen_center_y + 38 }, 
-            { "2", screen_center_x - 28, screen_center_y + 38 }, 
-            { "3", screen_center_x - 16, screen_center_y + 38 }, 
-            { "4", screen_center_x - 4, screen_center_y + 38 }, 
-            { "5", screen_center_x + 16, screen_center_y + 38 }, 
-            { "6", screen_center_x + 28, screen_center_y + 38 }, 
-            { "7", screen_center_x + 40, screen_center_y + 38 }, 
-            { "8", screen_center_x + 52, screen_center_y + 38 }, 
-            { "9", screen_center_x + 64, screen_center_y + 38 },
-        }
-    };
-
 
     int glyph_index = 0;
     menu_item_t glyph_grid[50] = {
@@ -1975,7 +1918,7 @@ int main(int argc, char *argv[])
         { "", screen_center_x + 28, screen_center_y + 14 }, // Unused 
         { "", screen_center_x + 40, screen_center_y + 14 }, // Unused
         { "", screen_center_x + 52, screen_center_y + 14 }, // Unused
-        { "", screen_center_x + 624, screen_center_y + 14 }, // Unused
+        { "", screen_center_x + 64, screen_center_y + 14 }, // Unused
   
 
         // Special characters 
@@ -2044,13 +1987,81 @@ int main(int argc, char *argv[])
         { "", screen_center_x + 40, screen_center_y - 28 }, 
     };
 
-    char a = 'A';
-    char b = 'B';
-    char ab[2] = "";
-    PushCharStack(ab, a); 
-    PushCharStack(ab, b); 
+
+    /////////////////////////////////////////////////////////////////////////
+    // Time to store player data from character creation now that we have the creation process done
+   
+    /*typedef struct base_abilities_t
+    {
+        struct {   
+            int strength, dexterity, constitution;
+        } physical;
+
+        struct {
+            int intelligense, wisdom, charisma;
+        } mental;
+    } base_abilities_t;
+
+    typedef struct stats_t
+    {
+        int hp, atk, def, exp;
+        SDL_Rect health_bar;
+    } stats_t;
+    */
+
+    typedef struct
+    {
+        bool is_compatible;
+        int damage_power; 
+    } equipment_t;
+
+    typedef struct
+    {
+        int strength; 
+        int resilience; 
+        int agility; 
+        int stamina; 
+        int wisdom; 
+        int luck; 
+        int max_hp; 
+        int max_mp; 
+        int attack; 
+        int defense; 
+    } new_stats_t;
+
+    typedef struct
+    {
+        char name[10];
+        int experience;
+        int experience_to_next_level;
+        int level; 
+        
+        struct 
+        {
+            char name[32];
+            new_stats_t stats;
+        } class;
+
+        struct
+        {
+            char name[32];
+        } personality;
+
+        struct
+        {
+            char main_hand[12];
+            char off_hand[12];
+            char head[12];
+            char chest[12];
+            char assessories_left[12];
+            char assessories_right[12];
+        } equipment;
+    } character_data_t;
     
-    printf("%s\n", ab);
+    character_data_t character_data = {0};
+
+
+
 
 
     /////////////////////////////////////////////////////////////////////////
@@ -3314,6 +3325,8 @@ int main(int argc, char *argv[])
                     case CLASS_KNIGHT:
                     {
                         printf("knight!\n");
+                        PushString(character_data.class.name, "knight");
+                        printf("player_class: %s\n", character_data.class.name);
                         confirmation.is_active = true; 
                     } break;
                     case CLASS_PALADIN:
@@ -3643,7 +3656,7 @@ int main(int argc, char *argv[])
 
                 }
              
-                if (entering_glyph)
+                if (entering_glyph && name_limit <= 10)
                 {
                     switch (character_class_name_submission_state)
                     {
@@ -3667,15 +3680,16 @@ int main(int argc, char *argv[])
                 {
                     // TODO: Remove selected glyph
                     // Render selected glyph
-                                        
                     if (name_limit > 0 && name_pos <= 10)
                     {
                         temp_glyph = test_glyph_grid[glyph_index].glyph;
                         PushCharStack(name_array[name_pos].str, temp_glyph);
+                        PushCharStack(character_data.name, temp_glyph);
                         name_limit--;
                         name_pos++;
                     }
 
+                    printf("player_name: %s\n", character_data.name);
                     printf("name_limit: %d\n", name_limit);
                     is_glyph_selected = false;
                 }
@@ -3701,8 +3715,16 @@ int main(int argc, char *argv[])
                                white);
                 }
 
-
-
+                // Test code
+                if (name_pos >= 10)
+                {
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               screen_center_x, 
+                               screen_center_y, 
+                               (const char *)character_data.name, 
+                               white);
+                }
+                
             }
         }
 
