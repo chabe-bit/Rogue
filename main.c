@@ -984,6 +984,13 @@ character_class_personality_test_result character_class_personality_test_result_
 
 typedef enum
 {
+    CLASS_NAME_NONE,
+    CLASS_NAME_ENTER
+} character_class_name_submission;
+character_class_name_submission character_class_name_submission_state = CLASS_NAME_NONE;
+
+typedef enum
+{
     CONFIRMATION_YES,
     CONFIRMATION_NO,
     CONFIRMATION_NONE,
@@ -1788,8 +1795,21 @@ int main(int argc, char *argv[])
     PopStack(str_array);
     printf("%s\n", str_array);
 
-    int glyph_count = ArraySize(GUIFontData); // 141
-    printf("%d\n", glyph_count);
+    typedef struct
+    {
+        char glyph;
+        int x, y;
+    } glyph_grid_t;
+
+    glyph_grid_t test_glyph_grid[1] = 
+    {
+        { 'A', screen_center_x - 52 , screen_center_y - 8 }, 
+    };
+
+    char temp_glyph;
+    const char name_array[12] = "";
+
+
 
     int glyph_index = 0;
     menu_item_t glyph_grid[50] = {
@@ -1860,10 +1880,6 @@ int main(int argc, char *argv[])
     };
 
 
-    printf("%d\n", ArraySize(glyph_grid));
-
-
-
     // Start event
     bool some_input = true;
     int questions_answered_index = 1;
@@ -1880,6 +1896,9 @@ int main(int argc, char *argv[])
     bool is_tower = false;
     bool is_theater = false;
     bool is_castle = false;
+
+    bool is_glyph_selected = false;
+    bool entering_glyph = false;
     while (Running) 
     {
         frame_start = SDL_GetTicks();
@@ -2807,6 +2826,26 @@ int main(int argc, char *argv[])
                                     } break;
                                 }
                             }
+
+                            if (is_name_submission)
+                            {
+                                printf("glyph_index: %d\n", glyph_index);
+                                switch (glyph_index)
+                                {
+                                    case 0:
+                                    {
+                                        entering_glyph = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    } break;
+                                    default:
+                                    {
+
+                                    } break;
+                                }
+
+                            }
+
+
                         } break;
                         default:
                         {
@@ -3384,6 +3423,7 @@ int main(int argc, char *argv[])
                     // Simply for testing purposes, delay the screen for 5 seconds until the next, where we should have the repsective options for this result to go on.
                     is_monster = false;
                     is_name_submission = true;
+                    entering_glyph = true;
                 }
                 if (is_forest)
                 {
@@ -3411,10 +3451,9 @@ int main(int argc, char *argv[])
                 }  
             }
 
-            if (is_name_submission) // enter name screen
+            if (is_name_submission) //enter name screen
             {
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                printf("Entered name submission\n");
 
                 // Create a grid of glyphs to iterate over either with menu_items_t or class_items_t so
                 // we can iterate through each one with the cursor. Entering a glyph will push that onto 
@@ -3432,7 +3471,53 @@ int main(int argc, char *argv[])
                             white);
 
                 }
+             
+                if (entering_glyph)
+                {
+                    switch (character_class_name_submission_state)
+                    {
+                        case CLASS_NAME_NONE:
+                        {
+                        } break;
+                        case CLASS_NAME_ENTER:
+                        { 
+                            is_glyph_selected = true;
+                            entering_glyph = false;
+                        } break;
+                        default:    
+                        {
+                            character_class_name_submission_state = CLASS_NAME_NONE;
+                        } break;
+                    }
+                }
                 
+
+                if (is_glyph_selected)
+                {
+                    // TODO: Remove selected glyph
+                    // Render selected glyph
+                    /*RenderText(SDLWindow.Renderer, font_atlas,
+                            glyph_grid[glyph_index].x, 
+                            glyph_grid[glyph_index].y - 32,
+                            glyph_grid[glyph_index].text, 
+                            white);*/
+                    
+                    temp_glyph = test_glyph_grid[0].glyph;
+                    PushCharStack(name_array, temp_glyph);
+                               
+                    printf("%s\n", name_array);
+                    
+
+                    is_glyph_selected = false;
+                }
+               
+                // Local array that holds an array of chars. For every glyph that we've pressed enter on, we push it into that array
+                RenderText(SDLWindow.Renderer, font_atlas,
+                           glyph_grid[glyph_index].x, 
+                           glyph_grid[glyph_index].y - 32,
+                           name_array, 
+                           white);
+
             }
         }
 
