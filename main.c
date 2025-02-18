@@ -1799,21 +1799,6 @@ int main(int argc, char *argv[])
 
     ////////////// Enter name grid 
 
-    char str_array[NAME_LIMIT] = "";
-    PushCharStack(str_array, 'e');
-    PushCharStack(str_array, 'e');
-    PushCharStack(str_array, 'e');
-    PushCharStack(str_array, 'e');
-    PushCharStack(str_array, 'e');
-    PushCharStack(str_array, 'e');
-    PushCharStack(str_array, 'e');
-    PushCharStack(str_array, 'e');
-    PushCharStack(str_array, 'e');
-    PushCharStack(str_array, 'e');
-
-    PopStack(str_array);
-    printf("%s\n", (const char *)str_array);
-
     typedef struct
     {
         char glyph;
@@ -2012,9 +1997,60 @@ int main(int argc, char *argv[])
     typedef struct
     {
         bool is_compatible;
-        int damage_power; 
-    } equipment_t;
+        struct
+        {
+                // TODO: Load asset
+            int id; // do we need?
+            int defense;
+            char name[10];
+            char description[32];
+        } helm[2];
 
+        struct
+        {
+            int id; // do we need?
+            int defense;
+            char name[10];
+            char description[32];
+        } chest;
+
+        struct
+        {
+            int id; // do we need?
+            int attack;
+            char name[10];
+            char description[32];
+        } main_hand;
+
+        struct
+        {
+            int id; // do we need?
+            int defense;
+            char name[10];
+            char description[32];
+        } off_hand;
+
+        struct
+        {
+            int id; // do we need?
+            int defense;
+            char name[10];
+            char description[32];
+        } accessories[2];
+
+    } equipment_item_t;
+
+    // Create some equipments
+    equipment_item_t equipment_items = {0};
+    equipment_items.helm[0].id = 0;
+    equipment_items.helm[0].defense = 8;
+    PushString(equipment_items.helm[0].name, "Hard cap");
+    PushString(equipment_items.helm[0].description, "Hardly knew her");
+
+    printf("helm name: %s\n", equipment_items.helm[0].name);
+
+
+    // Base stats of each class from here: https://dragon-quest.org/wiki/List_of_vocations_in_Dragon_Quest_III#The_vocations
     typedef struct
     {
         int strength; 
@@ -2023,32 +2059,91 @@ int main(int argc, char *argv[])
         int stamina; 
         int wisdom; 
         int luck; 
+
         int max_hp; 
         int max_mp; 
         int attack; 
         int defense; 
-    } new_stats_t;
+    } class_base_stats_t;
+
+    class_base_stats_t class_base_stats[4] = {
+        { 11, 11, 6, 13, 3, 4}, // Knight 
+        { 7,  11, 7, 9, 11, 5}, // Paladin
+        { 7,  10, 7, 8, 12, 7}, // Wizard
+        { 8, 10, 11, 10, 7, 5}, // Archer
+    }; 
+
+    typedef struct
+    {
+        float strength_growth;
+        float agility_growth;
+        float vitality_growth;
+        float luck_growth;
+    } personality_stat_growth_t;
+
+    // 45 different personalities
+    personality_stat_growth_t personality_stat_growth[45] = {0};
+    personality_stat_growth[0].strength_growth = .10; // multipllier of 10%
+    personality_stat_growth[0].agility_growth = .20; // multipllier of 10%
+    personality_stat_growth[0].vitality_growth = .10; // multipllier of 10%
+    personality_stat_growth[0].luck_growth = .20; // multipllier of 10%
+    printf("strength stat growth: %d\n", (int)((float)class_base_stats[0].strength * 
+                                               personality_stat_growth[0].strength_growth));
+
+    // I think the best and simplest approach for now is each class will have its own base stat,
+    // and depending on the personality, their base stat will alter from that. The stat growth will
+    // be fixed to increase a set of attributes per level -
+    // Ex: 
+    //    A wizard with a personality that favors it such as wise, will have an advantage of +3 on their wisdom attribute,
+    //    leveling up will be fixed as +1 for every stat that is neutral, + or - for what is a boon or bane. 
+    //
+    // rather than randomly rolling for what stat to
+    // increase on level up.
+    // Ex: 
+    //   https://gamefaqs.gamespot.com/nes/587249-dragon-warrior-iii/faqs/64752
+    //   DQ3 has a very complex leveling system that for every stat added on level up, it measures against a "baseline"
+    //   first to determine if that stat attribute should "gain" stats or roll a 50/50 to be +1 or +0, where the former is 
+    //   if it hasn't overflowed the baseline, and the latter if it has. Pretty much is the reason leveling feels like 
+    //   you've hit a wall at certain points in the game to simply stop you from being too overleveled. But is also weird
+    //   and I feel the game releases that cap once you've reached a new area.
+
+    typedef struct
+    {
+         int index;
+         u32 experience;
+         struct 
+         {
+            u32 remaining;
+         } experience_next_level[20];
+    } character_experience_t;
+
 
     typedef struct
     {
         char name[10];
-        int experience;
-        int experience_to_next_level;
-        int level; 
+        u32 level; 
+        u32 experience;
+
+        // 20 is max level
+        int experience_index;
+        u32 experience_to_next_level[20];
         
         struct 
         {
             char name[32];
-            new_stats_t stats;
+            class_base_stats_t base_stats;
         } class;
 
         struct
         {
-            char name[32];
+            char name[32]; // leave here for now
         } personality;
 
+        int equipment_index;
+        menu_item_t equipments_temp;
         struct
         {
+            // Instead of packing this with char for names, we should pack it with equipment_t types
             char main_hand[12];
             char off_hand[12];
             char head[12];
@@ -2059,7 +2154,12 @@ int main(int argc, char *argv[])
     } character_data_t;
     
     character_data_t character_data = {0};
+    character_data.level = 1;
+    character_data.experience = 0;
 
+    int experience_index = character_data.equipment_index;
+    character_data.experience_to_next_level[experience_index] = 1000;
+        
 
 
 
@@ -2086,8 +2186,8 @@ int main(int argc, char *argv[])
     bool is_glyph_selected = false;
     bool entering_glyph = false;
                             
-    int current_row = glyph_index / 10;
-    int current_col = glyph_index % 5;
+    u32 current_row = glyph_index / 10;
+    u32 current_col = glyph_index % 5;
     while (Running) 
     {
         frame_start = SDL_GetTicks();
@@ -2980,7 +3080,7 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 47:
                                             {
-                                                questions_answered_index = 0; 
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_THEATER; 
                                             } break;
                                             case 48:
                                             {
@@ -2988,7 +3088,7 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 49:
                                             {
-                                                questions_answered_index = 0;
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CAVE;
                                             } break;
                                         }
                                     } break;
@@ -3315,36 +3415,41 @@ int main(int argc, char *argv[])
                 SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
                 SDL_RenderDrawRect(SDLWindow.Renderer, &character_creation_screen.description_box);
             
-
-                switch (character_class_selection_state)
+                if (!confirmation.is_active)
                 {
-                    case CLASS_NONE:
+                    switch (character_class_selection_state)
                     {
+                        case CLASS_NONE:
+                        {
 
-                    } break;
-                    case CLASS_KNIGHT:
-                    {
-                        printf("knight!\n");
-                        PushString(character_data.class.name, "knight");
-                        printf("player_class: %s\n", character_data.class.name);
-                        confirmation.is_active = true; 
-                    } break;
-                    case CLASS_PALADIN:
-                    {
-                       confirmation.is_active = true; 
-                    } break;
-                    case CLASS_MAGE:
-                    {
-                       confirmation.is_active = true; 
-                    } break;
-                    case CLASS_ARCHER:
-                    {
-                       confirmation.is_active = true; 
-                    } break;
-                    default:
-                    {
-                        character_class_selection_state = CLASS_NONE;
-                    } break;
+                        } break;
+                        case CLASS_KNIGHT:
+                        {
+                            PushString(character_data.class.name, "Knight");
+                            printf("player_class: %s\n", character_data.class.name);
+        
+                            character_data.class.base_stats = class_base_stats[0];
+                            printf("player_class strength: %d\n", character_data.class.base_stats.strength);
+
+                            confirmation.is_active = true; 
+                        } break;
+                        case CLASS_PALADIN:
+                        {
+                           confirmation.is_active = true; 
+                        } break;
+                        case CLASS_MAGE:
+                        {
+                           confirmation.is_active = true; 
+                        } break;
+                        case CLASS_ARCHER:
+                        {
+                           confirmation.is_active = true; 
+                        } break;
+                        default:
+                        {
+                            character_class_selection_state = CLASS_NONE;
+                        } break;
+                    }
                 }
         
                 if (confirmation.is_active)
@@ -3417,31 +3522,34 @@ int main(int argc, char *argv[])
                   
                 SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
                 SDL_RenderDrawRect(SDLWindow.Renderer, &character_allocation_select_screen.description_box);
-            
-                switch (character_class_point_allocation_method_state)
+           
+                if (!confirmation.is_active)
                 {
-                    case CLASS_POINTS_NONE:
+                    switch (character_class_point_allocation_method_state)
                     {
+                        case CLASS_POINTS_NONE:
+                        {
 
-                    } break;
-                    case CLASS_POINTS_PERSONALITY:
-                    {
-                        confirmation.is_active = true;
-                    } break;
-                    case CLASS_POINTS_PRESET:
-                    {
-                        confirmation.is_active = true;
-                    } break;
-                    case CLASS_POINTS_MANUAL:
-                    {
-                        confirmation.is_active = true;
-                    } break;
-                    default:
-                    {
-                        character_class_point_allocation_method_state = CLASS_POINTS_NONE;
-                    } break;
-                };
+                        } break;
+                        case CLASS_POINTS_PERSONALITY:
+                        {
+                            confirmation.is_active = true;
+                        } break;
+                        case CLASS_POINTS_PRESET:
+                        {
+                            confirmation.is_active = true;
+                        } break;
+                        case CLASS_POINTS_MANUAL:
+                        {
+                            confirmation.is_active = true;
+                        } break;
+                        default:
+                        {
+                            character_class_point_allocation_method_state = CLASS_POINTS_NONE;
+                        } break;
+                    };
                     
+                }
 
                 if (confirmation.is_active)
                 {
@@ -3475,7 +3583,6 @@ int main(int argc, char *argv[])
 
                 if (question_confirmation)
                 {
-                    printf("TRUE!\n");
                     question_confirmation = false;
                     ++questions_answered_index;
                     
@@ -3491,23 +3598,18 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-            
                     // Only the starting questions
                     static bool first_question_selected = false;
                     if (!first_question_selected)
                     {
+                        int total = ArraySize(question_table) ;
                         rand_index = rand() % 5;
                         first_question_selected = true;
                     }
-                        
-                    
                 }  
 
-                char buffer[512];
-                snprintf(buffer, ArraySize(question_table) + 512, "%d. %s", questions_answered_index, question_table[questions_answered_index]);
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                 RenderWrappedTextCentered(SDLWindow.Renderer, font_atlas, 
-                                      //buffer, white, 
                                       question_table[questions_answered_index], white, 
                                       0, -32,        // containerX, containerY
                                       256, 240,    // containerW, containerH
