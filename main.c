@@ -1959,6 +1959,8 @@ int main(int argc, char *argv[])
     // Base stats of each class from here: https://dragon-quest.org/wiki/List_of_vocations_in_Dragon_Quest_III#The_vocations
     typedef struct
     {
+        int index; // Iterate over for player to select
+
         int strength; // Determines physical dmg
         int resilience; // Determines damage received
         int agility; // Determines who acts first in battle - probably change to evasiveness
@@ -1974,7 +1976,12 @@ int main(int argc, char *argv[])
         int attack; // Combination of your strength and weapon damage
         int defense; // 
     } class_base_stats_t;
-
+    
+    // Base stats should be set to a baseline of let's say 5 by default, so that depending on the method the player chooses to allocate their points,
+    // that is where it's initialized. 
+    // Ex: Personality will default the selected class's stats of what a wizard would be, then assign your personality.
+    // But manual allocation you're shown the baseline of "5" per stat, where they can choose what to allocate to the choose a personality.
+    // Preset would be defaulting the class's stat then choosing a personality.
     class_base_stats_t class_base_stats[4] = {0};
     class_base_stats[0].strength = 11;
     class_base_stats[0].resilience = 11;
@@ -1989,44 +1996,137 @@ int main(int argc, char *argv[])
 
     printf("Max HP: %d\n", class_base_stats[0].max_hp);
 
+       
+    // Stat growth:
+    // Baseline -> Value that if the gain value exceeds it, the character loses their normal gain rate and instead rolls a 50/50 chance to gain 
+    // +1 or +0.
+    // Think of it like a bar graph per stat attribute where there's a limit for each for each class, the 50/50 chance roll is simply there to
+    // balance in a way that from level 1 to 50, one's HP growth will be consistent in gaining +4 or so per level until 50, but because they excel in
+    // magic, their INT will grow at a large rate but cap quickly.
+
     typedef struct
     {
-        int strength_growth;
-        int agility_growth;
-        int stamina_growth;
-        int wisdom_growth;
-        int luck_growth;
+        struct {
+            float baseline;
+            float growth_per_level[20];
+        } strength;
+
+        struct {
+            float baseline;
+            float growth_per_level[20];
+        } agility;
+    
+        struct {
+            float baseline;
+            float growth_per_level[20];
+        } stamina;
+
+        struct {
+            float baseline;
+            float growth_per_level[20];
+        } wisdom;
+    
+        struct {
+            float baseline;
+            float growth_per_level[20];
+        } luck;
+
+    } class_stat_growth_per_level_t;
+
+    class_stat_growth_per_level_t class_stat_growth[1] = {0};
+    class_stat_growth[0].strength.baseline = 15;
+    class_stat_growth[0].agility.baseline = 15;
+
+    float knight_strength_growth_per_level[20] = {
+        4, 4, 4, 4, 4, 8, 8, 8, 8, 8,
+        12, 12, 12, 12, 12, 16, 16, 16, 16, 16
+    };
+
+    float knight_agility_growth_per_level[20] = {
+        9, 9, 9, 9, 9, 9, 4, 4, 4, 4,
+        4, 16, 16, 16, 16, 16, 16, 16, 16, 16
+    };
+
+    for (int i = 0; i < 20; ++i)
+    {
+        if (knight_strength_growth_per_level[i] > class_stat_growth[0].strength.baseline ||
+            knight_agility_growth_per_level[i] > class_stat_growth[0].agility.baseline)
+        {
+            knight_strength_growth_per_level[i] = rand() % 2;
+            knight_agility_growth_per_level[i] = rand() % 2;
+        }
+
+
+        class_stat_growth[0].strength.growth_per_level[i] = knight_strength_growth_per_level[i]; 
+        class_stat_growth[0].agility.growth_per_level[i] = knight_agility_growth_per_level[i]; 
+        
+        //printf("knight str stat growth: %d\n", class_stat_growth[0].strength.growth_per_level[i]);
+        printf("knight agi stat growth: %d\n", class_stat_growth[0].agility.growth_per_level[i]);
+    }
+
+    typedef struct
+    {
+        float strength_growth;
+        float agility_growth;
+        float stamina_growth;
+        float wisdom_growth;
+        float luck_growth;
+
+        float stat_growth[5];
     } personality_stat_growth_t;
+
+    float personality_stats[][5] = { 
+        // STR, AGL, VIT, WIS, LCK
+        {  .9,  1.2,   .9,   1.0,    .8}, // acrobat
+        { 1.3,  .9,   1.0,   1.1,    .8}, // amazon
+        { 1.0,  1.4,  1.0,   1.0,   1.0}, // bat out of hell
+        { 1.0,  1.2,   .95,  1.15,  1.1}, // clown
+        {  .7,  1.2,   .7,   1.1,   1.3}, // contrarian
+        {  .9,   .9,  1.0,   1.1,   1.15}, // crybaby
+
+    };
 
     // 45 different personalities
     personality_stat_growth_t personality_stat_growth[45] = {0};
-    personality_stat_growth[0].strength_growth = -1;
-    personality_stat_growth[0].agility_growth = 2;
-    personality_stat_growth[0].stamina_growth = -1;
-    personality_stat_growth[0].wisdom_growth = 0;
-    personality_stat_growth[0].luck_growth = -2;
-
-    // TODO: Class base stat + Personality growth into a function
-    int new_str_state = class_base_stats[0].strength + personality_stat_growth[0].strength_growth;
-    printf("Acrobat Knight STR: %d\n", new_str_state);
+    for (int j = 0; j < ArraySize(personality_stat_growth); ++j)
+    {
+        for (int i = 0; i < 5; ++i)
+        {
+            personality_stat_growth[j].stat_growth[i] = personality_stats[j][i];
 
 
+        }
+    }
 
-    // I think the best and simplest approach for now is each class will have its own base stat,
-    // and depending on the personality, their base stat will alter from that. The stat growth will
-    // be fixed to increase a set of attributes per level:
-    // Ex: 
-    //    A wizard with a personality that favors it such as wise, will have an advantage of +3 on their wisdom attribute,
-    //    leveling up will be fixed as +1 for every stat that is neutral. 
+    for (int i = 0; i < 5; ++i)
+    {
+        printf("%.1f\n", personality_stat_growth[1].stat_growth[i]);
+    }
+    
+    /*
+    personality_stat_growth[0].strength_growth =  .9;
+    personality_stat_growth[0].agility_growth = 1.2;
+    personality_stat_growth[0].stamina_growth = .9;
+    personality_stat_growth[0].wisdom_growth = 1.0;
+    personality_stat_growth[0].luck_growth = .8;*/
+
+
+    // TODO: Rather than hard rounding it down as a decimal value, we'll keep it simple to round up or down if the decimal is > .5
+    // The reasoning is because a stat reduction of 5-10% wouldn't be fair to cut it down that much to a personality where it's 
+    // reduction should acutally be that low. But it also conflicts with the stat reduction being pointless because it's effectively
+    // treated the same as normal. 
     //
-    // Rather than randomly rolling for what stat to increase on level up:
-    // Ex: 
-    //   https://gamefaqs.gamespot.com/nes/587249-dragon-warrior-iii/faqs/64752
-    //   DQ3 has a very complex leveling system that for every stat added on level up, it measures against a "baseline"
-    //   first to determine if that stat attribute should "gain" stats or roll a 50/50 to be +1 or +0, where the former is 
-    //   if it hasn't overflowed the baseline, and the latter if it has. Pretty much is the reason leveling feels like 
-    //   you've hit a wall at certain points in the game to simply stop you from being too overleveled. But is also weird
-    //   and I feel the game releases that cap once you've reached a new area.
+    // Which is why I think we stick to working with floats in the future. What we can do is keep the decimal values but only render the
+    // values as whole numbers. If the player's curernt STR was at 134.6 with a gain of 4.5, it'd be 139.1 where the player will just see 139.
+    // Decimals have no influence such that .5 will add that much damage or defense.
+    float a = (float)class_stat_growth[0].strength.growth_per_level[0];
+    float b = personality_stat_growth[0].strength_growth;
+    float calc =  a * b;
+    int result = floor(calc); 
+
+    printf("Calc: %1f\n", calc);
+    printf("Results: %d\n", result);
+
 
     typedef struct
     {
@@ -2083,33 +2183,8 @@ int main(int argc, char *argv[])
 
     int experience_index = character_data.equipment_index;
     character_data.experience_to_next_level[experience_index] = 1000;
-       
-    // Stat growth:
-    // Baseline -> Value that if the gain value exceeds it, the character loses their normal gain rate and instead rolls a 50/50 chance to gain 
-    // +1 or +0.
-    // Think of it like a bar graph per stat attribute where there's a limit for each for each class, the 50/50 chance roll is simply there to
-    // balance in a way that from level 1 to 50, one's HP growth will be consistent in gaining +4 or so per level until 50, but because they excel in
-    // magic, their INT will grow at a large rate but cap quickly.
 
-    int strength_baseline = 15;
-    
-    int strength_per_level_test[10] = {
-        4, 4, 4, 4, 8, 8, 8, 16, 16, 16
-    };
-        
-    int empty_arr[10] = {0};
-    for (int i = 0; i < ArraySize(empty_arr); ++i)
-    {
-        if (strength_per_level_test[i] > strength_baseline)
-        {
-            strength_per_level_test[i] = rand() % 2; // for now but should be +1 or +0
-        }
-        
-        empty_arr[i] = strength_per_level_test[i];
-        printf("empty_arr: %d\n", empty_arr[i]);
-    }
 
-    
     
 
     /////////////////////////////////////////////////////////////////////////
