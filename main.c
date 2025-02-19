@@ -2036,80 +2036,136 @@ int main(int argc, char *argv[])
     class_stat_growth_per_level_t class_stat_growth[1] = {0};
     class_stat_growth[0].strength.baseline = 15;
     class_stat_growth[0].agility.baseline = 15;
+    class_stat_growth[0].stamina.baseline = 15;
+    class_stat_growth[0].wisdom.baseline = 15;
+    class_stat_growth[0].luck.baseline = 15;
 
-    float knight_strength_growth_per_level[20] = {
-        4, 4, 4, 4, 4, 8, 8, 8, 8, 8,
-        12, 12, 12, 12, 12, 16, 16, 16, 16, 16
+    typedef enum
+    {
+        KNIGHT_STR,
+        KNIGHT_AGI,
+        KNIGHT_VIT,
+        KNIGHT_WIS,
+        KNIGHT_LCK
+    } knight_stats;
+
+    float knight_growth_per_level[][20] = {
+        // STR
+        {4, 4, 4, 4, 4, 8, 8, 8, 8, 8,
+        12, 12, 12, 12, 12, 16, 16, 16, 16, 16},
+
+        // AGI
+        {9, 9, 9, 9, 9, 9, 4, 4, 4, 4,
+        4, 16, 16, 16, 16, 16, 16, 16, 16, 16},
+
+        // VIT
+        {9, 9, 9, 9, 9, 9, 4, 4, 4, 4,
+        4, 16, 16, 16, 16, 16, 16, 16, 16, 16},
+    
+        // WIS
+        {9, 9, 9, 9, 9, 9, 4, 4, 4, 4,
+        4, 16, 16, 16, 16, 16, 16, 16, 16, 16},
+
+        // LCK
+        {9, 9, 9, 9, 9, 9, 4, 4, 4, 4,
+        4, 16, 16, 16, 16, 16, 16, 16, 16, 16},
     };
 
-    float knight_agility_growth_per_level[20] = {
-        9, 9, 9, 9, 9, 9, 4, 4, 4, 4,
-        4, 16, 16, 16, 16, 16, 16, 16, 16, 16
-    };
-
+    // TODO: Use an index outside of this loop to increment to the next stat gain on level up
     for (int i = 0; i < 20; ++i)
     {
-        if (knight_strength_growth_per_level[i] > class_stat_growth[0].strength.baseline ||
-            knight_agility_growth_per_level[i] > class_stat_growth[0].agility.baseline)
+        if (knight_growth_per_level[KNIGHT_STR][i] > class_stat_growth[0].strength.baseline ||
+            knight_growth_per_level[KNIGHT_AGI][i] > class_stat_growth[0].agility.baseline  ||
+            knight_growth_per_level[KNIGHT_VIT][i] > class_stat_growth[0].stamina.baseline  ||
+            knight_growth_per_level[KNIGHT_WIS][i] > class_stat_growth[0].wisdom.baseline   ||
+            knight_growth_per_level[KNIGHT_LCK][i] > class_stat_growth[0].luck.baseline)
         {
-            knight_strength_growth_per_level[i] = rand() % 2;
-            knight_agility_growth_per_level[i] = rand() % 2;
+            knight_growth_per_level[KNIGHT_STR][i] = rand() % 2;
+            knight_growth_per_level[KNIGHT_AGI][i] = rand() % 2;
+            knight_growth_per_level[KNIGHT_VIT][i] = rand() % 2;
+            knight_growth_per_level[KNIGHT_WIS][i] = rand() % 2;
+            knight_growth_per_level[KNIGHT_LCK][i] = rand() % 2;
         }
 
 
-        class_stat_growth[0].strength.growth_per_level[i] = knight_strength_growth_per_level[i]; 
-        class_stat_growth[0].agility.growth_per_level[i] = knight_agility_growth_per_level[i]; 
+        class_stat_growth[0].strength.growth_per_level[i]   = knight_growth_per_level[KNIGHT_STR][i]; 
+        class_stat_growth[0].agility.growth_per_level[i]    = knight_growth_per_level[KNIGHT_AGI][i]; 
+        class_stat_growth[0].stamina.growth_per_level[i]    = knight_growth_per_level[KNIGHT_VIT][i]; 
+        class_stat_growth[0].wisdom.growth_per_level[i]     = knight_growth_per_level[KNIGHT_WIS][i]; 
+        class_stat_growth[0].luck.growth_per_level[i]       = knight_growth_per_level[KNIGHT_LCK][i]; 
         
-        //printf("knight str stat growth: %d\n", class_stat_growth[0].strength.growth_per_level[i]);
-        printf("knight agi stat growth: %d\n", class_stat_growth[0].agility.growth_per_level[i]);
+        printf("knight agi stat growth: %.2f\n", class_stat_growth[0].agility.growth_per_level[i]);
     }
 
     typedef struct
     {
-        float strength_growth;
-        float agility_growth;
-        float stamina_growth;
-        float wisdom_growth;
-        float luck_growth;
-
+        // TODO: Include name?
         float stat_growth[5];
     } personality_stat_growth_t;
 
     float personality_stats[][5] = { 
-        // STR, AGL, VIT, WIS, LCK
-        {  .9,  1.2,   .9,   1.0,    .8}, // acrobat
-        { 1.3,  .9,   1.0,   1.1,    .8}, // amazon
-        { 1.0,  1.4,  1.0,   1.0,   1.0}, // bat out of hell
-        { 1.0,  1.2,   .95,  1.15,  1.1}, // clown
-        {  .7,  1.2,   .7,   1.1,   1.3}, // contrarian
-        {  .9,   .9,  1.0,   1.1,   1.15}, // crybaby
-
+        // STR,   AGL,   VIT,   WIS,   LCK
+        {  .90,  1.20,   .90,  1.00,   .80 }, // acrobat
+        { 1.30,   .90,  1.00,  1.10,   .80 }, // amazon
+        { 1.00,  1.40,  1.00,  1.00,  1.00 }, // bat out of hell
+        { 1.00,  1.20,   .95,  1.15,  1.10 }, // clown
+        {  .70,  1.20,   .70,  1.10,  1.30 }, // contrarian
+        {  .90,   .90,  1.00,  1.10,  1.15 }, // crybaby
+        {  .95,  1.20,  1.15,  1.00,  1.00 }, // daredevil
+        {  .95,  1.10,   .95,  1.15,  1.00 }, // daydreamer
+        { 1.05,   .90,  1.10,  1.00,  1.00 }, // drudge
+        {  .80,  1.05,   .90,  1.25,   .80 }, // egghead
+        { 1.00,  1.00,  1.00,  1.00,  1.00 }, // everyman
+        { 1.00,   .75,  1.10,  1.05,  1.05 }, // free spirit
+        { 1.00,  1.20,   .80,  1.40,   .90 }, // genius
+        { 1.05,   .95,  1.05,  1.10,   .95 }, // good egg
+        { 1.10,   .60,  1.10,   .50,   .80 }, // gourmand
+        {  .90,  1.00,   .90,  1.00,  1.30 }, // happy camper
+        { 1.15,  1.00,  1.10,   .90,   .60 }, // idealist
+        { 1.05,   .80,  1.30,   .90,   .80 }, // ironclad
+        {  .80,  1.15,  1.00,   .70,   .70 }, // klutz
+        { 1.15,   .60,  1.20,   .65,  1.10 }, // lazybones
+        { 1.00,  1.10,  1.20,  1.10,   .70 }, // lone wolf
+        { 1.05,   .95,  1.20,  1.05,   .90 }, // lothario
+        { 1.00,   .90,   .90,   .70,  1.10 }, // lout
+        { 1.00,  1.10,  1.00,  1.00,  1.50 }, // lucky devil
+        { 1.30,   .80,  1.00,   .70,   .80 }, // meathead
+        { 1.05,   .85,  1.10,   .80,   .70 }, // meddler
+        { 1.00,   .60,  1.20,   .60,   .70 }, // mule
+        {  .95,  1.05,   .90,   .90,   .90 }, // narcissist
+        { 1.40,   .70,  1.00,   .80,   .70 }, // paragon
+        { 1.10,   .85,  1.20,   .90,   .70 }, // plugger
+        { 1.00,   .80,   .95,  1.10,  1.40 }, // princess
+        {  .85,  1.15,   .80,   .80,   .90 }, // scatterbrain
+        { 1.05,  1.10,   .95,  1.05,   .95 }, // show-off
+        { 1.10,   .60,  1.20,  1.10,   .90 }, // shrinking violet
+        {  .90,  1.10,   .90,  1.20,  1.00 }, // slippery devil
+        { 1.00,   .90,   .80,  1.10,  1.10 }, // socialite
+        {  .95,  1.05,  1.05,   .95,   .95 }, // sore loser
+        {  .95,  1.00,   .90,  1.05,  1.00 }, // spoilt brat
+        { 1.00,   .90,  1.00,  1.10,   .90 }, // straight arrow
+        { 1.20,   .90,   .90,   .60,   .70 }, // thug
+        { 1.10,  1.10,   .80,   .90,   .90 }, // tomboy
+        { 1.15,   .90,  1.40,   .80,   .70 }, // tough cookie
+        { 1.10,  1.20,  1.05,  1.15,  1.20 }, // vamp
+        {  .90,   .70,   .90,  1.20,  1.20 }, // wimp
+        {  .95,  1.00,  1.00,  1.30,   .90 }, // wit
     };
 
     // 45 different personalities
     personality_stat_growth_t personality_stat_growth[45] = {0};
-    for (int j = 0; j < ArraySize(personality_stat_growth); ++j)
+    for (int i = 0; i < ArraySize(personality_stat_growth); ++i)
     {
-        for (int i = 0; i < 5; ++i)
+        for (int j = 0; j < 5; ++j)
         {
-            personality_stat_growth[j].stat_growth[i] = personality_stats[j][i];
-
-
+            personality_stat_growth[i].stat_growth[j] = personality_stats[i][j];
         }
     }
 
     for (int i = 0; i < 5; ++i)
     {
-        printf("%.1f\n", personality_stat_growth[1].stat_growth[i]);
+        printf("%.2f\n", personality_stat_growth[44].stat_growth[i]);
     }
-    
-    /*
-    personality_stat_growth[0].strength_growth =  .9;
-    personality_stat_growth[0].agility_growth = 1.2;
-    personality_stat_growth[0].stamina_growth = .9;
-    personality_stat_growth[0].wisdom_growth = 1.0;
-    personality_stat_growth[0].luck_growth = .8;*/
-
 
     // TODO: Rather than hard rounding it down as a decimal value, we'll keep it simple to round up or down if the decimal is > .5
     // The reasoning is because a stat reduction of 5-10% wouldn't be fair to cut it down that much to a personality where it's 
@@ -2119,14 +2175,11 @@ int main(int argc, char *argv[])
     // Which is why I think we stick to working with floats in the future. What we can do is keep the decimal values but only render the
     // values as whole numbers. If the player's curernt STR was at 134.6 with a gain of 4.5, it'd be 139.1 where the player will just see 139.
     // Decimals have no influence such that .5 will add that much damage or defense.
-    float a = (float)class_stat_growth[0].strength.growth_per_level[0];
-    float b = personality_stat_growth[0].strength_growth;
-    float calc =  a * b;
-    int result = floor(calc); 
-
-    printf("Calc: %1f\n", calc);
-    printf("Results: %d\n", result);
-
+   
+    //float a = (float)class_stat_growth[0].strength.growth_per_level[0];
+    //float b = personality_stat_growth[0].strength_growth;
+    //float calc =  a * b;
+    //int result = floor(calc); 
 
     typedef struct
     {
