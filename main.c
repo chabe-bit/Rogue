@@ -1,8 +1,6 @@
 #include "common.h"
 #include "gui.h"
-
-#include <windows.h>
-#include <xinput.h>
+#include "global_states.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -16,29 +14,7 @@
 
 static bool Running;
 
-
-
 #define ArraySize(array) (sizeof(array) / sizeof((array)[0]))
-
-typedef enum
-{
-    GAME_STATE_TITLE_SCREEN,
-    GAME_STATE_NEW_GAME,
-    GAME_STATE_LOAD_GAME,
-    GAME_STATE_SETTINGS,
-    GAME_STATE_EXIT,
-    GAME_STATE_GAMEPLAY,
-    GAME_STATE_UNKNOWN
-} game_state_e;
-game_state_e game_state = GAME_STATE_TITLE_SCREEN;
-
-
-typedef enum
-{
-    NEW_GAME_CHARACTER_SELECT,
-    NEW_GAME_UNKNOWN
-} new_game_state_e;
-new_game_state_e new_game_state = NEW_GAME_CHARACTER_SELECT;
 
 struct
 {
@@ -100,6 +76,7 @@ typedef struct asset_t
 
 typedef struct wav_t
 {
+    bool reset_audio;
     int volume;
     u32 offset;
     u32 length;
@@ -157,53 +134,15 @@ typedef struct mix_audio_t
     u8 *audio;
 } mix_audio_t;
 
-// TODO: Create slider for volume adjustment in settings
-static void 
-MixedAudio(wav_t *sound, mix_audio_t *mix_audio, int volume)
-{
-    if (volume < 0)
-        volume = 0;
-    if (volume > 128)
-        volume = SDL_MIX_MAXVOLUME;
-
-    if (!mix_audio->audio)
-    {
-        fprintf(stderr, "mix_audio->audio is NULL, expected allocation.\n");
-        return;
-    }
-
-    // TODO: One big malloc where we pass in an array of audio to mix
-    //SDL_AudioFormat format = AUDIO_S16LSB;
-
-    SDL_LockAudioDevice(sound->device_id);
-
-    SDL_MixAudioFormat(mix_audio->audio, 
-                       sound->buffer, 
-                       mix_audio->format,
-                       sound->length,
-                       volume);
-    
-    SDL_UnlockAudioDevice(sound->device_id);
-
-    SDL_PauseAudioDevice(sound->device_id, 0);
-}
-
 static void
 PlaySFX(wav_t *sound)
 {
-    SDL_ClearQueuedAudio(sound->device_id);
-    SDL_QueueAudio(sound->device_id, sound->buffer,          
-                   sound->length);
-    SDL_PauseAudioDevice(sound->device_id, 0);  
-}
+    SDL_PauseAudioDevice(sound->device_id, 0);
 
-static void 
-PlayMixedSFX(master_volume_t *master_volume, mix_audio_t *sfx_mix)
-{
-    SDL_ClearQueuedAudio(master_volume->sfx[0].sfx.device_id);
-    SDL_QueueAudio(master_volume->sfx[0].sfx.device_id, sfx_mix->audio,          
-                   master_volume->sfx[0].sfx.length);
-    SDL_PauseAudioDevice(master_volume->sfx[0].sfx.device_id, 0);  
+    // Lock to update then unlock
+    SDL_LockAudioDevice(sound->device_id);
+    sound->reset_audio = true;
+    SDL_UnlockAudioDevice(sound->device_id);
 }
 
 static void 
@@ -917,86 +856,6 @@ void DestroyAssets(asset_t *assets)
     SDL_DestroyTexture(assets->texture);
 }
 
-typedef enum 
-{
-    TITLE_NONE,
-    TITLE_NEW_GAME,
-    TITLE_LOAD_GAME,
-    TITLE_SETTINGS,
-    TITLE_EXIT,
-} title_screen;
-title_screen title_screen_state = TITLE_NONE;
-
-typedef enum
-{
-    VOL_SETTINGS_NONE,
-    VOL_SETTINGS_MASTER,
-    VOL_SETTINGS_MUSIC,
-    VOL_SETTINGS_SFX,
-    VOL_SETTINGS_APPLY
-} volume_settings;
-volume_settings volume_settings_state = VOL_SETTINGS_NONE;
-
-typedef enum
-{
-    VOL_LEVEL_NONE,
-    VOL_LEVEL_GREEN,
-    VOL_LEVEL_YELLOW,
-    VOL_LEVEL_ORANGE,
-    VOL_LEVEL_RED
-} volume_level;
-volume_level volume_level_state = VOL_LEVEL_NONE;
-
-typedef enum 
-{
-    CLASS_NONE,
-    CLASS_KNIGHT,
-    CLASS_PALADIN,
-    CLASS_MAGE,
-    CLASS_ARCHER
-} character_class_selection;
-character_class_selection character_class_selection_state = CLASS_NONE;
-
-typedef enum 
-{
-    CLASS_POINTS_NONE,
-    CLASS_POINTS_PERSONALITY,
-    CLASS_POINTS_PRESET,
-    CLASS_POINTS_MANUAL,
-} character_class_point_allocation_method;
-character_class_point_allocation_method character_class_point_allocation_method_state = CLASS_POINTS_NONE;
-
-// ENTIRELY BASED on DQ3 remaster
-// https://game8.co/games/Dragon-Quest-3/archives/464271
-typedef enum
-{
-    CLASS_PERSONALITY_RESULT_NONE,
-    CLASS_PERSONALITY_RESULT_VILLAGE,
-    CLASS_PERSONALITY_RESULT_MONSTER,
-    CLASS_PERSONALITY_RESULT_FOREST,
-    CLASS_PERSONALITY_RESULT_CAVE,
-    CLASS_PERSONALITY_RESULT_DESERT,
-    CLASS_PERSONALITY_RESULT_TOWER,
-    CLASS_PERSONALITY_RESULT_THEATER,
-    CLASS_PERSONALITY_RESULT_CASTLE,
-} character_class_personality_test_result;
-character_class_personality_test_result character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_NONE;
-
-typedef enum
-{
-    CLASS_NAME_NONE,
-    CLASS_NAME_ENTER
-} character_class_name_submission;
-character_class_name_submission character_class_name_submission_state = CLASS_NAME_NONE;
-
-typedef enum
-{
-    CONFIRMATION_YES,
-    CONFIRMATION_NO,
-    CONFIRMATION_NONE,
-} yes_or_no_buttons;
-yes_or_no_buttons yes_or_no_buttons_state =  CONFIRMATION_NONE;
-
 typedef struct
 {
     u32 r, g, b, a;
@@ -1101,6 +960,39 @@ void UpdateAndRenderVolumeBars(volume_controller_t *volume_controller)
     }
 }
 
+void Audio_SFXCallback(void *user_data, u8 *stream, int length)
+{
+    wav_t *context = (wav_t *)user_data;
+
+    // Clear the output buffer.
+    SDL_memset(stream, 0, length);
+
+    if (context->reset_audio) {
+        context->offset = 0;
+        context->reset_audio = false;
+    }
+
+    // Calculate how many bytes remain in the buffer.
+    u32 remaining = context->length - context->offset;
+    if ((u32)length > remaining) {
+        // Mix only the remainder of the audio buffer.
+        SDL_MixAudioFormat(stream, context->buffer + context->offset,
+                           context->spec.format, remaining, context->volume);
+        // Set offset to the end, so we don't loop.
+        context->offset = context->length;
+    } else {
+        // Mix normally, with no wrap-around.
+        SDL_MixAudioFormat(stream, context->buffer + context->offset,
+                           context->spec.format, length, context->volume);
+        context->offset += length;
+        if (context->offset >= context->length) {
+            context->offset = context->length;
+        }
+    }
+
+    printf("SFX played, offset now: %u\n", context->offset);
+}
+
 void Audio_MusicCallback(void *user_data, u8 *stream, int length)
 {
     wav_t *context = (wav_t *)user_data;
@@ -1128,10 +1020,11 @@ void Audio_MusicCallback(void *user_data, u8 *stream, int length)
         }
     }
 
+    printf("MUSIC\n");
 }
 
 static void
-LoadWavFileTest(wav_t *wav, const char *filename)
+LoadWavFileTest(wav_t *wav, const char *filename, bool music)
 {
     // Must convert the raw audio data to match the system's sample rate 
     SDL_AudioSpec loadedSpec;
@@ -1151,7 +1044,16 @@ LoadWavFileTest(wav_t *wav, const char *filename)
     desiredSpec.format = AUDIO_S16LSB;      // desired sample format
     desiredSpec.channels = 2;             // desired number of channels
     desiredSpec.samples = 512;            // desired buffer size
-    desiredSpec.callback = Audio_MusicCallback;  // our callback function
+                    
+    // TEMP
+    if (music)
+    {
+        desiredSpec.callback = Audio_MusicCallback;  // our callback function
+    }
+    else
+    {
+        desiredSpec.callback = Audio_SFXCallback;  // our callback function
+    }
     
     SDL_AudioCVT cvt;
     if (SDL_BuildAudioCVT(&cvt,
@@ -1188,7 +1090,7 @@ LoadWavFileTest(wav_t *wav, const char *filename)
     u32 convertedLength = cvt.len_cvt;
     printf("Converted audio length: %u bytes\n", convertedLength);
 
-    wav->volume = 64;
+    wav->volume = 32;
     wav->offset = 0;   
     wav->length = convertedLength;   
     wav->buffer = cvt.buf;   
@@ -1257,10 +1159,13 @@ void PushString(char *dest, char *src)
 
 int main(int argc, char *argv[])
 {
+    srand(time(NULL));
+
     char open[2] = "";
     char close[2] = "fe";
     PushString(open, close);
-    
+    PopStack(open);
+
     printf("%s\n", open);
 
 
@@ -1318,12 +1223,12 @@ int main(int argc, char *argv[])
     }
 
     music_t music_volume[2] = {0};
-    LoadWavFileTest(&music_volume[0].music, "assets/music/5. Smooth As Glass.wav");
-    LoadWavFileTest(&music_volume[1].music, "assets/music/4. Church of Order.wav");
+    LoadWavFileTest(&music_volume[0].music, "assets/music/5. Smooth As Glass.wav", true);
+    LoadWavFileTest(&music_volume[1].music, "assets/music/4. Church of Order.wav", true);
 
     sfx_t sfx_volume_test[2] = {0};
-    LoadWavFileTest(&sfx_volume_test[0].sfx, "assets/sfx/fire_a.wav"); 
-    LoadWavFileTest(&sfx_volume_test[1].sfx, "assets/sfx/fire_b.wav"); 
+    LoadWavFileTest(&sfx_volume_test[0].sfx, "assets/sfx/fire_a.wav", false); 
+    LoadWavFileTest(&sfx_volume_test[1].sfx, "assets/sfx/fire_b.wav", false); 
 
 
     // 2 different sfx "files"
@@ -1732,7 +1637,8 @@ int main(int argc, char *argv[])
         { "Master", screen_center_x - (GLYPH_WIDTH * strlen(settings_options[1].text) - 1) / 2, screen_center_y + 0 },
         { "Music", screen_center_x - (GLYPH_WIDTH * strlen(settings_options[2].text) - 1) / 2, screen_center_y + 24 },
         { "SFX", screen_center_x - (GLYPH_WIDTH * strlen(settings_options[3].text) - 1) / 2, screen_center_y + 48 },
-        { " ", screen_center_x - ((GLYPH_WIDTH * strlen(settings_options[4].text) - 1) / 2) + 96, screen_center_y + 96 }, // remove
+        { "Apply", screen_center_x - ((GLYPH_WIDTH * strlen(settings_options[4].text) - 1) / 2), screen_center_y + 76 }, 
+        //{ "Apply", screen_center_x - ((GLYPH_WIDTH * strlen(settings_options[4].text) - 1) / 2) + 96, screen_center_y + 96 }, // old
     };
 
     // Back and Apply buttons are seperate
@@ -2053,52 +1959,67 @@ int main(int argc, char *argv[])
     // Base stats of each class from here: https://dragon-quest.org/wiki/List_of_vocations_in_Dragon_Quest_III#The_vocations
     typedef struct
     {
-        int strength; 
-        int resilience; 
-        int agility; 
-        int stamina; 
-        int wisdom; 
-        int luck; 
+        int strength; // Determines physical dmg
+        int resilience; // Determines damage received
+        int agility; // Determines who acts first in battle - probably change to evasiveness
+        int stamina; // Determines HP value and scaling
+        int wisdom; // Determines magic dmg and MP storage
+        int luck; // Determines crit chance
 
-        int max_hp; 
-        int max_mp; 
-        int attack; 
-        int defense; 
+        // Maybe this is seperate to just the player and not class?
+        int max_hp; // Max HP 
+        int hp; // Current HP
+        int max_mp; // Max MP
+        int mp; // Current MP
+        int attack; // Combination of your strength and weapon damage
+        int defense; // 
     } class_base_stats_t;
 
-    class_base_stats_t class_base_stats[4] = {
-        { 11, 11, 6, 13, 3, 4}, // Knight 
-        { 7,  11, 7, 9, 11, 5}, // Paladin
-        { 7,  10, 7, 8, 12, 7}, // Wizard
-        { 8, 10, 11, 10, 7, 5}, // Archer
-    }; 
+    class_base_stats_t class_base_stats[4] = {0};
+    class_base_stats[0].strength = 11;
+    class_base_stats[0].resilience = 11;
+    class_base_stats[0].agility = 6;
+    class_base_stats[0].stamina = 13;
+    class_base_stats[0].wisdom = 3;
+    class_base_stats[0].luck = 4;
+    class_base_stats[0].max_hp = (3 * class_base_stats[0].stamina) + 5; // formula from DQ3 -> HP = [3 * VIT / 2] + 5
+    class_base_stats[0].hp = class_base_stats[0].max_hp; // 
+    class_base_stats[0].max_mp = class_base_stats[0].wisdom; // MP == Wisdom
+    class_base_stats[0].hp = class_base_stats[0].max_mp; // 
+
+    printf("Max HP: %d\n", class_base_stats[0].max_hp);
 
     typedef struct
     {
-        float strength_growth;
-        float agility_growth;
-        float vitality_growth;
-        float luck_growth;
+        int strength_growth;
+        int agility_growth;
+        int stamina_growth;
+        int wisdom_growth;
+        int luck_growth;
     } personality_stat_growth_t;
 
     // 45 different personalities
     personality_stat_growth_t personality_stat_growth[45] = {0};
-    personality_stat_growth[0].strength_growth = .10; // multipllier of 10%
-    personality_stat_growth[0].agility_growth = .20; // multipllier of 10%
-    personality_stat_growth[0].vitality_growth = .10; // multipllier of 10%
-    personality_stat_growth[0].luck_growth = .20; // multipllier of 10%
-    printf("strength stat growth: %d\n", (int)((float)class_base_stats[0].strength * 
-                                               personality_stat_growth[0].strength_growth));
+    personality_stat_growth[0].strength_growth = -1;
+    personality_stat_growth[0].agility_growth = 2;
+    personality_stat_growth[0].stamina_growth = -1;
+    personality_stat_growth[0].wisdom_growth = 0;
+    personality_stat_growth[0].luck_growth = -2;
+
+    // TODO: Class base stat + Personality growth into a function
+    int new_str_state = class_base_stats[0].strength + personality_stat_growth[0].strength_growth;
+    printf("Acrobat Knight STR: %d\n", new_str_state);
+
+
 
     // I think the best and simplest approach for now is each class will have its own base stat,
     // and depending on the personality, their base stat will alter from that. The stat growth will
-    // be fixed to increase a set of attributes per level -
+    // be fixed to increase a set of attributes per level:
     // Ex: 
     //    A wizard with a personality that favors it such as wise, will have an advantage of +3 on their wisdom attribute,
-    //    leveling up will be fixed as +1 for every stat that is neutral, + or - for what is a boon or bane. 
+    //    leveling up will be fixed as +1 for every stat that is neutral. 
     //
-    // rather than randomly rolling for what stat to
-    // increase on level up.
+    // Rather than randomly rolling for what stat to increase on level up:
     // Ex: 
     //   https://gamefaqs.gamespot.com/nes/587249-dragon-warrior-iii/faqs/64752
     //   DQ3 has a very complex leveling system that for every stat added on level up, it measures against a "baseline"
@@ -2128,11 +2049,14 @@ int main(int argc, char *argv[])
         int experience_index;
         u32 experience_to_next_level[20];
         
+        // character class model
+        asset_t model;
+
         struct 
         {
             char name[32];
             class_base_stats_t base_stats;
-        } class;
+    } class;
 
         struct
         {
@@ -2159,10 +2083,34 @@ int main(int argc, char *argv[])
 
     int experience_index = character_data.equipment_index;
     character_data.experience_to_next_level[experience_index] = 1000;
+       
+    // Stat growth:
+    // Baseline -> Value that if the gain value exceeds it, the character loses their normal gain rate and instead rolls a 50/50 chance to gain 
+    // +1 or +0.
+    // Think of it like a bar graph per stat attribute where there's a limit for each for each class, the 50/50 chance roll is simply there to
+    // balance in a way that from level 1 to 50, one's HP growth will be consistent in gaining +4 or so per level until 50, but because they excel in
+    // magic, their INT will grow at a large rate but cap quickly.
+
+    int strength_baseline = 15;
+    
+    int strength_per_level_test[10] = {
+        4, 4, 4, 4, 8, 8, 8, 16, 16, 16
+    };
         
+    int empty_arr[10] = {0};
+    for (int i = 0; i < ArraySize(empty_arr); ++i)
+    {
+        if (strength_per_level_test[i] > strength_baseline)
+        {
+            strength_per_level_test[i] = rand() % 2; // for now but should be +1 or +0
+        }
+        
+        empty_arr[i] = strength_per_level_test[i];
+        printf("empty_arr: %d\n", empty_arr[i]);
+    }
 
-
-
+    
+    
 
     /////////////////////////////////////////////////////////////////////////
 
@@ -2171,6 +2119,8 @@ int main(int argc, char *argv[])
     int questions_answered_index = 1;
     is_title_screen = true;
     Running = true;
+
+    bool volume_settings_touched = false;
 
     bool is_final_question = false;
     bool is_quiz = false;
@@ -2184,6 +2134,7 @@ int main(int argc, char *argv[])
     bool is_castle = false;
 
     bool is_glyph_selected = false;
+    bool is_glyph_deleted = false;
     bool entering_glyph = false;
                             
     u32 current_row = glyph_index / 10;
@@ -2215,11 +2166,7 @@ int main(int argc, char *argv[])
                                 option_index--;
                                 if (option_index < 0)
                                     option_index = ArraySize(menu_items) - 1;
-                                SDL_ClearQueuedAudio(master_volume.sfx[0].sfx.device_id);
-                                SDL_QueueAudio(master_volume.sfx[0].sfx.device_id, sfx_mix.audio,          
-                                               master_volume.sfx[0].sfx.length);
-                                SDL_PauseAudioDevice(master_volume.sfx[0].sfx.device_id, 0);  
-
+                                PlaySFX(&sfx_volume_test[0].sfx);
                             }
                             
                             if (is_new_game)
@@ -2227,7 +2174,7 @@ int main(int argc, char *argv[])
                                 button_select--;
                                 if (button_select < 0)
                                     button_select = ArraySize(confirmation_buttons) - 1;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
                             }
                             
                             if (confirmation.is_active)
@@ -2235,7 +2182,7 @@ int main(int argc, char *argv[])
                                 confirmation.index--;
                                 if (confirmation.index < 0)
                                     confirmation.index = ArraySize(confirmation.info.buttons) - 1;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
                             }
 
                             if (is_settings)
@@ -2262,10 +2209,7 @@ int main(int argc, char *argv[])
                                 option_index++;
                                 if (option_index >= ArraySize(menu_items))
                                     option_index = 0;
-                                SDL_ClearQueuedAudio(master_volume.sfx[0].sfx.device_id);
-                                SDL_QueueAudio(master_volume.sfx[0].sfx.device_id, sfx_mix.audio,          
-                                               master_volume.sfx[0].sfx.length);
-                                SDL_PauseAudioDevice(master_volume.sfx[0].sfx.device_id, 0);  
+                                PlaySFX(&sfx_volume_test[0].sfx);
                             }
 
                             if (is_new_game)
@@ -2273,7 +2217,7 @@ int main(int argc, char *argv[])
                                 button_select++;
                                 if (button_select >= ArraySize(confirmation_buttons))
                                     button_select = 0;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
                             }
     
                             if (confirmation.is_active)
@@ -2281,7 +2225,7 @@ int main(int argc, char *argv[])
                                 confirmation.index++;
                                 if (confirmation.index >= ArraySize(confirmation.info.buttons))
                                     confirmation.index = 0;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
                             }
 
                             if (is_settings)
@@ -2307,17 +2251,15 @@ int main(int argc, char *argv[])
                                 character_creation_screen.index--;
                                 if (character_creation_screen.index < 0)
                                     character_creation_screen.index = ArraySize(character_creation_screen.info) - 1;
-                                PlaySFX(&sfx_option);
-
+                                PlaySFX(&sfx_volume_test[0].sfx);
                             }
-
 
                             if (character_allocation_select_screen.is_active && !confirmation.is_active)
                             {
                                 character_allocation_select_screen.index--;
                                 if (character_allocation_select_screen.index < 0)
                                     character_allocation_select_screen.index = ArraySize(character_allocation_select_screen.info) - 1;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
                             }
                       
                             // switch case below
@@ -2326,7 +2268,8 @@ int main(int argc, char *argv[])
                                 volume_controller[0].index--;
                                 if (volume_controller[0].index < 0)
                                     volume_controller[0].index = 0;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
+                                volume_settings_touched = true;
                             }
 
                             if (is_settings && settings_option_index == 2)
@@ -2334,7 +2277,8 @@ int main(int argc, char *argv[])
                                 volume_controller[1].index--;
                                 if (volume_controller[1].index < 0)
                                     volume_controller[1].index = 0;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
+                                volume_settings_touched = true;
                             }
 
                             if (is_settings && settings_option_index == 3)
@@ -2342,7 +2286,8 @@ int main(int argc, char *argv[])
                                 volume_controller[2].index--;
                                 if (volume_controller[2].index < 0)
                                     volume_controller[2].index = 0;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
+                                volume_settings_touched = true;
                             } 
 
                             if (is_settings)
@@ -2393,7 +2338,7 @@ int main(int argc, char *argv[])
                                         } break;
                                         default:
                                         {
-
+                                            volume_controller[i].one = true;
                                         } break;
                                     }
                                 }
@@ -2414,7 +2359,7 @@ int main(int argc, char *argv[])
                                 character_creation_screen.index++;
                                 if (character_creation_screen.index >= ArraySize(character_creation_screen.info))
                                     character_creation_screen.index = 0;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
                             }
 
                             if (character_allocation_select_screen.is_active && !confirmation.is_active)
@@ -2422,7 +2367,7 @@ int main(int argc, char *argv[])
                                 character_allocation_select_screen.index++;
                                 if (character_allocation_select_screen.index >= ArraySize(character_allocation_select_screen.info))
                                     character_allocation_select_screen.index = 0;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
                             }
 
                             if (is_settings)
@@ -2441,7 +2386,10 @@ int main(int argc, char *argv[])
                                         volume_controller[0].index++;
                                         if (volume_controller[0].index >= ArraySize(settings_options))
                                             volume_controller[0].index = ArraySize(settings_options) - 1;
-                                        PlaySFX(&sfx_option);
+                  
+                                        PlaySFX(&sfx_volume_test[0].sfx);
+
+                                        volume_settings_touched = true;
                                     } break;
                                     case 2:
                                     {
@@ -2450,7 +2398,8 @@ int main(int argc, char *argv[])
                                         volume_controller[1].index++;
                                         if (volume_controller[1].index >= ArraySize(settings_options))
                                             volume_controller[1].index = ArraySize(settings_options) - 1;
-                                        PlaySFX(&sfx_option);
+                                        PlaySFX(&sfx_volume_test[0].sfx);
+                                        volume_settings_touched = true;
 
                                     } break;
                                     case 3:
@@ -2460,7 +2409,8 @@ int main(int argc, char *argv[])
                                         volume_controller[2].index++;
                                         if (volume_controller[2].index >= ArraySize(settings_options))
                                             volume_controller[2].index = ArraySize(settings_options) - 1;
-                                        PlaySFX(&sfx_option);
+                                        PlaySFX(&sfx_volume_test[0].sfx);
+                                        volume_settings_touched = true;
                                     } break;
                                 }
 
@@ -2499,8 +2449,6 @@ int main(int argc, char *argv[])
                                 glyph_index = current_row * 10 + current_col;
                                 printf("current_col: %d\n", current_col);
                             }
-
-
                         } break;
                         case SDLK_q:
                         {
@@ -2509,7 +2457,7 @@ int main(int argc, char *argv[])
                                 back_and_apply_buttons_index--;
                                 if (back_and_apply_buttons_index < 0)
                                     back_and_apply_buttons_index = 0;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
                                 printf("%d\n", back_and_apply_buttons_index);
                                 printf("%s\n", back_and_apply_buttons[back_or_next_cursor_index].text);
                                 
@@ -2521,6 +2469,7 @@ int main(int argc, char *argv[])
                                         printf("are we in back?\n");
                                         is_title_screen = true;
                                         is_settings = false;
+                                        volume_settings_touched = false;
                                         title_screen_state = TITLE_NONE;
                                     } break;
                                 }
@@ -2534,7 +2483,7 @@ int main(int argc, char *argv[])
                                 back_and_apply_buttons_index++;
                                 if (back_and_apply_buttons_index >= ArraySize(back_and_apply_buttons))
                                     back_and_apply_buttons_index = ArraySize(back_and_apply_buttons) - 1;
-                                PlaySFX(&sfx_option);
+                                PlaySFX(&sfx_volume_test[0].sfx);
 
                                 printf("%s\n", back_and_apply_buttons[back_or_next_cursor_index].text);
                                 
@@ -2549,6 +2498,14 @@ int main(int argc, char *argv[])
                                     } break;
                                 }
                                 
+                            }
+                        } break;
+                        case SDLK_BACKSPACE:
+                        {
+                            if (is_name_submission && !is_glyph_deleted)
+                            {
+                                entering_glyph = true;
+                                character_class_name_submission_state = CLASS_NAME_DELETE;
                             }
                         } break;
                         case SDLK_RETURN:
@@ -3100,7 +3057,7 @@ int main(int argc, char *argv[])
                             {
                                 switch (settings_option_index)
                                 {
-                                    case 4: // green
+                                    case 4: // apply
                                     {
                                         for (int i = 0; i < 3; ++i)
                                         {
@@ -3115,7 +3072,7 @@ int main(int argc, char *argv[])
                                 }
                             }
 
-                            if (is_name_submission)
+                            if (is_name_submission && !is_glyph_selected)
                             {
                                 printf("glyph_index: %d\n", glyph_index);
                                 glyph_index = current_row * 10 + current_col;
@@ -3152,7 +3109,7 @@ int main(int argc, char *argv[])
             {
                 case TITLE_NONE:
                 {
-                    SDL_PauseAudioDevice(master_volume.music[0].music.device_id, 0);
+                    // SDL_PauseAudioDevice(master_volume.music[0].music.device_id, 0);
 
                     SDL_RenderCopy(SDLWindow.Renderer, title_screen_asset.texture, NULL, &title_screen_asset.body);
                     CursorForItems(&menu_items[option_index], &right_cursor_asset, 4, 1);
@@ -3192,11 +3149,6 @@ int main(int argc, char *argv[])
                 } break;
             }       
         }
-        else
-        {
-            // TODO: Here for now, would like the theme song still playing everywhere but the game loop 
-            //PauseAudio(&title_screen_theme);
-        }
     
         if (is_settings) 
         {
@@ -3204,7 +3156,7 @@ int main(int argc, char *argv[])
             CursorForItems(&settings_options[settings_option_index], &right_cursor_asset, 6, 1);
             RenderAndUpdateAsset(&right_cursor_asset);
             
-            for (int i = 0; i < ArraySize(settings_options); ++i) 
+            for (int i = 0; i < ArraySize(settings_options) - 1; ++i) // Ignore rendering the apply button 
             {
                 RenderText(SDLWindow.Renderer, font_atlas,
                            settings_options[i].x, 
@@ -3213,6 +3165,19 @@ int main(int argc, char *argv[])
                            white);
             }
 
+            // If any of the volume settings has been touched, then render the apply button
+            // TODO: Cursor should not be able to hover over apply when it isn't rendered yet.
+            if (volume_settings_touched) 
+            {
+                RenderText(SDLWindow.Renderer, font_atlas,
+                           settings_options[4].x, 
+                           settings_options[4].y,
+                           settings_options[4].text, 
+                           white);
+            }
+
+            // This currently renders the back and apply button, but I prefer just the back button, where the apply button is better suited where 
+            // and who it was supposed to render with, the volume settings.
             for (int i = 0; i < ArraySize(back_and_apply_buttons); ++i)
             {
                 RenderText(SDLWindow.Renderer, font_atlas,
@@ -3359,6 +3324,7 @@ int main(int argc, char *argv[])
                         }
                     }
 
+
                     for (int j = 0; j < 3; ++j)
                     {
                         for (int i = 0; i < volume_controller[j].index; ++i)
@@ -3374,8 +3340,6 @@ int main(int argc, char *argv[])
                 } break;
             }
         }
-
-
 
 
         if (is_new_game)
@@ -3425,6 +3389,7 @@ int main(int argc, char *argv[])
                         } break;
                         case CLASS_KNIGHT:
                         {
+                            // TODO: Initialize class into character data entirely
                             PushString(character_data.class.name, "Knight");
                             printf("player_class: %s\n", character_data.class.name);
         
@@ -3770,6 +3735,11 @@ int main(int argc, char *argv[])
                             is_glyph_selected = true;
                             entering_glyph = false;
                         } break;
+                        case CLASS_NAME_DELETE:
+                        {
+                            is_glyph_deleted = true;
+                            entering_glyph = false;
+                        } break;
                         default:    
                         {
                             character_class_name_submission_state = CLASS_NAME_NONE;
@@ -3782,20 +3752,44 @@ int main(int argc, char *argv[])
                 {
                     // TODO: Remove selected glyph
                     // Render selected glyph
+                    printf("select!\n");
+                    printf("name_pos: %d\n", name_pos);
                     if (name_limit > 0 && name_pos <= 10)
                     {
                         temp_glyph = test_glyph_grid[glyph_index].glyph;
                         PushCharStack(name_array[name_pos].str, temp_glyph);
                         PushCharStack(character_data.name, temp_glyph);
-                        name_limit--;
-                        name_pos++;
+                        --name_limit;
+                        ++name_pos;
                     }
 
                     printf("player_name: %s\n", character_data.name);
                     printf("name_limit: %d\n", name_limit);
                     is_glyph_selected = false;
                 }
-             
+            
+                if (is_glyph_deleted)
+                {
+                    printf("delete!\n");
+                    printf("name_pos: %d\n", name_pos);
+                    if (name_limit < 10 && name_pos >= 0)
+                    {
+                        // Update the position before popping, otherwise we're popping the empty char from the new position 
+                        // PushCharStack had placed us, and that results in having to press the backspace twice to delete, and 
+                        // that leaves a weird render artifact for the glyphs to be rendered ontop of each other.
+                        ++name_limit;
+                        --name_pos;
+                        temp_glyph = test_glyph_grid[glyph_index].glyph;
+                        PopStack(name_array[name_pos].str);
+                        PopStack(character_data.name);
+                        
+                    }
+
+                    printf("player_name: %s\n", character_data.name);
+                    printf("name_limit: %d\n", name_limit);
+                    is_glyph_deleted = false;
+                }
+
 
                 for (int i = 0; i < ArraySize(name_bar_underline); ++i)
                 {
@@ -3805,7 +3799,6 @@ int main(int argc, char *argv[])
                            name_bar_underline[i].text,
                            white);
                 }
-                
 
                 // Array sitting outside to hold an array of chars that's passed in for every glyph we've pressed enter on, from which we pushed into
                 for (int i = 0; i < ArraySize(name_array); ++i)
@@ -3817,18 +3810,12 @@ int main(int argc, char *argv[])
                                white);
                 }
 
-                // Test code
-                if (name_pos >= 10)
-                {
-                    RenderText(SDLWindow.Renderer, font_atlas,
-                               screen_center_x, 
-                               screen_center_y, 
-                               (const char *)character_data.name, 
-                               white);
-                }
-                
             }
         }
+
+    
+        // Final screen from new_game is the character overview into the game
+
 
         if (is_game_running)
         {
