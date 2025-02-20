@@ -21,6 +21,10 @@ static bool Running;
 #define ArraySize2D(array) ( sizeof((array)[0]) / sizeof((array)[0][0]) )
 #define CenterRenderedText(x_screen_center, text, offset) ( x_screen_center - ((GLYPH_WIDTH * strlen(text)) / 2) + offset )
 
+#define SCREEN_CENTER_X (ASPECT_WIDTH  / 2)
+#define SCREEN_CENTER_Y (ASPECT_HEIGHT / 2)
+
+
 struct
 {
     bool up, down, left, right;
@@ -1158,6 +1162,7 @@ void PushString(char *dest, char *src)
     }
 }
 
+// ----------------------- EXPERIEMENTAL --------------------------
 typedef struct
 {
     int index; 
@@ -1180,11 +1185,8 @@ typedef struct
 
 typedef struct
 {
-    // Could pack with a set of bools but would might be better and cleaner using each bit as a flag to enable or disable a scenario
     u8 result; 
     menu_item_t options[5];
-    menu_item_t village_options[3];
-    menu_item_t monster_options[5];
 } scenario_t;
 
 typedef struct
@@ -1192,15 +1194,7 @@ typedef struct
     int index; 
     bool is_active;    
     scenario_t scenario[8];
-
 } test_personality_scenario_t; 
-
-typedef struct
-{
-    const char text[5][100];
-    int x[5];
-    int y[5];
-} define_scenario_t;
 
 #define VILLAGE   0
 #define MONSTER_1 1
@@ -1220,50 +1214,35 @@ typedef enum
     SCENARIO_CASTLE     = (1 << 7),
 } scenario_results;
 
-define_scenario_t define_scenario[2] = {
-    {
-        // Text
-        {
-            {"Kill fewer than three people"},
-            {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
-            {"Kill three or more people, \nbut don't kill the women, \nthe elderly, or children"},
-            {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
-            {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
-        },
-        
-        // X positions
-        {1, 1, 1, 1, 1},
-        
-        // Y positions
-        {1, 1, 1, 1, 1},
+#define VILLAGE_NUM_OPTIONS 3
+#define MONSTER_NUM_OPTIONS 5
 
+typedef struct
+{   
+    const char text[3][100];
+    int x[3];
+    int y[3];
+} village_scenario_t;
+
+   
+village_scenario_t village_options = {
+    // Village Options
+    {
+        {"Steal the coins openly with pride"},
+        {"Steal the coins sneakily"},
+        {"Don't steal the coins and return them"}
     },
+    // X position for rendering
     {
-        // Text
-        {
-            {"Kill fewer than three people"},
-            {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
-            {"Kill three or more people, \nbut don't kill the women, \nthe elderly, or children"},
-            {""},
-            {""},
-        },
-        
-        // X positions
-        {2, 2, 2, 2, 2},
-        
-        // Y positions
-        {2, 2, 2, 2, 2},
-
-    }
+        1, 1, 1,
+    },
+    // Y position for rendering
+    {
+        1, 1, 1,
+    },
 };
 
-const char village_scenario_options[3][100] = {
-    {"Kill fewer than three people"},
-    {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
-    {"Kill three or more people, \nbut don't kill the women, \nthe elderly, or children"},
-}; 
-
-const char monster_scenario_options[5][100] = {
+const char monster_scenario_options[MONSTER_NUM_OPTIONS][100] = {
     {"Kill fewer than three people"},
     {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
     {"Kill three or more people, \nbut don't kill the women, \nthe elderly, or children"},
@@ -1279,11 +1258,11 @@ int Scenario_GetNumOptions(scenario_results scenario)
     {
         case VILLAGE:
         {
-            results = 3;
+            results = VILLAGE_NUM_OPTIONS;
         } break;
         case MONSTER_1:
         {
-            results = 5;
+            results = MONSTER_NUM_OPTIONS;
         } break;
         default:
         {
@@ -1295,46 +1274,35 @@ int Scenario_GetNumOptions(scenario_results scenario)
     return results;
 }
 
-void Personality_ScenarioInitialize(test_personality_scenario_t *personality_scenario, 
-                                    const char scenario_options[][100],
-                                    scenario_results scenario) 
+void Personality_ScenarioInitialize(test_personality_scenario_t *personality, 
+                                    //const char scenario_options[][100],
+                                    village_scenario_t *scenario,
+                                    scenario_results results) 
 {
-    int num_options = Scenario_GetNumOptions(scenario);
+    int num_options = Scenario_GetNumOptions(results);
     printf("num_options: %d\n", num_options);
 
-    for (int i = 0; 
-         i < num_options && 
-         i < ArraySize(personality_scenario->scenario[scenario].options); 
-         ++i)
+    for (int i = 0; i < num_options; ++i)
     {
-        personality_scenario->scenario[scenario].options[i].text = define_scenario[1].text[i];
-        personality_scenario->scenario[scenario].options[i].x = define_scenario[1].x[i];
-        personality_scenario->scenario[scenario].options[i].y = define_scenario[1].y[i];
+        personality->scenario[results].options[i].text = scenario->text[i];
+        personality->scenario[results].options[i].x = scenario->y[i];
+        personality->scenario[results].options[i].y = scenario->y[i];
     }
 
     for (int i = 0; i < num_options; ++i)
     {
-        printf("scenario_text: %s\n", personality_scenario->scenario[scenario].options[i].text);
-        printf("scenario_x: %d\n", personality_scenario->scenario[scenario].options[i].x);
-        printf("scenario_y: %d\n", personality_scenario->scenario[scenario].options[i].y);
+        printf("scenario_text: %s\n", personality->scenario[results].options[i].text);
+        printf("scenario_x: %d\n", personality->scenario[results].options[i].x);
+        printf("scenario_y: %d\n", personality->scenario[results].options[i].y);
     }
 
 }
 
-// int screen_x_pos[5], int screen_y_pos[5], int x_offset[5], scenario_results scenario)
-
+// ------------------------------------------------------------------------------
 
 int main(int argc, char *argv[])
 {
     srand(time(NULL));
-
-    char open[2] = "";
-    char close[2] = "fe";
-    PushString(open, close);
-    PopStack(open);
-
-    printf("%s\n", open);
-
 
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
@@ -1581,14 +1549,12 @@ int main(int argc, char *argv[])
 
     SDL_Color green = {0, 255, 0, 255};
     SDL_Color white = {255, 255, 255, 255};
-    int screen_center_x = ASPECT_WIDTH / 2;
-    int screen_center_y = ASPECT_HEIGHT / 2;
     int option_index = 0;
     menu_item_t menu_items[4] = {
-        { "New Game", screen_center_x - 32, screen_center_y},
-        { "Continue Game", screen_center_x - 32, screen_center_y + 16 },
-        { "Settings", screen_center_x - 32, screen_center_y + 32 },
-        { "Exit", screen_center_x - 32, screen_center_y + 48 },
+        { "New Game", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y},
+        { "Continue Game", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y + 16 },
+        { "Settings", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y + 32 },
+        { "Exit", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y + 48 },
     };
 
     asset_t up_cursor_asset = {0};
@@ -1665,17 +1631,17 @@ int main(int argc, char *argv[])
         character_creation_screen.info[i].description = class_description[i];
     }
     
-    InitializeAssetToRender(&character_creation_screen.info[0].asset, screen_center_x - 96, screen_center_y, 
+    InitializeAssetToRender(&character_creation_screen.info[0].asset, SCREEN_CENTER_X - 96, SCREEN_CENTER_Y, 
                             character_creation_screen.info[0].asset.w, character_creation_screen.info[0].asset.h);
-    InitializeAssetToRender(&character_creation_screen.info[1].asset, screen_center_x - 36, screen_center_y, 
+    InitializeAssetToRender(&character_creation_screen.info[1].asset, SCREEN_CENTER_X - 36, SCREEN_CENTER_Y, 
                             character_creation_screen.info[1].asset.w, character_creation_screen.info[1].asset.h);  
-    InitializeAssetToRender(&character_creation_screen.info[2].asset, screen_center_x + 28, screen_center_y, 
+    InitializeAssetToRender(&character_creation_screen.info[2].asset, SCREEN_CENTER_X + 28, SCREEN_CENTER_Y, 
                             character_creation_screen.info[2].asset.w, character_creation_screen.info[2].asset.h);
-    InitializeAssetToRender(&character_creation_screen.info[3].asset, screen_center_x + 80, screen_center_y, 
+    InitializeAssetToRender(&character_creation_screen.info[3].asset, SCREEN_CENTER_X + 80, SCREEN_CENTER_Y, 
                             character_creation_screen.info[3].asset.w, character_creation_screen.info[3].asset.h);
 
-    character_creation_screen.description_box.x = screen_center_x - 112; // 16px padding from start of X
-    character_creation_screen.description_box.y = screen_center_y + 48;
+    character_creation_screen.description_box.x = SCREEN_CENTER_X - 112; // 16px padding from start of X
+    character_creation_screen.description_box.y = SCREEN_CENTER_Y + 48;
     character_creation_screen.description_box.w = 224; // 16px padding from end of X
     character_creation_screen.description_box.h = 64;
 
@@ -1720,15 +1686,15 @@ int main(int argc, char *argv[])
         character_allocation_select_screen.info[i].description = stat_options_description[i];
     }
 
-    InitializeAssetToRender(&character_allocation_select_screen.info[0].asset, screen_center_x - 104, screen_center_y, 
+    InitializeAssetToRender(&character_allocation_select_screen.info[0].asset, SCREEN_CENTER_X - 104, SCREEN_CENTER_Y, 
                             character_allocation_select_screen.info[0].asset.w, character_allocation_select_screen.info[0].asset.h);
-    InitializeAssetToRender(&character_allocation_select_screen.info[1].asset, screen_center_x - 28, screen_center_y, 
+    InitializeAssetToRender(&character_allocation_select_screen.info[1].asset, SCREEN_CENTER_X - 28, SCREEN_CENTER_Y, 
                             character_allocation_select_screen.info[1].asset.w, character_allocation_select_screen.info[1].asset.h);
-    InitializeAssetToRender(&character_allocation_select_screen.info[2].asset, screen_center_x + 42, screen_center_y, 
+    InitializeAssetToRender(&character_allocation_select_screen.info[2].asset, SCREEN_CENTER_X + 42, SCREEN_CENTER_Y, 
                             character_allocation_select_screen.info[2].asset.w, character_allocation_select_screen.info[2].asset.h);
 
-    character_allocation_select_screen.description_box.x = screen_center_x - 112; // 16px padding from start of X
-    character_allocation_select_screen.description_box.y = screen_center_y + 48;
+    character_allocation_select_screen.description_box.x = SCREEN_CENTER_X - 112; // 16px padding from start of X
+    character_allocation_select_screen.description_box.y = SCREEN_CENTER_Y + 48;
     character_allocation_select_screen.description_box.w = 224; // 16px padding from end of X
     character_allocation_select_screen.description_box.h = 64;
 
@@ -1751,20 +1717,20 @@ int main(int argc, char *argv[])
 
     confirmation_buttons_t confirmation = {0};
     confirmation.info.buttons[0].text = "Yes";
-    confirmation.info.buttons[0].x = screen_center_x - 4;
-    confirmation.info.buttons[0].y = screen_center_y;
+    confirmation.info.buttons[0].x = SCREEN_CENTER_X - 4;
+    confirmation.info.buttons[0].y = SCREEN_CENTER_Y;
 
     confirmation.info.buttons[1].text = "No";
-    confirmation.info.buttons[1].x = screen_center_x - 2;
-    confirmation.info.buttons[1].y = screen_center_y + 16;
+    confirmation.info.buttons[1].x = SCREEN_CENTER_X - 2;
+    confirmation.info.buttons[1].y = SCREEN_CENTER_Y + 16;
 
-    confirmation.box.x = screen_center_x - 20; // x render pos
-    confirmation.box.y = screen_center_y - 20; // y render pos
+    confirmation.box.x = SCREEN_CENTER_X - 20; // x render pos
+    confirmation.box.y = SCREEN_CENTER_Y - 20; // y render pos
     confirmation.box.w = 48;
     confirmation.box.h = 56;
 
-    confirmation.box_border.x = screen_center_x - 21; // shift the x render pos 1 pixel back
-    confirmation.box_border.y = screen_center_y - 21; // shift the y render pos 1 pixel up
+    confirmation.box_border.x = SCREEN_CENTER_X - 21; // shift the x render pos 1 pixel back
+    confirmation.box_border.y = SCREEN_CENTER_Y - 21; // shift the y render pos 1 pixel up
     confirmation.box_border.w = 50; // padding of 1px per side for x 
     confirmation.box_border.h = 58; // padding of 1px per side for y
 
@@ -1790,29 +1756,30 @@ int main(int argc, char *argv[])
     personality_scenario_t personality_scenario[1] = {0};
     
     personality_scenario[MONSTER].info.monster_options[0].text = "Kill fewer than three people";
-    personality_scenario[MONSTER].info.monster_options[0].x = CenterRenderedText(screen_center_x, personality_scenario[MONSTER].info.monster_options[0].text, 0);
-    personality_scenario[MONSTER].info.monster_options[0].y = screen_center_y;
+    personality_scenario[MONSTER].info.monster_options[0].x = CenterRenderedText(SCREEN_CENTER_X, personality_scenario[MONSTER].info.monster_options[0].text, 0);
+    personality_scenario[MONSTER].info.monster_options[0].y = SCREEN_CENTER_Y;
     
     personality_scenario[MONSTER].info.monster_options[1].text = "Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children";
-    personality_scenario[MONSTER].info.monster_options[1].x = CenterRenderedText(screen_center_x, personality_scenario[MONSTER].info.monster_options[1].text, 176);
-    personality_scenario[MONSTER].info.monster_options[1].y = screen_center_y + 16;
+    personality_scenario[MONSTER].info.monster_options[1].x = CenterRenderedText(SCREEN_CENTER_X, personality_scenario[MONSTER].info.monster_options[1].text, 176);
+    personality_scenario[MONSTER].info.monster_options[1].y = SCREEN_CENTER_Y + 16;
 
     personality_scenario[MONSTER].info.monster_options[2].text = "Kill three or more people, \nbut don't kill the women, \nthe elderly, or children";
-    personality_scenario[MONSTER].info.monster_options[2].x = CenterRenderedText(screen_center_x, personality_scenario[MONSTER].info.monster_options[2].text, 164);
-    personality_scenario[MONSTER].info.monster_options[2].y = screen_center_y + 48;
+    personality_scenario[MONSTER].info.monster_options[2].x = CenterRenderedText(SCREEN_CENTER_X, personality_scenario[MONSTER].info.monster_options[2].text, 164);
+    personality_scenario[MONSTER].info.monster_options[2].y = SCREEN_CENTER_Y + 48;
     
     personality_scenario[MONSTER].info.monster_options[3].text = "Kill three or more poeple, \nincluding children";
-    personality_scenario[MONSTER].info.monster_options[3].x = CenterRenderedText(screen_center_x, personality_scenario[MONSTER].info.monster_options[3].text, 64);
-    personality_scenario[MONSTER].info.monster_options[3].y = screen_center_y + 78;
+    personality_scenario[MONSTER].info.monster_options[3].x = CenterRenderedText(SCREEN_CENTER_X, personality_scenario[MONSTER].info.monster_options[3].text, 64);
+    personality_scenario[MONSTER].info.monster_options[3].y = SCREEN_CENTER_Y + 78;
 
     personality_scenario[MONSTER].info.monster_options[4].text = "Kill nine or more people, but \ndon't kill the man by the inn";
-    personality_scenario[MONSTER].info.monster_options[4].x = CenterRenderedText(screen_center_x, personality_scenario[MONSTER].info.monster_options[4].text, 88);
-    personality_scenario[MONSTER].info.monster_options[4].y = screen_center_y + 102;
+    personality_scenario[MONSTER].info.monster_options[4].x = CenterRenderedText(SCREEN_CENTER_X, personality_scenario[MONSTER].info.monster_options[4].text, 88);
+    personality_scenario[MONSTER].info.monster_options[4].y = SCREEN_CENTER_Y + 102;
    
 
     test_personality_scenario_t test_personality_scenario = {0};
-    Personality_ScenarioInitialize(&test_personality_scenario, village_scenario_options, VILLAGE);
-    Personality_ScenarioInitialize(&test_personality_scenario, monster_scenario_options, MONSTER_1);
+
+    Personality_ScenarioInitialize(&test_personality_scenario, &village_options, VILLAGE);
+    //Personality_ScenarioInitialize(&test_personality_scenario, monster_scenario_options, MONSTER_1);
 
     const char choice[3][100] = {
         {"Kill fewer than three people"},
@@ -1851,8 +1818,8 @@ int main(int argc, char *argv[])
     int button_select = 0;
     int confirmation_select = 0;
     menu_item_t confirmation_buttons[2] = {
-        { "Yes", screen_center_x - 2, screen_center_y },
-        { "No", screen_center_x, screen_center_y + 16 },
+        { "Yes", SCREEN_CENTER_X - 2, SCREEN_CENTER_Y },
+        { "No", SCREEN_CENTER_X, SCREEN_CENTER_Y + 16 },
     };
   
     const char *back_or_next_cursor_names[2] = {
@@ -1873,44 +1840,44 @@ int main(int argc, char *argv[])
         back_or_next_cursor[i].name = back_or_next_cursor_names[i];
     }
 
-    InitializeAssetToRender(&back_or_next_cursor[0].asset, screen_center_x - 112, screen_center_y - 108, 
+    InitializeAssetToRender(&back_or_next_cursor[0].asset, SCREEN_CENTER_X - 112, SCREEN_CENTER_Y - 108, 
                             back_or_next_cursor[0].asset.w, back_or_next_cursor[0].asset.h);
-    InitializeAssetToRender(&back_or_next_cursor[1].asset, screen_center_x + 96, screen_center_y - 108, 
+    InitializeAssetToRender(&back_or_next_cursor[1].asset, SCREEN_CENTER_X + 96, SCREEN_CENTER_Y - 108, 
                             back_or_next_cursor[1].asset.w, back_or_next_cursor[1].asset.h);
 
     int settings_option_index = 0;
     menu_item_t settings_options[5] = {
-        { "Volume", screen_center_x - (GLYPH_WIDTH * strlen(settings_options[0].text) - 1) / 2, screen_center_y - 48 },
-        { "Master", screen_center_x - (GLYPH_WIDTH * strlen(settings_options[1].text) - 1) / 2, screen_center_y + 0 },
-        { "Music", screen_center_x - (GLYPH_WIDTH * strlen(settings_options[2].text) - 1) / 2, screen_center_y + 24 },
-        { "SFX", screen_center_x - (GLYPH_WIDTH * strlen(settings_options[3].text) - 1) / 2, screen_center_y + 48 },
-        { "Apply", screen_center_x - ((GLYPH_WIDTH * strlen(settings_options[4].text) - 1) / 2), screen_center_y + 76 }, 
-        //{ "Apply", screen_center_x - ((GLYPH_WIDTH * strlen(settings_options[4].text) - 1) / 2) + 96, screen_center_y + 96 }, // old
+        { "Volume", SCREEN_CENTER_X - (GLYPH_WIDTH * strlen(settings_options[0].text) - 1) / 2, SCREEN_CENTER_Y - 48 },
+        { "Master", SCREEN_CENTER_X - (GLYPH_WIDTH * strlen(settings_options[1].text) - 1) / 2, SCREEN_CENTER_Y + 0 },
+        { "Music", SCREEN_CENTER_X - (GLYPH_WIDTH * strlen(settings_options[2].text) - 1) / 2, SCREEN_CENTER_Y + 24 },
+        { "SFX", SCREEN_CENTER_X - (GLYPH_WIDTH * strlen(settings_options[3].text) - 1) / 2, SCREEN_CENTER_Y + 48 },
+        { "Apply", SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(settings_options[4].text) - 1) / 2), SCREEN_CENTER_Y + 76 }, 
+        //{ "Apply", SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(settings_options[4].text) - 1) / 2) + 96, SCREEN_CENTER_Y + 96 }, // old
     };
 
     // Back and Apply buttons are seperate
     int back_and_apply_buttons_index = 0;
     menu_item_t back_and_apply_buttons[2] = {
-        { "Back(Q)", screen_center_x - ((GLYPH_WIDTH * strlen(back_and_apply_buttons[0].text) - 1) / 2) - 96, screen_center_y + 96 },
-        { "Apply(E)", screen_center_x - ((GLYPH_WIDTH * strlen(back_and_apply_buttons[1].text) - 1) / 2) + 96, screen_center_y + 96 },
+        { "Back(Q)", SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(back_and_apply_buttons[0].text) - 1) / 2) - 96, SCREEN_CENTER_Y + 96 },
+        { "Apply(E)", SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(back_and_apply_buttons[1].text) - 1) / 2) + 96, SCREEN_CENTER_Y + 96 },
     };
 
     // TODO: create a highlight to indicate the player is currently "hovering" or selecting a bar to change
     // TODO: create an array of volume bars in respect 
     SDL_Rect master_volume_bar = {0};
-    master_volume_bar.x = screen_center_x - ((96/2));
+    master_volume_bar.x = SCREEN_CENTER_X - ((96/2));
     master_volume_bar.y = settings_options[1].y + 10;
     master_volume_bar.w = 96; 
     master_volume_bar.h = GLYPH_HEIGHT + 2;
     
     SDL_Rect music_volume_bar = {0};
-    music_volume_bar.x = screen_center_x - ((96/2));
+    music_volume_bar.x = SCREEN_CENTER_X - ((96/2));
     music_volume_bar.y = settings_options[2].y + 10;
     music_volume_bar.w = 96; 
     music_volume_bar.h = GLYPH_HEIGHT + 2;
 
     SDL_Rect sfx_volume_bar = {0};
-    sfx_volume_bar.x = screen_center_x - ((96/2));
+    sfx_volume_bar.x = SCREEN_CENTER_X - ((96/2));
     sfx_volume_bar.y = settings_options[3].y + 10;
     sfx_volume_bar.w = 96; 
     sfx_volume_bar.h = GLYPH_HEIGHT + 2;
@@ -1960,63 +1927,63 @@ int main(int argc, char *argv[])
 
     glyph_grid_t test_glyph_grid[50] = 
     {
-        { 'A', screen_center_x - 52 , screen_center_y - 8 }, 
-        { 'B', screen_center_x - 40 , screen_center_y - 8 },
-        { 'C', screen_center_x - 28, screen_center_y - 8 }, 
-        { 'D', screen_center_x - 16, screen_center_y - 8 }, 
-        { 'E', screen_center_x - 4, screen_center_y - 8 }, 
-        { 'F', screen_center_x + 16, screen_center_y - 8 }, 
-        { 'G', screen_center_x + 28, screen_center_y - 8 }, 
-        { 'H', screen_center_x + 40, screen_center_y - 8 }, 
-        { 'I', screen_center_x + 52, screen_center_y - 8 }, 
-        { 'J', screen_center_x + 64, screen_center_y - 8 }, 
+        { 'A', SCREEN_CENTER_X - 52 , SCREEN_CENTER_Y - 8 }, 
+        { 'B', SCREEN_CENTER_X - 40 , SCREEN_CENTER_Y - 8 },
+        { 'C', SCREEN_CENTER_X - 28, SCREEN_CENTER_Y - 8 }, 
+        { 'D', SCREEN_CENTER_X - 16, SCREEN_CENTER_Y - 8 }, 
+        { 'E', SCREEN_CENTER_X - 4, SCREEN_CENTER_Y - 8 }, 
+        { 'F', SCREEN_CENTER_X + 16, SCREEN_CENTER_Y - 8 }, 
+        { 'G', SCREEN_CENTER_X + 28, SCREEN_CENTER_Y - 8 }, 
+        { 'H', SCREEN_CENTER_X + 40, SCREEN_CENTER_Y - 8 }, 
+        { 'I', SCREEN_CENTER_X + 52, SCREEN_CENTER_Y - 8 }, 
+        { 'J', SCREEN_CENTER_X + 64, SCREEN_CENTER_Y - 8 }, 
 
-        { 'K', screen_center_x - 52, screen_center_y + 2 }, 
-        { 'L', screen_center_x - 40, screen_center_y + 2 }, 
-        { 'M', screen_center_x - 28, screen_center_y + 2 }, 
-        { 'N', screen_center_x - 16, screen_center_y + 2 }, 
-        { 'O', screen_center_x - 4, screen_center_y + 2 }, 
-        { 'P', screen_center_x + 16, screen_center_y + 2 }, 
-        { 'Q', screen_center_x + 28, screen_center_y + 2 }, 
-        { 'R', screen_center_x + 40, screen_center_y + 2 }, 
-        { 'S', screen_center_x + 52, screen_center_y + 2 }, 
-        { 'T', screen_center_x + 64, screen_center_y + 2 },
+        { 'K', SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 2 }, 
+        { 'L', SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 2 }, 
+        { 'M', SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 2 }, 
+        { 'N', SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 2 }, 
+        { 'O', SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 2 }, 
+        { 'P', SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 2 }, 
+        { 'Q', SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 2 }, 
+        { 'R', SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 2 }, 
+        { 'S', SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 2 }, 
+        { 'T', SCREEN_CENTER_X + 64, SCREEN_CENTER_Y + 2 },
 
-        { 'U', screen_center_x - 52, screen_center_y + 14 }, 
-        { 'V', screen_center_x - 40, screen_center_y + 14 }, 
-        { 'W', screen_center_x - 28, screen_center_y + 14 }, 
-        { 'X', screen_center_x - 16, screen_center_y + 14 }, 
-        { 'Y', screen_center_x - 4, screen_center_y + 14 }, 
-        { 'Z', screen_center_x + 16, screen_center_y + 14 }, 
-        { ' ', screen_center_x + 28, screen_center_y + 14 }, // Unused 
-        { ' ', screen_center_x + 40, screen_center_y + 14 }, // Unused
-        { ' ', screen_center_x + 52, screen_center_y + 14 }, // Unused
-        { ' ', screen_center_x + 64, screen_center_y + 14 }, // Unused
+        { 'U', SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 14 }, 
+        { 'V', SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 14 }, 
+        { 'W', SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 14 }, 
+        { 'X', SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 14 }, 
+        { 'Y', SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 14 }, 
+        { 'Z', SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 14 }, 
+        { ' ', SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 14 }, // Unused 
+        { ' ', SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 14 }, // Unused
+        { ' ', SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 14 }, // Unused
+        { ' ', SCREEN_CENTER_X + 64, SCREEN_CENTER_Y + 14 }, // Unused
   
 
         // Special characters 
-        { '[', screen_center_x - 52, screen_center_y + 26 }, 
-        { ']', screen_center_x - 40, screen_center_y + 26 }, 
-        { '.', screen_center_x - 28, screen_center_y + 26 }, 
-        { ',', screen_center_x - 16, screen_center_y + 26 }, 
-        { '!', screen_center_x - 4, screen_center_y + 26 }, 
-        { '?', screen_center_x + 16, screen_center_y + 26 }, 
-        { '-', screen_center_x + 28, screen_center_y + 26 }, 
-        { '_', screen_center_x + 40, screen_center_y + 26 }, 
-        { ':', screen_center_x + 52, screen_center_y + 26 }, 
-        { ';', screen_center_x + 60, screen_center_y + 26 }, 
+        { '[', SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 26 }, 
+        { ']', SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 26 }, 
+        { '.', SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 26 }, 
+        { ',', SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 26 }, 
+        { '!', SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 26 }, 
+        { '?', SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 26 }, 
+        { '-', SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 26 }, 
+        { '_', SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 26 }, 
+        { ':', SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 26 }, 
+        { ';', SCREEN_CENTER_X + 60, SCREEN_CENTER_Y + 26 }, 
         
         // Nums
-        { '0', screen_center_x - 52, screen_center_y + 38 }, 
-        { '1', screen_center_x - 40, screen_center_y + 38 }, 
-        { '2', screen_center_x - 28, screen_center_y + 38 }, 
-        { '3', screen_center_x - 16, screen_center_y + 38 }, 
-        { '4', screen_center_x - 4, screen_center_y + 38 }, 
-        { '5', screen_center_x + 16, screen_center_y + 38 }, 
-        { '6', screen_center_x + 28, screen_center_y + 38 }, 
-        { '7', screen_center_x + 40, screen_center_y + 38 }, 
-        { '8', screen_center_x + 52, screen_center_y + 38 }, 
-        { '9', screen_center_x + 64, screen_center_y + 38 },
+        { '0', SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 38 }, 
+        { '1', SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 38 }, 
+        { '2', SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 38 }, 
+        { '3', SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 38 }, 
+        { '4', SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 38 }, 
+        { '5', SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 38 }, 
+        { '6', SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 38 }, 
+        { '7', SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 38 }, 
+        { '8', SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 38 }, 
+        { '9', SCREEN_CENTER_X + 64, SCREEN_CENTER_Y + 38 },
 
     };
 
@@ -2025,81 +1992,81 @@ int main(int argc, char *argv[])
         // 10x5 grid
         // Every glyph has a padding of 12px around itself
         // Upper case
-        { "A", screen_center_x - 52 , screen_center_y - 8 }, 
-        { "B", screen_center_x - 40 , screen_center_y - 8 },
-        { "C", screen_center_x - 28, screen_center_y - 8 }, 
-        { "D", screen_center_x - 16, screen_center_y - 8 }, 
-        { "E", screen_center_x - 4, screen_center_y - 8 }, 
-        { "F", screen_center_x + 16, screen_center_y - 8 }, 
-        { "G", screen_center_x + 28, screen_center_y - 8 }, 
-        { "H", screen_center_x + 40, screen_center_y - 8 }, 
-        { "I", screen_center_x + 52, screen_center_y - 8 }, 
-        { "J", screen_center_x + 64, screen_center_y - 8 }, 
+        { "A", SCREEN_CENTER_X - 52 , SCREEN_CENTER_Y - 8 }, 
+        { "B", SCREEN_CENTER_X - 40 , SCREEN_CENTER_Y - 8 },
+        { "C", SCREEN_CENTER_X - 28, SCREEN_CENTER_Y - 8 }, 
+        { "D", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y - 8 }, 
+        { "E", SCREEN_CENTER_X - 4, SCREEN_CENTER_Y - 8 }, 
+        { "F", SCREEN_CENTER_X + 16, SCREEN_CENTER_Y - 8 }, 
+        { "G", SCREEN_CENTER_X + 28, SCREEN_CENTER_Y - 8 }, 
+        { "H", SCREEN_CENTER_X + 40, SCREEN_CENTER_Y - 8 }, 
+        { "I", SCREEN_CENTER_X + 52, SCREEN_CENTER_Y - 8 }, 
+        { "J", SCREEN_CENTER_X + 64, SCREEN_CENTER_Y - 8 }, 
 
-        { "K", screen_center_x - 52, screen_center_y + 2 }, 
-        { "L", screen_center_x - 40, screen_center_y + 2 }, 
-        { "M", screen_center_x - 28, screen_center_y + 2 }, 
-        { "N", screen_center_x - 16, screen_center_y + 2 }, 
-        { "O", screen_center_x - 4, screen_center_y + 2 }, 
-        { "P", screen_center_x + 16, screen_center_y + 2 }, 
-        { "Q", screen_center_x + 28, screen_center_y + 2 }, 
-        { "R", screen_center_x + 40, screen_center_y + 2 }, 
-        { "S", screen_center_x + 52, screen_center_y + 2 }, 
-        { "T", screen_center_x + 64, screen_center_y + 2 },
+        { "K", SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 2 }, 
+        { "L", SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 2 }, 
+        { "M", SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 2 }, 
+        { "N", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 2 }, 
+        { "O", SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 2 }, 
+        { "P", SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 2 }, 
+        { "Q", SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 2 }, 
+        { "R", SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 2 }, 
+        { "S", SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 2 }, 
+        { "T", SCREEN_CENTER_X + 64, SCREEN_CENTER_Y + 2 },
 
-        { "U", screen_center_x - 52, screen_center_y + 14 }, 
-        { "V", screen_center_x - 40, screen_center_y + 14 }, 
-        { "W", screen_center_x - 28, screen_center_y + 14 }, 
-        { "X", screen_center_x - 16, screen_center_y + 14 }, 
-        { "Y", screen_center_x - 4, screen_center_y + 14 }, 
-        { "Z", screen_center_x + 16, screen_center_y + 14 }, 
-        { "", screen_center_x + 28, screen_center_y + 14 }, // Unused 
-        { "", screen_center_x + 40, screen_center_y + 14 }, // Unused
-        { "", screen_center_x + 52, screen_center_y + 14 }, // Unused
-        { "", screen_center_x + 64, screen_center_y + 14 }, // Unused
+        { "U", SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 14 }, 
+        { "V", SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 14 }, 
+        { "W", SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 14 }, 
+        { "X", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 14 }, 
+        { "Y", SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 14 }, 
+        { "Z", SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 14 }, 
+        { "", SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 14 }, // Unused 
+        { "", SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 14 }, // Unused
+        { "", SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 14 }, // Unused
+        { "", SCREEN_CENTER_X + 64, SCREEN_CENTER_Y + 14 }, // Unused
   
 
         // Special characters 
-        { "[", screen_center_x - 52, screen_center_y + 26 }, 
-        { "]", screen_center_x - 40, screen_center_y + 26 }, 
-        { ".", screen_center_x - 28, screen_center_y + 26 }, 
-        { ",", screen_center_x - 16, screen_center_y + 26 }, 
-        { "!", screen_center_x - 4, screen_center_y + 26 }, 
-        { "?", screen_center_x + 16, screen_center_y + 26 }, 
-        { "-", screen_center_x + 28, screen_center_y + 26 }, 
-        { "_", screen_center_x + 40, screen_center_y + 26 }, 
-        { ":", screen_center_x + 52, screen_center_y + 26 }, 
-        { ";", screen_center_x + 60, screen_center_y + 26 }, 
+        { "[", SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 26 }, 
+        { "]", SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 26 }, 
+        { ".", SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 26 }, 
+        { ",", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 26 }, 
+        { "!", SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 26 }, 
+        { "?", SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 26 }, 
+        { "-", SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 26 }, 
+        { "_", SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 26 }, 
+        { ":", SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 26 }, 
+        { ";", SCREEN_CENTER_X + 60, SCREEN_CENTER_Y + 26 }, 
         
         // Nums
-        { "0", screen_center_x - 52, screen_center_y + 38 }, 
-        { "1", screen_center_x - 40, screen_center_y + 38 }, 
-        { "2", screen_center_x - 28, screen_center_y + 38 }, 
-        { "3", screen_center_x - 16, screen_center_y + 38 }, 
-        { "4", screen_center_x - 4, screen_center_y + 38 }, 
-        { "5", screen_center_x + 16, screen_center_y + 38 }, 
-        { "6", screen_center_x + 28, screen_center_y + 38 }, 
-        { "7", screen_center_x + 40, screen_center_y + 38 }, 
-        { "8", screen_center_x + 52, screen_center_y + 38 }, 
-        { "9", screen_center_x + 64, screen_center_y + 38 },
+        { "0", SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 38 }, 
+        { "1", SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 38 }, 
+        { "2", SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 38 }, 
+        { "3", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 38 }, 
+        { "4", SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 38 }, 
+        { "5", SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 38 }, 
+        { "6", SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 38 }, 
+        { "7", SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 38 }, 
+        { "8", SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 38 }, 
+        { "9", SCREEN_CENTER_X + 64, SCREEN_CENTER_Y + 38 },
 
         // Buttons (seperate?) -> Also should not be hardcoded to say keyboard keys
-        //{ "Confirm", screen_center_x, screen_center_y },
+        //{ "Confirm", SCREEN_CENTER_X, SCREEN_CENTER_Y },
     };
 
     // Something maybe unnecessary, but lines underneath the to be entered glyphs to indicate where the player is entering their name
     int name_bar_index = 0;
     menu_item_t name_bar_underline[NAME_LIMIT] = {
-        { "_", screen_center_x - 32, screen_center_y - 28 }, 
-        { "_", screen_center_x - 24, screen_center_y - 28 }, 
-        { "_", screen_center_x - 16, screen_center_y - 28 }, 
-        { "_", screen_center_x - 8, screen_center_y - 28 }, 
-        { "_", screen_center_x - 0, screen_center_y - 28 }, 
-        { "_", screen_center_x + 8, screen_center_y - 28 }, 
-        { "_", screen_center_x + 16, screen_center_y - 28 }, 
-        { "_", screen_center_x + 24, screen_center_y - 28 }, 
-        { "_", screen_center_x + 32, screen_center_y - 28 }, 
-        { "_", screen_center_x + 40, screen_center_y - 28 }, 
+        { "_", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y - 28 }, 
+        { "_", SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 28 }, 
+        { "_", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y - 28 }, 
+        { "_", SCREEN_CENTER_X - 8, SCREEN_CENTER_Y - 28 }, 
+        { "_", SCREEN_CENTER_X - 0, SCREEN_CENTER_Y - 28 }, 
+        { "_", SCREEN_CENTER_X + 8, SCREEN_CENTER_Y - 28 }, 
+        { "_", SCREEN_CENTER_X + 16, SCREEN_CENTER_Y - 28 }, 
+        { "_", SCREEN_CENTER_X + 24, SCREEN_CENTER_Y - 28 }, 
+        { "_", SCREEN_CENTER_X + 32, SCREEN_CENTER_Y - 28 }, 
+        { "_", SCREEN_CENTER_X + 40, SCREEN_CENTER_Y - 28 }, 
     };
 
     int name_pos = 0; 
@@ -2113,16 +2080,16 @@ int main(int argc, char *argv[])
     } i_want_to_see_t;
 
     i_want_to_see_t name_array[NAME_LIMIT] = {
-        { "", screen_center_x - 32, screen_center_y - 28 }, 
-        { "", screen_center_x - 24, screen_center_y - 28 }, 
-        { "", screen_center_x - 16, screen_center_y - 28 }, 
-        { "", screen_center_x - 8, screen_center_y - 28 }, 
-        { "", screen_center_x - 0, screen_center_y - 28 }, 
-        { "", screen_center_x + 8, screen_center_y - 28 }, 
-        { "", screen_center_x + 16, screen_center_y - 28 }, 
-        { "", screen_center_x + 24, screen_center_y - 28 }, 
-        { "", screen_center_x + 32, screen_center_y - 28 }, 
-        { "", screen_center_x + 40, screen_center_y - 28 }, 
+        { "", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y - 28 }, 
+        { "", SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 28 }, 
+        { "", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y - 28 }, 
+        { "", SCREEN_CENTER_X - 8, SCREEN_CENTER_Y - 28 }, 
+        { "", SCREEN_CENTER_X - 0, SCREEN_CENTER_Y - 28 }, 
+        { "", SCREEN_CENTER_X + 8, SCREEN_CENTER_Y - 28 }, 
+        { "", SCREEN_CENTER_X + 16, SCREEN_CENTER_Y - 28 }, 
+        { "", SCREEN_CENTER_X + 24, SCREEN_CENTER_Y - 28 }, 
+        { "", SCREEN_CENTER_X + 32, SCREEN_CENTER_Y - 28 }, 
+        { "", SCREEN_CENTER_X + 40, SCREEN_CENTER_Y - 28 }, 
     };
 
 
@@ -4090,8 +4057,8 @@ int main(int argc, char *argv[])
                 {
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                     RenderText(SDLWindow.Renderer, font_atlas,
-                                   CenterRenderedText(screen_center_x, "Scenario", 0), 
-                                   screen_center_y - 108,
+                                   CenterRenderedText(SCREEN_CENTER_X, "Scenario", 0), 
+                                   SCREEN_CENTER_Y - 108,
                                    "Scenario", 
                                    white);
 
@@ -4102,8 +4069,8 @@ int main(int argc, char *argv[])
                                               224, 240,    // containerW, containerH
                                               2);          // lineSpacing
                    
-                    personality_scenario[MONSTER].scenario_box.x = screen_center_x - 124; 
-                    personality_scenario[MONSTER].scenario_box.y = screen_center_y - 96; 
+                    personality_scenario[MONSTER].scenario_box.x = SCREEN_CENTER_X - 124; 
+                    personality_scenario[MONSTER].scenario_box.y = SCREEN_CENTER_Y - 96; 
                     personality_scenario[MONSTER].scenario_box.w = 240; 
                     personality_scenario[MONSTER].scenario_box.h = 64; 
 
