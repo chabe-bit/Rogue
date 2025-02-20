@@ -21,6 +21,7 @@
 
 #define CenterRenderedText(text, offset) ( SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(text)) / 2) + offset )
 
+#define NAME_ENTRY_LIMIT 10
 #define NAME_ENTRY_GRID_ROWS 5
 #define NAME_ENTRY_GRID_COLS 10
 
@@ -896,6 +897,76 @@ typedef struct
 
 typedef struct
 {
+    int index;
+    bool is_active;
+    
+    SDL_Rect master_volume_body;
+    SDL_Rect music_volume_body;
+    SDL_Rect sfx_volume_body;
+    
+    SDL_Rect volume_body[3];
+    menu_item_t options[5];
+} sound_settings_t;
+
+void Sound_InitOptions(sound_settings_t *sound_settings)
+{
+    sound_settings->options[0].text = "Volume";
+    sound_settings->options[0].x = CenterRenderedText(sound_settings->options[0].text, 0);
+    sound_settings->options[0].y = SCREEN_CENTER_Y - 48;
+
+    sound_settings->options[1].text = "Master";
+    sound_settings->options[1].x = CenterRenderedText(sound_settings->options[1].text, 0);
+    sound_settings->options[1].y = SCREEN_CENTER_Y + 0;
+
+    sound_settings->options[2].text = "Music";
+    sound_settings->options[2].x = CenterRenderedText(sound_settings->options[2].text, 0);
+    sound_settings->options[2].y = SCREEN_CENTER_Y + 24;
+
+    sound_settings->options[3].text = "SFX";
+    sound_settings->options[3].x = CenterRenderedText(sound_settings->options[3].text, 0);
+    sound_settings->options[3].y = SCREEN_CENTER_Y + 48;
+
+    sound_settings->options[4].text = "Apply";
+    sound_settings->options[4].x = CenterRenderedText(sound_settings->options[4].text, 0);
+    sound_settings->options[4].y = SCREEN_CENTER_Y + 76;
+
+    sound_settings->master_volume_body.x = SCREEN_CENTER_X - ((96/2));
+    sound_settings->master_volume_body.y = sound_settings->options[1].y + 10; // Master volume's Y position added
+    sound_settings->master_volume_body.w = 96; 
+    sound_settings->master_volume_body.h = GLYPH_HEIGHT + 2;
+
+    sound_settings->music_volume_body.x = SCREEN_CENTER_X - ((96/2));
+    sound_settings->music_volume_body.y = sound_settings->options[2].y + 10;
+    sound_settings->music_volume_body.w = 96; 
+    sound_settings->music_volume_body.h = GLYPH_HEIGHT + 2;
+
+    sound_settings->sfx_volume_body.x = SCREEN_CENTER_X - ((96/2));
+    sound_settings->sfx_volume_body.y = sound_settings->options[3].y + 10;
+    sound_settings->sfx_volume_body.w = 96; 
+    sound_settings->sfx_volume_body.h = GLYPH_HEIGHT + 2;
+
+    sound_settings->volume_body[0].x = SCREEN_CENTER_X - ((96/2));
+    sound_settings->volume_body[0].y = sound_settings->options[1].y + 10; // Master volume's Y position added
+    sound_settings->volume_body[0].w = 96; 
+    sound_settings->volume_body[0].h = GLYPH_HEIGHT + 2;
+
+    sound_settings->volume_body[1].x = SCREEN_CENTER_X - ((96/2));
+    sound_settings->volume_body[1].y = sound_settings->options[2].y + 10;
+    sound_settings->volume_body[1].w = 96; 
+    sound_settings->volume_body[1].h = GLYPH_HEIGHT + 2;
+
+    sound_settings->volume_body[2].x = SCREEN_CENTER_X - ((96/2));
+    sound_settings->volume_body[2].y = sound_settings->options[3].y + 10;
+    sound_settings->volume_body[2].w = 96; 
+    sound_settings->volume_body[2].h = GLYPH_HEIGHT + 2;
+
+
+
+}
+
+#define VOLUME_CONTROLLER_COUNT 3
+typedef struct
+{
     bool mute;
     bool one;
     bool two;
@@ -909,6 +980,21 @@ typedef struct
     color_t colors;
     SDL_Rect blocks[4];
 } volume_controller_t;
+
+void Sound_InitVolumeControl(sound_settings_t *sound_settings, volume_controller_t *volume_controller, int volume_controller_count)
+{
+    for (int vc = 0; vc < volume_controller_count; ++vc)
+    {
+        for (int i = 0; i < ArraySize(volume_controller[vc].blocks); ++i)
+        {
+            volume_controller[vc].blocks[i].x = sound_settings->volume_body[vc].x + volume_controller[vc].volume_size_bars;
+            volume_controller[vc].blocks[i].y = sound_settings->volume_body[vc].y;
+            volume_controller[vc].blocks[i].w = sound_settings->volume_body[vc].w / 4;
+            volume_controller[vc].blocks[i].h = sound_settings->volume_body[vc].h;
+            volume_controller[vc].volume_size_bars += (sound_settings->volume_body[vc].w / 4);
+        }
+    }
+}
 
 void UpdateAndRenderVolumeBars(volume_controller_t *volume_controller)
 {
@@ -1192,12 +1278,11 @@ void NameEntry_MoveRight(name_entry_t *name_entry)
                         name_entry->current_col;
 }
 
-#define NAME_LIMIT 10
 // general push and pop function
 void PushCharStack(char *array, char value)
 {
     int size = strlen(array);
-    int limit = NAME_LIMIT;
+    int limit = NAME_ENTRY_LIMIT;
     printf("size: %d - char: %c\n", size, value);
     if (limit > 0)
     {
@@ -1922,82 +2007,45 @@ int main(int argc, char *argv[])
         back_or_next_cursor[i].name = back_or_next_cursor_names[i];
     }
 
-    InitializeAssetToRender(&back_or_next_cursor[0].asset, SCREEN_CENTER_X - 112, SCREEN_CENTER_Y - 108, 
-                            back_or_next_cursor[0].asset.w, back_or_next_cursor[0].asset.h);
-    InitializeAssetToRender(&back_or_next_cursor[1].asset, SCREEN_CENTER_X + 96, SCREEN_CENTER_Y - 108, 
-                            back_or_next_cursor[1].asset.w, back_or_next_cursor[1].asset.h);
 
-    int settings_option_index = 0;
-    menu_item_t settings_options[5] = {
-        { "Volume", SCREEN_CENTER_X - (GLYPH_WIDTH * strlen(settings_options[0].text) - 1) / 2, SCREEN_CENTER_Y - 48 },
-        { "Master", SCREEN_CENTER_X - (GLYPH_WIDTH * strlen(settings_options[1].text) - 1) / 2, SCREEN_CENTER_Y + 0 },
-        { "Music", SCREEN_CENTER_X - (GLYPH_WIDTH * strlen(settings_options[2].text) - 1) / 2, SCREEN_CENTER_Y + 24 },
-        { "SFX", SCREEN_CENTER_X - (GLYPH_WIDTH * strlen(settings_options[3].text) - 1) / 2, SCREEN_CENTER_Y + 48 },
-        { "Apply", SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(settings_options[4].text) - 1) / 2), SCREEN_CENTER_Y + 76 }, 
-        //{ "Apply", SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(settings_options[4].text) - 1) / 2) + 96, SCREEN_CENTER_Y + 96 }, // old
-    };
+    sound_settings_t sound_settings = {0};
+    Sound_InitOptions(&sound_settings); 
 
-    // Back and Apply buttons are seperate
-    int back_and_apply_buttons_index = 0;
-    menu_item_t back_and_apply_buttons[2] = {
-        { "Back(Q)", SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(back_and_apply_buttons[0].text) - 1) / 2) - 96, SCREEN_CENTER_Y + 96 },
-        { "Apply(E)", SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(back_and_apply_buttons[1].text) - 1) / 2) + 96, SCREEN_CENTER_Y + 96 },
-    };
-
-    // TODO: create a highlight to indicate the player is currently "hovering" or selecting a bar to change
-    // TODO: create an array of volume bars in respect 
-    SDL_Rect master_volume_bar = {0};
-    master_volume_bar.x = SCREEN_CENTER_X - ((96/2));
-    master_volume_bar.y = settings_options[1].y + 10;
-    master_volume_bar.w = 96; 
-    master_volume_bar.h = GLYPH_HEIGHT + 2;
-    
-    SDL_Rect music_volume_bar = {0};
-    music_volume_bar.x = SCREEN_CENTER_X - ((96/2));
-    music_volume_bar.y = settings_options[2].y + 10;
-    music_volume_bar.w = 96; 
-    music_volume_bar.h = GLYPH_HEIGHT + 2;
-
-    SDL_Rect sfx_volume_bar = {0};
-    sfx_volume_bar.x = SCREEN_CENTER_X - ((96/2));
-    sfx_volume_bar.y = settings_options[3].y + 10;
-    sfx_volume_bar.w = 96; 
-    sfx_volume_bar.h = GLYPH_HEIGHT + 2;
-
-    color_t volume_colors = {0};
+   
     volume_controller_t volume_controller[3] = {0};
+    Sound_InitVolumeControl(&sound_settings, volume_controller, VOLUME_CONTROLLER_COUNT); 
+/*
     // For now, initialize seperately -> create a function
     for (int i = 0; i < ArraySize(volume_controller[0].blocks); ++i)
     {
-        volume_controller[0].blocks[i].x = master_volume_bar.x + volume_controller[0].volume_size_bars;
-        volume_controller[0].blocks[i].y = master_volume_bar.y;
-        volume_controller[0].blocks[i].w = master_volume_bar.w / 4;
-        volume_controller[0].blocks[i].h = master_volume_bar.h;
+        volume_controller[0].blocks[i].x = sound_settings.master_volume_body.x + volume_controller[0].volume_size_bars;
+        volume_controller[0].blocks[i].y = sound_settings.master_volume_body.y;
+        volume_controller[0].blocks[i].w = sound_settings.master_volume_body.w / 4;
+        volume_controller[0].blocks[i].h = sound_settings.master_volume_body.h;
         
-        volume_controller[0].volume_size_bars += (master_volume_bar.w / 4);
+        volume_controller[0].volume_size_bars += (sound_settings.master_volume_body.w / 4);
     }
 
     for (int i = 0; i < ArraySize(volume_controller[1].blocks); ++i)
     {
-        volume_controller[1].blocks[i].x = music_volume_bar.x + volume_controller[1].volume_size_bars;
-        volume_controller[1].blocks[i].y = music_volume_bar.y;
-        volume_controller[1].blocks[i].w = music_volume_bar.w / 4;
-        volume_controller[1].blocks[i].h = music_volume_bar.h;
+        volume_controller[1].blocks[i].x = sound_settings.music_volume_body.x + volume_controller[1].volume_size_bars;
+        volume_controller[1].blocks[i].y = sound_settings.music_volume_body.y;
+        volume_controller[1].blocks[i].w = sound_settings.music_volume_body.w / 4;
+        volume_controller[1].blocks[i].h = sound_settings.music_volume_body.h;
         
-        volume_controller[1].volume_size_bars += (music_volume_bar.w / 4);
+        volume_controller[1].volume_size_bars += (sound_settings.music_volume_body.w / 4);
     }
 
     for (int i = 0; i < ArraySize(volume_controller[2].blocks); ++i)
     {
-        volume_controller[2].blocks[i].x = sfx_volume_bar.x + volume_controller[2].volume_size_bars;
-        volume_controller[2].blocks[i].y = sfx_volume_bar.y;
-        volume_controller[2].blocks[i].w = sfx_volume_bar.w / 4;
-        volume_controller[2].blocks[i].h = sfx_volume_bar.h;
+        volume_controller[2].blocks[i].x = sound_settings.sfx_volume_body.x + volume_controller[2].volume_size_bars;
+        volume_controller[2].blocks[i].y = sound_settings.sfx_volume_body.y;
+        volume_controller[2].blocks[i].w = sound_settings.sfx_volume_body.w / 4;
+        volume_controller[2].blocks[i].h = sound_settings.sfx_volume_body.h;
         
-        volume_controller[2].volume_size_bars += (sfx_volume_bar.w / 4);
+        volume_controller[2].volume_size_bars += (sound_settings.sfx_volume_body.w / 4);
     }
-
-
+*/
 
     ////////////// Enter name grid 
 
@@ -2140,7 +2188,7 @@ int main(int argc, char *argv[])
 
     // Something maybe unnecessary, but lines underneath the to be entered glyphs to indicate where the player is entering their name
     int name_bar_index = 0;
-    menu_item_t name_bar_underline[NAME_LIMIT] = {
+    menu_item_t name_bar_underline[NAME_ENTRY_LIMIT] = {
         { "_", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y - 28 }, 
         { "_", SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 28 }, 
         { "_", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y - 28 }, 
@@ -2161,7 +2209,7 @@ int main(int argc, char *argv[])
         int x, y;
     } i_want_to_see_t;
 
-    i_want_to_see_t name_array[NAME_LIMIT] = {
+    i_want_to_see_t name_array[NAME_ENTRY_LIMIT] = {
         { "", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y - 28 }, 
         { "", SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 28 }, 
         { "", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y - 28 }, 
@@ -2543,7 +2591,7 @@ int main(int argc, char *argv[])
     is_title_screen = true;
     Running = true;
 
-    bool volume_settings_touched = false;
+    bool sound_settings_touched = false;
 
     bool is_glyph_selected = false;
     bool is_glyph_deleted = false;
@@ -2598,9 +2646,9 @@ int main(int argc, char *argv[])
 
                             if (is_settings)
                             {
-                                settings_option_index--;
-                                if (settings_option_index < 0)
-                                    settings_option_index = ArraySize(settings_options) - 1;
+                                sound_settings.index--;
+                                if (sound_settings.index < 0)
+                                    sound_settings.index = ArraySize(sound_settings.options) - 1;
                             }
                         
                             if (is_name_submission)
@@ -2646,9 +2694,9 @@ int main(int argc, char *argv[])
 
                             if (is_settings)
                             {
-                                settings_option_index++;
-                                if (settings_option_index >= ArraySize(settings_options))
-                                    settings_option_index = ArraySize(settings_options) - 1;
+                                sound_settings.index++;
+                                if (sound_settings.index >= ArraySize(sound_settings.options))
+                                    sound_settings.index = ArraySize(sound_settings.options) - 1;
                             }
 
                             if (is_name_submission)
@@ -2683,36 +2731,36 @@ int main(int argc, char *argv[])
                             }
                       
                             // switch case below
-                            if (is_settings && settings_option_index == 1)
+                            if (is_settings && sound_settings.index == 1)
                             {
                                 volume_controller[0].index--;
                                 if (volume_controller[0].index < 0)
                                     volume_controller[0].index = 0;
                                 PlaySFX(&sfx_volume_test[0].sfx);
-                                volume_settings_touched = true;
+                                sound_settings_touched = true;
                             }
 
-                            if (is_settings && settings_option_index == 2)
+                            if (is_settings && sound_settings.index == 2)
                             {
                                 volume_controller[1].index--;
                                 if (volume_controller[1].index < 0)
                                     volume_controller[1].index = 0;
                                 PlaySFX(&sfx_volume_test[0].sfx);
-                                volume_settings_touched = true;
+                                sound_settings_touched = true;
                             }
 
-                            if (is_settings && settings_option_index == 3)
+                            if (is_settings && sound_settings.index == 3)
                             {
                                 volume_controller[2].index--;
                                 if (volume_controller[2].index < 0)
                                     volume_controller[2].index = 0;
                                 PlaySFX(&sfx_volume_test[0].sfx);
-                                volume_settings_touched = true;
+                                sound_settings_touched = true;
                             } 
 
                             if (is_settings)
                             {
-                                switch (settings_option_index)
+                                switch (sound_settings.index)
                                 {
                                     case 0:
                                     {
@@ -2790,7 +2838,7 @@ int main(int argc, char *argv[])
 
                             if (is_settings)
                             {
-                                switch (settings_option_index)
+                                switch (sound_settings.index)
                                 {
                                     case 0:
                                     {
@@ -2802,22 +2850,22 @@ int main(int argc, char *argv[])
 
                                         // Turn this into a function
                                         volume_controller[0].index++;
-                                        if (volume_controller[0].index >= ArraySize(settings_options))
-                                            volume_controller[0].index = ArraySize(settings_options) - 1;
+                                        if (volume_controller[0].index >= ArraySize(sound_settings.options))
+                                            volume_controller[0].index = ArraySize(sound_settings.options) - 1;
                   
                                         PlaySFX(&sfx_volume_test[0].sfx);
 
-                                        volume_settings_touched = true;
+                                        sound_settings_touched = true;
                                     } break;
                                     case 2:
                                     {
                                         volume_settings_state = VOL_SETTINGS_MUSIC;
 
                                         volume_controller[1].index++;
-                                        if (volume_controller[1].index >= ArraySize(settings_options))
-                                            volume_controller[1].index = ArraySize(settings_options) - 1;
+                                        if (volume_controller[1].index >= ArraySize(sound_settings.options))
+                                            volume_controller[1].index = ArraySize(sound_settings.options) - 1;
                                         PlaySFX(&sfx_volume_test[0].sfx);
-                                        volume_settings_touched = true;
+                                        sound_settings_touched = true;
 
                                     } break;
                                     case 3:
@@ -2825,10 +2873,10 @@ int main(int argc, char *argv[])
                                         volume_settings_state = VOL_SETTINGS_SFX;
     
                                         volume_controller[2].index++;
-                                        if (volume_controller[2].index >= ArraySize(settings_options))
-                                            volume_controller[2].index = ArraySize(settings_options) - 1;
+                                        if (volume_controller[2].index >= ArraySize(sound_settings.options))
+                                            volume_controller[2].index = ArraySize(sound_settings.options) - 1;
                                         PlaySFX(&sfx_volume_test[0].sfx);
-                                        volume_settings_touched = true;
+                                        sound_settings_touched = true;
                                     } break;
                                 }
 
@@ -2870,6 +2918,7 @@ int main(int argc, char *argv[])
                         {
                             if (is_settings)
                             {
+                                /*
                                 back_and_apply_buttons_index--;
                                 if (back_and_apply_buttons_index < 0)
                                     back_and_apply_buttons_index = 0;
@@ -2885,10 +2934,10 @@ int main(int argc, char *argv[])
                                         printf("are we in back?\n");
                                         is_title_screen = true;
                                         is_settings = false;
-                                        volume_settings_touched = false;
+                                        sound_settings_touched = false;
                                         title_screen_state = TITLE_NONE;
                                     } break;
-                                }
+                                }*/
                                 
                             }
                         } break;
@@ -2896,6 +2945,7 @@ int main(int argc, char *argv[])
                         {
                             if (is_settings)
                             {
+                                /*
                                 back_and_apply_buttons_index++;
                                 if (back_and_apply_buttons_index >= ArraySize(back_and_apply_buttons))
                                     back_and_apply_buttons_index = ArraySize(back_and_apply_buttons) - 1;
@@ -2912,7 +2962,7 @@ int main(int argc, char *argv[])
                                         is_settings = false;
                                         title_screen_state = TITLE_NONE;
                                     } break;
-                                }
+                                }*/
                                 
                             }
                         } break;
@@ -3471,7 +3521,7 @@ int main(int argc, char *argv[])
 
                             if (is_settings)
                             {
-                                switch (settings_option_index)
+                                switch (sound_settings.index)
                                 {
                                     case 4: // apply
                                     {
@@ -3616,44 +3666,44 @@ int main(int argc, char *argv[])
         if (is_settings) 
         {
             SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-            CursorForItems(&settings_options[settings_option_index], &right_cursor_asset, 6, 1);
+            CursorForItems(&sound_settings.options[sound_settings.index], &right_cursor_asset, 6, 1);
             RenderAndUpdateAsset(&right_cursor_asset);
             
-            for (int i = 0; i < ArraySize(settings_options) - 1; ++i) // Ignore rendering the apply button 
+            for (int i = 0; i < ArraySize(sound_settings.options) - 1; ++i) // Ignore rendering the apply button 
             {
                 RenderText(SDLWindow.Renderer, font_atlas,
-                           settings_options[i].x, 
-                           settings_options[i].y,
-                           settings_options[i].text, 
+                           sound_settings.options[i].x, 
+                           sound_settings.options[i].y,
+                           sound_settings.options[i].text, 
                            white);
             }
 
             // If any of the volume settings has been touched, then render the apply button
             // TODO: Cursor should not be able to hover over apply when it isn't rendered yet.
-            if (volume_settings_touched) 
+            if (sound_settings_touched) 
             {
                 RenderText(SDLWindow.Renderer, font_atlas,
-                           settings_options[4].x, 
-                           settings_options[4].y,
-                           settings_options[4].text, 
+                           sound_settings.options[4].x, 
+                           sound_settings.options[4].y,
+                           sound_settings.options[4].text, 
                            white);
             }
 
             // This currently renders the back and apply button, but I prefer just the back button, where the apply button is better suited where 
             // and who it was supposed to render with, the volume settings.
-            for (int i = 0; i < ArraySize(back_and_apply_buttons); ++i)
+            /*for (int i = 0; i < ArraySize(back_and_apply_buttons); ++i)
             {
                 RenderText(SDLWindow.Renderer, font_atlas,
                            back_and_apply_buttons[i].x, 
                            back_and_apply_buttons[i].y,
                            back_and_apply_buttons[i].text, 
                            white);
-            }
+            }*/
 
             SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
-            SDL_RenderDrawRect(SDLWindow.Renderer, &master_volume_bar);
-            SDL_RenderDrawRect(SDLWindow.Renderer, &music_volume_bar);
-            SDL_RenderDrawRect(SDLWindow.Renderer, &sfx_volume_bar);
+            SDL_RenderDrawRect(SDLWindow.Renderer, &sound_settings.master_volume_body);
+            SDL_RenderDrawRect(SDLWindow.Renderer, &sound_settings.music_volume_body);
+            SDL_RenderDrawRect(SDLWindow.Renderer, &sound_settings.sfx_volume_body);
 
             switch (volume_settings_state)
             {
@@ -3774,7 +3824,7 @@ int main(int argc, char *argv[])
                 case VOL_SETTINGS_APPLY:
                 {
                     // TODO: Audio change should only update on apply 
-                    switch (settings_option_index)
+                    switch (sound_settings.index)
                     {
                         case 4:
                         {
