@@ -12,9 +12,14 @@
 #define ASPECT_WIDTH  256
 #define ASPECT_HEIGHT 240
 
-static bool Running;
+#define GLYPH_WIDTH  6
+#define GLYPH_HEIGHT 5
+#define NUM_GLYPHS ArraySize(GUIFontData)
 
-#define ArraySize(array) (sizeof(array) / sizeof((array)[0]))
+static bool Running;
+#define ArraySize(array) ( sizeof(array) / sizeof((array)[0]) )
+#define ArraySize2D(array) ( sizeof((array)[0]) / sizeof((array)[0][0]) )
+#define CenterRenderedText(x_screen_center, text, offset) ( x_screen_center - ((GLYPH_WIDTH * strlen(text)) / 2) + offset )
 
 struct
 {
@@ -151,9 +156,6 @@ PauseAudio(wav_t *sound)
     SDL_PauseAudioDevice(sound->device_id, 1);
 }
 
-#define GLYPH_WIDTH  6
-#define GLYPH_HEIGHT 5
-#define NUM_GLYPHS ArraySize(GUIFontData) 
 
 typedef struct text_t
 {   
@@ -990,7 +992,7 @@ void Audio_SFXCallback(void *user_data, u8 *stream, int length)
         }
     }
 
-    printf("SFX played, offset now: %u\n", context->offset);
+    //printf("SFX played, offset now: %u\n", context->offset);
 }
 
 void Audio_MusicCallback(void *user_data, u8 *stream, int length)
@@ -1020,7 +1022,7 @@ void Audio_MusicCallback(void *user_data, u8 *stream, int length)
         }
     }
 
-    printf("MUSIC\n");
+    //printf("MUSIC\n");
 }
 
 static void
@@ -1090,7 +1092,7 @@ LoadWavFileTest(wav_t *wav, const char *filename, bool music)
     u32 convertedLength = cvt.len_cvt;
     printf("Converted audio length: %u bytes\n", convertedLength);
 
-    wav->volume = 32;
+    wav->volume = 16;
     wav->offset = 0;   
     wav->length = convertedLength;   
     wav->buffer = cvt.buf;   
@@ -1155,6 +1157,171 @@ void PushString(char *dest, char *src)
         ++index;
     }
 }
+
+typedef struct
+{
+    int index; 
+    bool is_active;    
+    SDL_Rect scenario_box;
+
+    struct
+    {
+        // Could pack with a set of bools but would might be better and cleaner using each bit as a flag to enable or disable a scenario
+        u8 result; 
+    } scenario;
+
+    struct
+    {
+        menu_item_t options[3];
+        menu_item_t monster_options[5];
+    } info;
+
+} personality_scenario_t; 
+
+typedef struct
+{
+    // Could pack with a set of bools but would might be better and cleaner using each bit as a flag to enable or disable a scenario
+    u8 result; 
+    menu_item_t options[5];
+    menu_item_t village_options[3];
+    menu_item_t monster_options[5];
+} scenario_t;
+
+typedef struct
+{
+    int index; 
+    bool is_active;    
+    scenario_t scenario[8];
+
+} test_personality_scenario_t; 
+
+typedef struct
+{
+    const char text[5][100];
+    int x[5];
+    int y[5];
+} define_scenario_t;
+
+#define VILLAGE   0
+#define MONSTER_1 1
+
+#define MONSTER 0 // 0 for now
+
+typedef enum
+{
+    SCENARIO_NONE,
+    SCENARIO_VILLAGE    = (1 << 0),
+    SCENARIO_MONSTER    = (1 << 1),
+    SCENARIO_FOREST     = (1 << 2),
+    SCENARIO_CAVE       = (1 << 3),
+    SCENARIO_DESERT     = (1 << 4),
+    SCENARIO_TOWER      = (1 << 5),
+    SCENARIO_THEATER    = (1 << 6),
+    SCENARIO_CASTLE     = (1 << 7),
+} scenario_results;
+
+define_scenario_t define_scenario[2] = {
+    {
+        // Text
+        {
+            {"Kill fewer than three people"},
+            {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
+            {"Kill three or more people, \nbut don't kill the women, \nthe elderly, or children"},
+            {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
+            {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
+        },
+        
+        // X positions
+        {1, 1, 1, 1, 1},
+        
+        // Y positions
+        {1, 1, 1, 1, 1},
+
+    },
+    {
+        // Text
+        {
+            {"Kill fewer than three people"},
+            {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
+            {"Kill three or more people, \nbut don't kill the women, \nthe elderly, or children"},
+            {""},
+            {""},
+        },
+        
+        // X positions
+        {2, 2, 2, 2, 2},
+        
+        // Y positions
+        {2, 2, 2, 2, 2},
+
+    }
+};
+
+const char village_scenario_options[3][100] = {
+    {"Kill fewer than three people"},
+    {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
+    {"Kill three or more people, \nbut don't kill the women, \nthe elderly, or children"},
+}; 
+
+const char monster_scenario_options[5][100] = {
+    {"Kill fewer than three people"},
+    {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
+    {"Kill three or more people, \nbut don't kill the women, \nthe elderly, or children"},
+    {"Kill three or more poeple, \nincluding children"},
+    {"Kill nine or more people, but \ndon't kill the man by the inn"}
+};
+
+int Scenario_GetNumOptions(scenario_results scenario)
+{
+    int results = 0;
+
+    switch (scenario)
+    {
+        case VILLAGE:
+        {
+            results = 3;
+        } break;
+        case MONSTER_1:
+        {
+            results = 5;
+        } break;
+        default:
+        {
+            results = 0;
+        } break;
+    }
+
+
+    return results;
+}
+
+void Personality_ScenarioInitialize(test_personality_scenario_t *personality_scenario, 
+                                    const char scenario_options[][100],
+                                    scenario_results scenario) 
+{
+    int num_options = Scenario_GetNumOptions(scenario);
+    printf("num_options: %d\n", num_options);
+
+    for (int i = 0; 
+         i < num_options && 
+         i < ArraySize(personality_scenario->scenario[scenario].options); 
+         ++i)
+    {
+        personality_scenario->scenario[scenario].options[i].text = define_scenario[1].text[i];
+        personality_scenario->scenario[scenario].options[i].x = define_scenario[1].x[i];
+        personality_scenario->scenario[scenario].options[i].y = define_scenario[1].y[i];
+    }
+
+    for (int i = 0; i < num_options; ++i)
+    {
+        printf("scenario_text: %s\n", personality_scenario->scenario[scenario].options[i].text);
+        printf("scenario_x: %d\n", personality_scenario->scenario[scenario].options[i].x);
+        printf("scenario_y: %d\n", personality_scenario->scenario[scenario].options[i].y);
+    }
+
+}
+
+// int screen_x_pos[5], int screen_y_pos[5], int x_offset[5], scenario_results scenario)
 
 
 int main(int argc, char *argv[])
@@ -1600,6 +1767,86 @@ int main(int argc, char *argv[])
     confirmation.box_border.y = screen_center_y - 21; // shift the y render pos 1 pixel up
     confirmation.box_border.w = 50; // padding of 1px per side for x 
     confirmation.box_border.h = 58; // padding of 1px per side for y
+
+    /*
+
+    const char *village_scenario[1] = {
+        "Silver coins drop from the hanging bag of an elderly man's pocket\n as he walks through the market. What do you do?"
+        // Steal the coins openly with pride. -> Show-off
+        // Steal the coins sneakily. -> Slippery Devil
+        // Don't steal the coins and return them. -> Shrinking Violet
+    };
+
+    const char *monster_scenario[1] = {
+        "You are a man by day and a beast by night. You prey off human flesh and blood to survive. You come across a small and quiet village. What do you do?"
+        // Kill fewer than three people -> Paragon
+        // Kill three or more people, including women and the elderly, but don't kill the children -> Wimpy
+        // Kill three or more people, but don't kill the women, the elderly, or children -> Spoilt Brat
+        // Kill three or more poeple, including children -> Egghead
+        // Kill nine or more people, but don't kill the man by the inn -> Klutz (did you know? the lore is so they accuse the man of missing people, because they're the only ones at night to see people)
+    };
+    */
+
+    personality_scenario_t personality_scenario[1] = {0};
+    
+    personality_scenario[MONSTER].info.monster_options[0].text = "Kill fewer than three people";
+    personality_scenario[MONSTER].info.monster_options[0].x = CenterRenderedText(screen_center_x, personality_scenario[MONSTER].info.monster_options[0].text, 0);
+    personality_scenario[MONSTER].info.monster_options[0].y = screen_center_y;
+    
+    personality_scenario[MONSTER].info.monster_options[1].text = "Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children";
+    personality_scenario[MONSTER].info.monster_options[1].x = CenterRenderedText(screen_center_x, personality_scenario[MONSTER].info.monster_options[1].text, 176);
+    personality_scenario[MONSTER].info.monster_options[1].y = screen_center_y + 16;
+
+    personality_scenario[MONSTER].info.monster_options[2].text = "Kill three or more people, \nbut don't kill the women, \nthe elderly, or children";
+    personality_scenario[MONSTER].info.monster_options[2].x = CenterRenderedText(screen_center_x, personality_scenario[MONSTER].info.monster_options[2].text, 164);
+    personality_scenario[MONSTER].info.monster_options[2].y = screen_center_y + 48;
+    
+    personality_scenario[MONSTER].info.monster_options[3].text = "Kill three or more poeple, \nincluding children";
+    personality_scenario[MONSTER].info.monster_options[3].x = CenterRenderedText(screen_center_x, personality_scenario[MONSTER].info.monster_options[3].text, 64);
+    personality_scenario[MONSTER].info.monster_options[3].y = screen_center_y + 78;
+
+    personality_scenario[MONSTER].info.monster_options[4].text = "Kill nine or more people, but \ndon't kill the man by the inn";
+    personality_scenario[MONSTER].info.monster_options[4].x = CenterRenderedText(screen_center_x, personality_scenario[MONSTER].info.monster_options[4].text, 88);
+    personality_scenario[MONSTER].info.monster_options[4].y = screen_center_y + 102;
+   
+
+    test_personality_scenario_t test_personality_scenario = {0};
+    Personality_ScenarioInitialize(&test_personality_scenario, village_scenario_options, VILLAGE);
+    Personality_ScenarioInitialize(&test_personality_scenario, monster_scenario_options, MONSTER_1);
+
+    const char choice[3][100] = {
+        {"Kill fewer than three people"},
+        {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
+        {"Kill three or more people, \nbut don't kill the women, \nthe elderly, or children"},
+    };
+
+    printf("choice 1: %s\n", choice[0]);
+
+    personality_scenario[MONSTER].scenario.result |= SCENARIO_VILLAGE;
+    printf("scenario result 1: 0x%02x\n", personality_scenario[MONSTER].scenario.result);
+    if (personality_scenario[MONSTER].scenario.result & SCENARIO_VILLAGE)
+        printf("HIT 1\n");
+    
+    personality_scenario[MONSTER].scenario.result &= ~(SCENARIO_VILLAGE);
+    printf("scenario result 2: 0x%02x\n", personality_scenario[MONSTER].scenario.result);
+    if (personality_scenario[MONSTER].scenario.result & 0x01)
+        printf("HIT 2\n");
+
+
+    bool is_village = false;
+    bool is_monster = false;
+    bool is_forest = false;
+    bool is_cave = false;
+    bool is_desert = false;
+    bool is_tower = false;
+    bool is_theater = false;
+    bool is_castle = false;
+
+
+
+
+    //////////////////////////////////////////////////////////////////////////////////////
+
 
     int button_select = 0;
     int confirmation_select = 0;
@@ -2252,15 +2499,6 @@ int main(int argc, char *argv[])
 
     bool is_final_question = false;
     bool is_quiz = false;
-    bool is_village = false;
-    bool is_monster = false;
-    bool is_forest = false;
-    bool is_cave = false;
-    bool is_desert = false;
-    bool is_tower = false;
-    bool is_theater = false;
-    bool is_castle = false;
-
     bool is_glyph_selected = false;
     bool is_glyph_deleted = false;
     bool entering_glyph = false;
@@ -2325,8 +2563,15 @@ int main(int argc, char *argv[])
                                 current_row = (current_row - 1 + 5) % 5;
                                 glyph_index = current_row * 10 + current_col;
                                 printf("current_row: %d\n", current_row);
-
                             }
+
+                            if (personality_scenario[0].is_active)
+                            {
+                                personality_scenario[0].index--;
+                                if (personality_scenario[0].index < 0)
+                                    personality_scenario[0].index = ArraySize(personality_scenario[0].info.monster_options) - 1;
+                            }
+
                         } break;
                         case SDLK_s:
                         {
@@ -2370,6 +2615,12 @@ int main(int argc, char *argv[])
                                 printf("current_row: %d\n", current_row);
                             }  
 
+                            if (personality_scenario[0].is_active)
+                            {
+                                personality_scenario[0].index++;
+                                if (personality_scenario[0].index >= ArraySize(personality_scenario[0].info.monster_options))
+                                    personality_scenario[0].index = 0;
+                            }
                         } break;
                         case SDLK_a:
                         {
@@ -3212,6 +3463,53 @@ int main(int argc, char *argv[])
 
                             }
 
+                            if (is_personality_test)
+                            {
+
+                                switch (personality_scenario[MONSTER].scenario.result)
+                                {
+                                    case SCENARIO_MONSTER:
+                                    {
+                                        switch (personality_scenario[MONSTER].index)
+                                        {
+                                            // Kill fewer than three people -> Paragon
+                                            // Kill three or more people, including women and the elderly, but don't kill the children -> Wimpy
+                                            // Kill three or more people, but don't kill the women, the elderly, or children -> Spoilt Brat
+                                            // Kill three or more poeple, including children -> Egghead
+                                            // Kill nine or more people, but don't kill the man by the inn -> Klutz (did you know? the lore is so they accuse the man of missing people, because they're the only ones at night to see people)
+                                            case 0: 
+                                            {
+                                                printf("Paragon\n");
+                                                //personality_scenario.is_active = false; // set this on to go to the next screen
+                                            } break;
+                                            case 1: 
+                                            {
+                                                printf("Wimpy\n");
+                                            } break;
+                                            case 2: 
+                                            {
+                                                printf("Spoilt Brat\n");
+                                            } break;
+                                            case 3: 
+                                            {
+                                                printf("Egghead\n");
+                                            } break;
+                                            case 4: 
+                                            {
+                                                printf("Klutz\n");
+                                            } break;
+                                            default:
+                                            {
+
+                                            } break;
+                                        } 
+                                        
+                                    } break;
+                                }
+                                
+                            }
+                            
+
 
                         } break;
                         default:
@@ -3237,7 +3535,7 @@ int main(int argc, char *argv[])
             {
                 case TITLE_NONE:
                 {
-                    // SDL_PauseAudioDevice(master_volume.music[0].music.device_id, 0);
+                    //SDL_PauseAudioDevice(master_volume.music[0].music.device_id, 0);
 
                     SDL_RenderCopy(SDLWindow.Renderer, title_screen_asset.texture, NULL, &title_screen_asset.body);
                     CursorForItems(&menu_items[option_index], &right_cursor_asset, 4, 1);
@@ -3724,6 +4022,8 @@ int main(int argc, char *argv[])
                         case CLASS_PERSONALITY_RESULT_MONSTER:
                         {
                             is_monster = true;
+                            personality_scenario[MONSTER].scenario.result |= SCENARIO_MONSTER;
+                            personality_scenario[MONSTER].is_active = true;
                             is_quiz = false;
                         } break;
                         case CLASS_PERSONALITY_RESULT_FOREST:
@@ -3774,35 +4074,63 @@ int main(int argc, char *argv[])
                                    confirmation.info.buttons[i].y,
                                    confirmation.info.buttons[i].text, 
                                    white);
+
                     }
                 }
 
                 if (is_village)
                 {
                     printf("is_village!\n");
-
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                    RenderWrappedTextCentered(SDLWindow.Renderer, font_atlas, 
-                                              village_scenario[0], white, 
-                                              0, -32,        // containerX, containerY
-                                              256, 240,    // containerW, containerH
-                                              2);          // lineSpacing
 
                 }
-                if (is_monster)
+
+                //if (is_monster)
+                if (personality_scenario[MONSTER].scenario.result & SCENARIO_MONSTER)
                 {
-                    printf("is_monster!\n");
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CenterRenderedText(screen_center_x, "Scenario", 0), 
+                                   screen_center_y - 108,
+                                   "Scenario", 
+                                   white);
+
+                    // TODO: Render box and text together 
                     RenderWrappedTextCentered(SDLWindow.Renderer, font_atlas, 
-                                              village_scenario[0], white, 
-                                              0, -32,        // containerX, containerY
-                                              256, 240,    // containerW, containerH
+                                              monster_scenario[0], white, 
+                                              8, -64,        // containerX, containerY
+                                              224, 240,    // containerW, containerH
                                               2);          // lineSpacing
-                    
-                    // Simply for testing purposes, delay the screen for 5 seconds until the next, where we should have the repsective options for this result to go on.
-                    is_monster = false;
-                    is_name_submission = true;
-                    entering_glyph = true;
+                   
+                    personality_scenario[MONSTER].scenario_box.x = screen_center_x - 124; 
+                    personality_scenario[MONSTER].scenario_box.y = screen_center_y - 96; 
+                    personality_scenario[MONSTER].scenario_box.w = 240; 
+                    personality_scenario[MONSTER].scenario_box.h = 64; 
+
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
+                    SDL_RenderDrawRect(SDLWindow.Renderer, &personality_scenario[MONSTER].scenario_box);
+
+                    if (personality_scenario[MONSTER].is_active)
+                    {
+                        CursorForItems(&personality_scenario[MONSTER].info.monster_options[personality_scenario[MONSTER].index], &right_cursor_asset, 4, 1);
+                        RenderAndUpdateAsset(&right_cursor_asset);
+
+                        for (int i = 0; i < ArraySize(personality_scenario[MONSTER].info.monster_options); ++i)
+                        {
+                            RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                                                   personality_scenario[MONSTER].info.monster_options[i].x,
+                                                   personality_scenario[MONSTER].info.monster_options[i].y,
+                                                   personality_scenario[MONSTER].info.monster_options[i].text,
+                                                   white,
+                                                   2);
+                        }
+                    }
+
+
+                    //is_monster = false;
+                
+                    //is_name_submission = true;
+                    //entering_glyph = true;
                 }
                 if (is_forest)
                 {
@@ -3910,7 +4238,6 @@ int main(int argc, char *argv[])
                         temp_glyph = test_glyph_grid[glyph_index].glyph;
                         PopStack(name_array[name_pos].str);
                         PopStack(character_data.name);
-                        
                     }
 
                     printf("player_name: %s\n", character_data.name);
