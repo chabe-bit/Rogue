@@ -899,16 +899,12 @@ typedef struct
 {
     int index;
     bool is_active;
-    
-    SDL_Rect master_volume_body;
-    SDL_Rect music_volume_body;
-    SDL_Rect sfx_volume_body;
-    
+
     SDL_Rect volume_body[3];
     menu_item_t options[5];
 } sound_settings_t;
 
-void Sound_InitOptions(sound_settings_t *sound_settings)
+void Sound_InitSettings(sound_settings_t *sound_settings)
 {
     sound_settings->options[0].text = "Volume";
     sound_settings->options[0].x = CenterRenderedText(sound_settings->options[0].text, 0);
@@ -930,21 +926,6 @@ void Sound_InitOptions(sound_settings_t *sound_settings)
     sound_settings->options[4].x = CenterRenderedText(sound_settings->options[4].text, 0);
     sound_settings->options[4].y = SCREEN_CENTER_Y + 76;
 
-    sound_settings->master_volume_body.x = SCREEN_CENTER_X - ((96/2));
-    sound_settings->master_volume_body.y = sound_settings->options[1].y + 10; // Master volume's Y position added
-    sound_settings->master_volume_body.w = 96; 
-    sound_settings->master_volume_body.h = GLYPH_HEIGHT + 2;
-
-    sound_settings->music_volume_body.x = SCREEN_CENTER_X - ((96/2));
-    sound_settings->music_volume_body.y = sound_settings->options[2].y + 10;
-    sound_settings->music_volume_body.w = 96; 
-    sound_settings->music_volume_body.h = GLYPH_HEIGHT + 2;
-
-    sound_settings->sfx_volume_body.x = SCREEN_CENTER_X - ((96/2));
-    sound_settings->sfx_volume_body.y = sound_settings->options[3].y + 10;
-    sound_settings->sfx_volume_body.w = 96; 
-    sound_settings->sfx_volume_body.h = GLYPH_HEIGHT + 2;
-
     sound_settings->volume_body[0].x = SCREEN_CENTER_X - ((96/2));
     sound_settings->volume_body[0].y = sound_settings->options[1].y + 10; // Master volume's Y position added
     sound_settings->volume_body[0].w = 96; 
@@ -959,9 +940,6 @@ void Sound_InitOptions(sound_settings_t *sound_settings)
     sound_settings->volume_body[2].y = sound_settings->options[3].y + 10;
     sound_settings->volume_body[2].w = 96; 
     sound_settings->volume_body[2].h = GLYPH_HEIGHT + 2;
-
-
-
 }
 
 #define VOLUME_CONTROLLER_COUNT 3
@@ -1228,9 +1206,12 @@ LoadWavFileTest(wav_t *wav, const char *filename, bool music)
 typedef struct
 {
     int index;
-    
     int name_pos;
     int name_limit;
+
+    bool is_active;
+    bool glyph_entered;
+    bool glyph_deleted;
 
     u32 current_row;
     u32 current_col;
@@ -1238,9 +1219,13 @@ typedef struct
 
 void NameEntry_Init(name_entry_t *name_entry)
 {
-    name_entry->index = 0;
-    name_entry->name_pos = 0;
-    name_entry->name_limit = 10;
+    name_entry->index       = 0;
+    name_entry->name_pos    = 0;
+name_entry->name_limit  = NAME_ENTRY_LIMIT;
+    
+    name_entry->is_active      = false;
+    name_entry->glyph_entered  = false;
+    name_entry->glyph_deleted  = false;
 
     name_entry->current_row = name_entry->index / NAME_ENTRY_GRID_COLS;
     name_entry->current_col = name_entry->index % NAME_ENTRY_GRID_ROWS;
@@ -1276,6 +1261,24 @@ void NameEntry_MoveRight(name_entry_t *name_entry)
     name_entry->index = name_entry->current_row * 
                         NAME_ENTRY_GRID_COLS + 
                         name_entry->current_col;
+}
+
+void NameEntry_EnterGlyph(name_entry_t *name_entry)
+{
+    if (name_entry->name_limit > 0 && name_entry->name_pos <= 10)
+    {
+        //temp_glyph = test_glyph_grid[name_entry.index].glyph;
+        //PushCharStack(name_array[name_entry.name_pos].str, temp_glyph);
+        --name_entry->name_limit;
+        ++name_entry->name_pos;
+    }
+
+    name_entry->glyph_entered = false;
+}
+
+void NameEntry_DeleteGlyph(name_entry_t *name_entry)
+{
+
 }
 
 // general push and pop function
@@ -1978,7 +1981,6 @@ int main(int argc, char *argv[])
 
 
 
-
     //////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -2009,43 +2011,11 @@ int main(int argc, char *argv[])
 
 
     sound_settings_t sound_settings = {0};
-    Sound_InitOptions(&sound_settings); 
+    Sound_InitSettings(&sound_settings); 
 
-   
     volume_controller_t volume_controller[3] = {0};
     Sound_InitVolumeControl(&sound_settings, volume_controller, VOLUME_CONTROLLER_COUNT); 
-/*
-    // For now, initialize seperately -> create a function
-    for (int i = 0; i < ArraySize(volume_controller[0].blocks); ++i)
-    {
-        volume_controller[0].blocks[i].x = sound_settings.master_volume_body.x + volume_controller[0].volume_size_bars;
-        volume_controller[0].blocks[i].y = sound_settings.master_volume_body.y;
-        volume_controller[0].blocks[i].w = sound_settings.master_volume_body.w / 4;
-        volume_controller[0].blocks[i].h = sound_settings.master_volume_body.h;
-        
-        volume_controller[0].volume_size_bars += (sound_settings.master_volume_body.w / 4);
-    }
 
-    for (int i = 0; i < ArraySize(volume_controller[1].blocks); ++i)
-    {
-        volume_controller[1].blocks[i].x = sound_settings.music_volume_body.x + volume_controller[1].volume_size_bars;
-        volume_controller[1].blocks[i].y = sound_settings.music_volume_body.y;
-        volume_controller[1].blocks[i].w = sound_settings.music_volume_body.w / 4;
-        volume_controller[1].blocks[i].h = sound_settings.music_volume_body.h;
-        
-        volume_controller[1].volume_size_bars += (sound_settings.music_volume_body.w / 4);
-    }
-
-    for (int i = 0; i < ArraySize(volume_controller[2].blocks); ++i)
-    {
-        volume_controller[2].blocks[i].x = sound_settings.sfx_volume_body.x + volume_controller[2].volume_size_bars;
-        volume_controller[2].blocks[i].y = sound_settings.sfx_volume_body.y;
-        volume_controller[2].blocks[i].w = sound_settings.sfx_volume_body.w / 4;
-        volume_controller[2].blocks[i].h = sound_settings.sfx_volume_body.h;
-        
-        volume_controller[2].volume_size_bars += (sound_settings.sfx_volume_body.w / 4);
-    }
-*/
 
     ////////////// Enter name grid 
 
@@ -2592,11 +2562,8 @@ int main(int argc, char *argv[])
     Running = true;
 
     bool sound_settings_touched = false;
+                           
 
-    bool is_glyph_selected = false;
-    bool is_glyph_deleted = false;
-    bool entering_glyph = false;
-                            
 
     while (Running) 
     {
@@ -2968,9 +2935,9 @@ int main(int argc, char *argv[])
                         } break;
                         case SDLK_BACKSPACE:
                         {
-                            if (is_name_submission && !is_glyph_deleted)
+                            if (is_name_submission && !name_entry.glyph_deleted)
                             {
-                                entering_glyph = true;
+                                name_entry.is_active = true;
                                 character_class_name_submission_state = CLASS_NAME_DELETE;
                             }
                         } break;
@@ -3538,13 +3505,13 @@ int main(int argc, char *argv[])
                                 }
                             }
 
-                            if (is_name_submission && !is_glyph_selected)
+                            if (is_name_submission && !name_entry.glyph_entered)
                             {
                                 printf("name_entry.index: %d\n", name_entry.index);
                                 name_entry.index = name_entry.current_row * NAME_ENTRY_GRID_COLS + name_entry.current_col;
                                 if (name_entry.index > 0 || name_entry.index <= 50)
                                 {
-                                    entering_glyph = true;
+                                    name_entry.is_active = true;
                                     character_class_name_submission_state = CLASS_NAME_ENTER;
                                 }
 
@@ -3701,9 +3668,9 @@ int main(int argc, char *argv[])
             }*/
 
             SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
-            SDL_RenderDrawRect(SDLWindow.Renderer, &sound_settings.master_volume_body);
-            SDL_RenderDrawRect(SDLWindow.Renderer, &sound_settings.music_volume_body);
-            SDL_RenderDrawRect(SDLWindow.Renderer, &sound_settings.sfx_volume_body);
+            SDL_RenderDrawRect(SDLWindow.Renderer, &sound_settings.volume_body[0]);
+            SDL_RenderDrawRect(SDLWindow.Renderer, &sound_settings.volume_body[1]);
+            SDL_RenderDrawRect(SDLWindow.Renderer, &sound_settings.volume_body[2]);
 
             switch (volume_settings_state)
             {
@@ -4266,7 +4233,7 @@ int main(int argc, char *argv[])
 
                 }
              
-                if (entering_glyph && name_entry.name_limit <= 10)
+                if (name_entry.is_active && name_entry.name_limit <= 10)
                 {
                     switch (character_class_name_submission_state)
                     {
@@ -4275,13 +4242,13 @@ int main(int argc, char *argv[])
                         } break;
                         case CLASS_NAME_ENTER:
                         { 
-                            is_glyph_selected = true;
-                            entering_glyph = false;
+                            name_entry.glyph_entered = true;
+                            name_entry.is_active = false;
                         } break;
                         case CLASS_NAME_DELETE:
                         {
-                            is_glyph_deleted = true;
-                            entering_glyph = false;
+                            name_entry.glyph_deleted = true;
+                            name_entry.is_active = false;
                         } break;
                         default:    
                         {
@@ -4291,11 +4258,8 @@ int main(int argc, char *argv[])
                 }
                 
 
-                if (is_glyph_selected)
+                if (name_entry.glyph_entered)
                 {
-                    // TODO: Remove selected glyph
-                    // Render selected glyph
-                    printf("select!\n");
                     if (name_entry.name_limit > 0 && name_entry.name_pos <= 10)
                     {
                         temp_glyph = test_glyph_grid[name_entry.index].glyph;
@@ -4305,19 +4269,14 @@ int main(int argc, char *argv[])
                         ++name_entry.name_pos;
                     }
 
-                    printf("player_name: %s\n", character_data.name);
-                    printf("name_entry.name_limit: %d\n", name_entry.name_limit);
-                    is_glyph_selected = false;
+                    name_entry.glyph_entered = false;
                 }
             
-                if (is_glyph_deleted)
+                if (name_entry.glyph_deleted)
                 {
                     printf("delete!\n");
                     if (name_entry.name_limit < 10 && name_entry.name_pos >= 0)
                     {
-                        // Update the position before popping, otherwise we're popping the empty char from the new position 
-                        // PushCharStack had placed us, and that results in having to press the backspace twice to delete, and 
-                        // that leaves a weird render artifact for the glyphs to be rendered ontop of each other.
                         ++name_entry.name_limit;
                         --name_entry.name_pos;
                         temp_glyph = test_glyph_grid[name_entry.index].glyph;
@@ -4325,9 +4284,7 @@ int main(int argc, char *argv[])
                         PopStack(character_data.name);
                     }
 
-                    printf("player_name: %s\n", character_data.name);
-                    printf("name_entry.name_limit: %d\n", name_entry.name_limit);
-                    is_glyph_deleted = false;
+                    name_entry.glyph_deleted = false;
                 }
 
 
