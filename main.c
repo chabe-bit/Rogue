@@ -12,18 +12,21 @@
 #define ASPECT_WIDTH  256
 #define ASPECT_HEIGHT 240
 
+#define SCREEN_CENTER_X (ASPECT_WIDTH  / 2)
+#define SCREEN_CENTER_Y (ASPECT_HEIGHT / 2)
+
 #define GLYPH_WIDTH  6
 #define GLYPH_HEIGHT 5
 #define NUM_GLYPHS ArraySize(GUIFontData)
 
+#define CenterRenderedText(text, offset) ( SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(text)) / 2) + offset )
+
+#define NAME_ENTRY_GRID_ROWS 5
+#define NAME_ENTRY_GRID_COLS 10
+
+
+
 static bool Running;
-#define ArraySize(array) ( sizeof(array) / sizeof((array)[0]) )
-#define ArraySize2D(array) ( sizeof((array)[0]) / sizeof((array)[0][0]) )
-#define CenterRenderedText(x_screen_center, text, offset) ( x_screen_center - ((GLYPH_WIDTH * strlen(text)) / 2) + offset )
-
-#define SCREEN_CENTER_X (ASPECT_WIDTH  / 2)
-#define SCREEN_CENTER_Y (ASPECT_HEIGHT / 2)
-
 
 struct
 {
@@ -119,7 +122,6 @@ typedef struct master_volume_t
     sfx_t sfx[2];
 } master_volume_t;
 
-
 static void
 LoadWavFile(wav_t *wav, const char *file_name)
 {
@@ -148,7 +150,7 @@ PlaySFX(wav_t *sound)
 {
     SDL_PauseAudioDevice(sound->device_id, 0);
 
-    // Lock to update then unlock
+    // Lock to reset the audio from loop and to instead reset if button is played again, then unlock
     SDL_LockAudioDevice(sound->device_id);
     sound->reset_audio = true;
     SDL_UnlockAudioDevice(sound->device_id);
@@ -460,6 +462,16 @@ void RenderTextWithNewlines(SDL_Renderer *renderer, SDL_Texture *fontAtlas,
     free(copy);
 }
 
+typedef struct
+{
+    int index;
+    bool is_active;
+
+    const char *table[50]; 
+} personality_test_t; 
+
+#define PERSONALITY_TEST_QUESTIONS 50
+
 // Personality Test inspired by DQ3 Remake
 // https://game8.co/games/Dragon-Quest-3/archives/464271
 const char *question_table[50] = 
@@ -518,6 +530,21 @@ const char *question_table[50] =
     "Do you hold anything precious?",
     "Do you trip on a boulder and blame youself?"
 };
+
+void PersonalityTest_Init(personality_test_t *personality_test)
+{
+    personality_test->index = 1; // Starting question begins at 1
+    personality_test->is_active = false;
+
+    for (int i = 0; i < PERSONALITY_TEST_QUESTIONS; ++i)
+    {
+        personality_test->table[i] = question_table[i]; 
+    }
+   
+    
+    
+}
+
 
 const char *village_scenario[1] = {
     "Silver coins drop from the hanging bag of an elderly man's pocket\n as he walks through the market. What do you do?"
@@ -1112,6 +1139,58 @@ LoadWavFileTest(wav_t *wav, const char *filename, bool music)
     }
 }
 
+typedef struct
+{
+    int index;
+    
+    int name_pos;
+    int name_limit;
+
+    u32 current_row;
+    u32 current_col;
+} name_entry_t;
+
+void NameEntry_Init(name_entry_t *name_entry)
+{
+    name_entry->index = 0;
+    name_entry->name_pos = 0;
+    name_entry->name_limit = 10;
+
+    name_entry->current_row = name_entry->index / NAME_ENTRY_GRID_COLS;
+    name_entry->current_col = name_entry->index % NAME_ENTRY_GRID_ROWS;
+}
+
+void NameEntry_MoveUp(name_entry_t *name_entry)
+{
+    name_entry->current_row = (name_entry->current_row - 1 + NAME_ENTRY_GRID_ROWS) % NAME_ENTRY_GRID_ROWS;
+    name_entry->index = name_entry->current_row * 
+                        NAME_ENTRY_GRID_COLS + 
+                        name_entry->current_col;
+}
+
+void NameEntry_MoveDown(name_entry_t *name_entry)
+{
+    name_entry->current_row = (name_entry->current_row + 1) % NAME_ENTRY_GRID_ROWS;
+    name_entry->index = name_entry->current_row * 
+                        NAME_ENTRY_GRID_COLS + 
+                        name_entry->current_col;
+}
+
+void NameEntry_MoveLeft(name_entry_t *name_entry)
+{
+    name_entry->current_col = (name_entry->current_col - 1 + NAME_ENTRY_GRID_COLS) % NAME_ENTRY_GRID_COLS;
+    name_entry->index = name_entry->current_row * 
+                        NAME_ENTRY_GRID_COLS + 
+                        name_entry->current_col;
+}
+
+void NameEntry_MoveRight(name_entry_t *name_entry)
+{
+    name_entry->current_col = (name_entry->current_col + 1) % NAME_ENTRY_GRID_COLS;
+    name_entry->index = name_entry->current_row * 
+                        NAME_ENTRY_GRID_COLS + 
+                        name_entry->current_col;
+}
 
 #define NAME_LIMIT 10
 // general push and pop function
@@ -1303,6 +1382,9 @@ void Personality_ScenarioInitialize(test_personality_scenario_t *personality,
 int main(int argc, char *argv[])
 {
     srand(time(NULL));
+
+    personality_test_t personality_test = {0};
+    PersonalityTest_Init(&personality_test);
 
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
@@ -1756,23 +1838,23 @@ int main(int argc, char *argv[])
     personality_scenario_t personality_scenario[1] = {0};
     
     personality_scenario[MONSTER].info.monster_options[0].text = "Kill fewer than three people";
-    personality_scenario[MONSTER].info.monster_options[0].x = CenterRenderedText(SCREEN_CENTER_X, personality_scenario[MONSTER].info.monster_options[0].text, 0);
+    personality_scenario[MONSTER].info.monster_options[0].x = CenterRenderedText(personality_scenario[MONSTER].info.monster_options[0].text, 0);
     personality_scenario[MONSTER].info.monster_options[0].y = SCREEN_CENTER_Y;
     
     personality_scenario[MONSTER].info.monster_options[1].text = "Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children";
-    personality_scenario[MONSTER].info.monster_options[1].x = CenterRenderedText(SCREEN_CENTER_X, personality_scenario[MONSTER].info.monster_options[1].text, 176);
+    personality_scenario[MONSTER].info.monster_options[1].x = CenterRenderedText(personality_scenario[MONSTER].info.monster_options[1].text, 176);
     personality_scenario[MONSTER].info.monster_options[1].y = SCREEN_CENTER_Y + 16;
 
     personality_scenario[MONSTER].info.monster_options[2].text = "Kill three or more people, \nbut don't kill the women, \nthe elderly, or children";
-    personality_scenario[MONSTER].info.monster_options[2].x = CenterRenderedText(SCREEN_CENTER_X, personality_scenario[MONSTER].info.monster_options[2].text, 164);
+    personality_scenario[MONSTER].info.monster_options[2].x = CenterRenderedText(personality_scenario[MONSTER].info.monster_options[2].text, 164);
     personality_scenario[MONSTER].info.monster_options[2].y = SCREEN_CENTER_Y + 48;
     
     personality_scenario[MONSTER].info.monster_options[3].text = "Kill three or more poeple, \nincluding children";
-    personality_scenario[MONSTER].info.monster_options[3].x = CenterRenderedText(SCREEN_CENTER_X, personality_scenario[MONSTER].info.monster_options[3].text, 64);
+    personality_scenario[MONSTER].info.monster_options[3].x = CenterRenderedText(personality_scenario[MONSTER].info.monster_options[3].text, 64);
     personality_scenario[MONSTER].info.monster_options[3].y = SCREEN_CENTER_Y + 78;
 
     personality_scenario[MONSTER].info.monster_options[4].text = "Kill nine or more people, but \ndon't kill the man by the inn";
-    personality_scenario[MONSTER].info.monster_options[4].x = CenterRenderedText(SCREEN_CENTER_X, personality_scenario[MONSTER].info.monster_options[4].text, 88);
+    personality_scenario[MONSTER].info.monster_options[4].x = CenterRenderedText(personality_scenario[MONSTER].info.monster_options[4].text, 88);
     personality_scenario[MONSTER].info.monster_options[4].y = SCREEN_CENTER_Y + 102;
    
 
@@ -1987,7 +2069,9 @@ int main(int argc, char *argv[])
 
     };
 
-    int glyph_index = 0;
+    name_entry_t name_entry = {0};
+    NameEntry_Init(&name_entry);
+
     menu_item_t glyph_grid[50] = {
         // 10x5 grid
         // Every glyph has a padding of 12px around itself
@@ -2069,8 +2153,6 @@ int main(int argc, char *argv[])
         { "_", SCREEN_CENTER_X + 40, SCREEN_CENTER_Y - 28 }, 
     };
 
-    int name_pos = 0; 
-    int name_limit = NAME_LIMIT;
     char temp_glyph;
 
     typedef struct 
@@ -2423,7 +2505,7 @@ int main(int argc, char *argv[])
         {
             char name[32];
             class_base_stats_t base_stats;
-    } class;
+        } class;
 
         struct
         {
@@ -2458,20 +2540,16 @@ int main(int argc, char *argv[])
 
     // Start event
     bool some_input = true;
-    int questions_answered_index = 1;
     is_title_screen = true;
     Running = true;
 
     bool volume_settings_touched = false;
 
-    bool is_final_question = false;
-    bool is_quiz = false;
     bool is_glyph_selected = false;
     bool is_glyph_deleted = false;
     bool entering_glyph = false;
                             
-    u32 current_row = glyph_index / 10;
-    u32 current_col = glyph_index % 5;
+
     while (Running) 
     {
         frame_start = SDL_GetTicks();
@@ -2527,9 +2605,7 @@ int main(int argc, char *argv[])
                         
                             if (is_name_submission)
                             {
-                                current_row = (current_row - 1 + 5) % 5;
-                                glyph_index = current_row * 10 + current_col;
-                                printf("current_row: %d\n", current_row);
+                                NameEntry_MoveUp(&name_entry);
                             }
 
                             if (personality_scenario[0].is_active)
@@ -2577,9 +2653,7 @@ int main(int argc, char *argv[])
 
                             if (is_name_submission)
                             {
-                                current_row = (current_row + 1) % 5;
-                                glyph_index = current_row * 10 + current_col;
-                                printf("current_row: %d\n", current_row);
+                                NameEntry_MoveDown(&name_entry);
                             }  
 
                             if (personality_scenario[0].is_active)
@@ -2692,9 +2766,7 @@ int main(int argc, char *argv[])
 
                             if (is_name_submission)
                             {
-                                current_col = (current_col - 1 + 10) % 10;
-                                glyph_index = current_row * 10 + current_col;
-                                printf("current_col: %d\n", current_col);
+                                NameEntry_MoveLeft(&name_entry);
                             }
                         } break;
                         case SDLK_d:
@@ -2791,9 +2863,7 @@ int main(int argc, char *argv[])
                             
                             if (is_name_submission)
                             {
-                                current_col = (current_col + 1) % 10;
-                                glyph_index = current_row * 10 + current_col;
-                                printf("current_col: %d\n", current_col);
+                                NameEntry_MoveRight(&name_entry);
                             }
                         } break;
                         case SDLK_q:
@@ -2968,7 +3038,7 @@ int main(int argc, char *argv[])
                                         {
                                             character_allocation_select_screen.is_active = false;
                                             is_personality_test = true;
-                                            is_quiz = true;
+                                            personality_test.is_active = true;
                                         }
                                         
                                         confirmation.is_active = false; 
@@ -2986,130 +3056,130 @@ int main(int argc, char *argv[])
                                 }
                             }
 
-                            if (is_personality_test && is_quiz && confirmation.is_active)
+                            if (is_personality_test && personality_test.is_active && confirmation.is_active)
                             {
                                 switch (confirmation.index)
                                 {
                                     case 0: // yes
                                     {
                                         // turn into a function
-                                        switch (questions_answered_index)
+                                        switch (personality_test.index)
                                         {
                                             case 1:
                                             {
-                                                questions_answered_index = 7;
+                                                personality_test.index = 7;
                                             } break;
                                             case 2:
                                             {
-                                                questions_answered_index = 14;
+                                                personality_test.index = 14;
                                             } break;
                                             case 3:
                                             {
-                                                questions_answered_index = 6;
+                                                personality_test.index = 6;
                                             } break;
                                             case 4:
                                             {
-                                                questions_answered_index = 15;
+                                                personality_test.index = 15;
                                             } break;
                                             case 5:
                                             {
-                                                questions_answered_index = 8;
+                                                personality_test.index = 8;
                                             } break;
                                             case 6:
                                             {
-                                                questions_answered_index = 7;
+                                                personality_test.index = 7;
                                             } break;
                                             case 7:
                                             {
-                                                questions_answered_index = 10;
+                                                personality_test.index = 10;
                                             } break;
                                             case 8:
                                             {
-                                                questions_answered_index = 10;
+                                                personality_test.index = 10;
                                             } break;
                                             case 9:
                                             {
-                                                questions_answered_index = 11;
+                                                personality_test.index = 11;
                                             } break;
                                             case 10:
                                             {
-                                                questions_answered_index = 14;
+                                                personality_test.index = 14;
                                             } break;
                                             case 11:
                                             {
-                                                questions_answered_index = 14;
+                                                personality_test.index = 14;
                                             } break;
                                             case 12:
                                             {
-                                                questions_answered_index = 31;
+                                                personality_test.index = 31;
                                             } break;
                                             case 13:
                                             {
-                                                questions_answered_index = 25;
+                                                personality_test.index = 25;
                                             } break;
                                             case 14:
                                             {
-                                                questions_answered_index = 18;
+                                                personality_test.index = 18;
                                             } break;
                                             case 15:
                                             {
-                                                questions_answered_index = 16;
+                                                personality_test.index = 16;
                                             } break;
                                             case 16:
                                             {
-                                                questions_answered_index = 17;
+                                                personality_test.index = 17;
                                             } break;
                                             case 17:
                                             {
-                                                questions_answered_index = 21;
+                                                personality_test.index = 21;
                                             } break;
                                             case 18:
                                             {
-                                                questions_answered_index = 19;
+                                                personality_test.index = 19;
                                             } break;
                                             case 19:
                                             {
-                                                questions_answered_index = 20;
+                                                personality_test.index = 20;
                                             } break;
                                             case 20:
                                             {
-                                                questions_answered_index = 21;
+                                                personality_test.index = 21;
                                             } break; 
                                             case 21:
                                             {
-                                                questions_answered_index = 23;
+                                                personality_test.index = 23;
                                             } break;
                                             case 22:
                                             {
-                                                questions_answered_index = 38;
+                                                personality_test.index = 38;
                                             } break;
                                             case 23:
                                             {
-                                                questions_answered_index = 24;
+                                                personality_test.index = 24;
                                             } break;
                                             case 24:
                                             {
-                                                questions_answered_index = 34;
+                                                personality_test.index = 34;
                                             } break;
                                             case 25:
                                             {
-                                                questions_answered_index = 31;
+                                                personality_test.index = 31;
                                             } break;
                                             case 26:
                                             {
-                                                questions_answered_index = 27;
+                                                personality_test.index = 27;
                                             } break;
                                             case 27:
                                             {
-                                                questions_answered_index = 28;
+                                                personality_test.index = 28;
                                             } break;
                                             case 28:
                                             {
-                                                questions_answered_index = 29;
+                                                personality_test.index = 29;
                                             } break;
                                             case 29:
                                             {
-                                                questions_answered_index = 30;
+                                                personality_test.index = 30;
                                             } break;
                                             case 30:
                                             {
@@ -3117,11 +3187,11 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 31:
                                             {
-                                                questions_answered_index = 32;
+                                                personality_test.index = 32;
                                             } break;
                                             case 32:
                                             {
-                                                questions_answered_index = 33;
+                                                personality_test.index = 33;
                                             } break;
                                             case 33:
                                             {
@@ -3133,19 +3203,19 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 35:
                                             {
-                                                questions_answered_index = 0; // final question
+                                                personality_test.index = 0; // final question
                                             } break;
                                             case 36:
                                             {
-                                                questions_answered_index = 37;
+                                                personality_test.index = 37;
                                             } break;
                                             case 37:
                                             {
-                                                questions_answered_index = 43;
+                                                personality_test.index = 43;
                                             } break;
                                             case 38:
                                             {
-                                                questions_answered_index = 39;
+                                                personality_test.index = 39;
                                             } break;
                                             case 39:
                                             {
@@ -3153,15 +3223,15 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 40:
                                             {
-                                                questions_answered_index = 42;
+                                                personality_test.index = 42;
                                             } break; 
                                             case 41:
                                             {
-                                                questions_answered_index = 43;
+                                                personality_test.index = 43;
                                             } break;
                                             case 42:
                                             {
-                                                questions_answered_index = 43;
+                                                personality_test.index = 43;
                                             } break;
                                             case 43:
                                             {
@@ -3173,7 +3243,7 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 45:
                                             {
-                                                questions_answered_index = 47;
+                                                personality_test.index = 47;
                                             } break;
                                             case 46:
                                             {
@@ -3195,191 +3265,191 @@ int main(int argc, char *argv[])
                                     } break;
                                     case 1: // no
                                     {
-                                        switch (questions_answered_index)
+                                        switch (personality_test.index)
                                         {
                                             case 1:
                                             {
-                                                questions_answered_index = 9;
+                                                personality_test.index = 9;
                                             } break;
                                             case 2:
                                             {
-                                                questions_answered_index = 8;
+                                                personality_test.index = 8;
                                             } break;
                                             case 3:
                                             {
-                                                questions_answered_index = 8;
+                                                personality_test.index = 8;
                                             } break;
                                             case 4:
                                             {
-                                                questions_answered_index = 6;
+                                                personality_test.index = 6;
                                             } break;
                                             case 5:
                                             {
-                                                questions_answered_index = 16;
+                                                personality_test.index = 16;
                                             } break;
                                             case 6:
                                             {
-                                                questions_answered_index = 8;
+                                                personality_test.index = 8;
                                             } break;
                                             case 7:
                                             {
-                                                questions_answered_index = 5;
+                                                personality_test.index = 5;
                                             } break;
                                             case 8:
                                             {
-                                                questions_answered_index = 9;
+                                                personality_test.index = 9;
                                             } break;
                                             case 9:
                                             {
-                                                questions_answered_index = 12;
+                                                personality_test.index = 12;
                                             } break;
                                             case 10:
                                             {
-                                                questions_answered_index = 13;
+                                                personality_test.index = 13;
                                             } break;
                                             case 11:
                                             {
-                                                questions_answered_index = 13;
+                                                personality_test.index = 13;
                                             } break;
                                             case 12:
                                             {
-                                                questions_answered_index = 14;
+                                                personality_test.index = 14;
                                             } break;
                                             case 13:
                                             {
-                                                questions_answered_index = 15;
+                                                personality_test.index = 15;
                                             } break;
                                             case 14:
                                             {
-                                                questions_answered_index = 19;
+                                                personality_test.index = 19;
                                             } break;
                                             case 15:
                                             {
-                                                questions_answered_index = 20;
+                                                personality_test.index = 20;
                                             } break;
                                             case 16:
                                             {
-                                                questions_answered_index = 22;
+                                                personality_test.index = 22;
                                             } break;
                                             case 17:
                                             {
-                                                questions_answered_index = 25;
+                                                personality_test.index = 25;
                                             } break;
                                             case 18:
                                             {
-                                                questions_answered_index = 23;
+                                                personality_test.index = 23;
                                             } break;
                                             case 19:
                                             {
-                                                questions_answered_index = 25;
+                                                personality_test.index = 25;
                                             } break;
                                             case 20:
                                             {
-                                                questions_answered_index = 22;
+                                                personality_test.index = 22;
                                             } break; 
                                             case 21:
                                             {
-                                                questions_answered_index = 23;
+                                                personality_test.index = 23;
                                             } break;
                                             case 22:
                                             {
-                                                questions_answered_index = 38;
+                                                personality_test.index = 38;
                                             } break;
                                             case 23:
                                             { 
-                                                questions_answered_index = 40;
+                                                personality_test.index = 40;
                                             } break;
                                             case 24:
                                             {
-                                                questions_answered_index = 25;
+                                                personality_test.index = 25;
                                             } break;
                                             case 25:
                                             {
-                                                questions_answered_index = 26;
+                                                personality_test.index = 26;
                                             } break;
                                             case 26:
                                             {
-                                                questions_answered_index = 28;
+                                                personality_test.index = 28;
                                             } break;
                                             case 27:
                                             {
-                                                questions_answered_index = 29;
+                                                personality_test.index = 29;
                                             } break;
                                             case 28:
                                             {
-                                                questions_answered_index = 30;
+                                                personality_test.index = 30;
                                             } break;
                                             case 29:
                                             {
-                                                questions_answered_index = 30;
+                                                personality_test.index = 30;
                                             } break;
                                             case 30:
                                             {
-                                                questions_answered_index = 40; 
+                                                personality_test.index = 40; 
                                             } break;
                                             case 31:
                                             {
-                                                questions_answered_index = 34;
+                                                personality_test.index = 34;
                                             } break;
                                             case 32:
                                             {
-                                                questions_answered_index = 36;
+                                                personality_test.index = 36;
                                             } break;
                                             case 33:
                                             {
-                                                questions_answered_index = 36;
+                                                personality_test.index = 36;
                                             } break;
                                             case 34:
                                             {
-                                                questions_answered_index = 36;
+                                                personality_test.index = 36;
                                             } break;
                                             case 35:
                                             {
-                                                questions_answered_index = 36; 
+                                                personality_test.index = 36; 
                                             } break;
                                             case 36:
                                             {
-                                                questions_answered_index = 48;
+                                                personality_test.index = 48;
                                             } break;
                                             case 37:
                                             {
-                                                questions_answered_index = 49;
+                                                personality_test.index = 49;
                                             } break;
                                             case 38:
                                             {
-                                                questions_answered_index = 40;
+                                                personality_test.index = 40;
                                             } break;
                                             case 39:
                                             {
-                                                questions_answered_index = 41; 
+                                                personality_test.index = 41; 
                                             } break;
                                             case 40:
                                             {
-                                                questions_answered_index = 41;
+                                                personality_test.index = 41;
                                             } break; 
                                             case 41:
                                             {
-                                                questions_answered_index = 42;
+                                                personality_test.index = 42;
                                             } break;
                                             case 42:
                                             {
-                                                questions_answered_index = 44;
+                                                personality_test.index = 44;
                                             } break;
                                             case 43:
                                             {
-                                                questions_answered_index = 45; 
+                                                personality_test.index = 45; 
                                             } break;
                                             case 44:
                                             {
-                                                questions_answered_index = 45;
+                                                personality_test.index = 45;
                                             } break;
                                             case 45:
                                             {
-                                                questions_answered_index = 46;
+                                                personality_test.index = 46;
                                             } break;
                                             case 46:
                                             {
-                                                questions_answered_index = 47; 
+                                                personality_test.index = 47; 
                                             } break;
                                             case 47:
                                             {
@@ -3387,7 +3457,7 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 48:
                                             {
-                                                questions_answered_index = 49;
+                                                personality_test.index = 49;
                                             } break;
                                             case 49:
                                             {
@@ -3420,9 +3490,9 @@ int main(int argc, char *argv[])
 
                             if (is_name_submission && !is_glyph_selected)
                             {
-                                printf("glyph_index: %d\n", glyph_index);
-                                glyph_index = current_row * 10 + current_col;
-                                if (glyph_index > 0 || glyph_index <= 50)
+                                printf("name_entry.index: %d\n", name_entry.index);
+                                name_entry.index = name_entry.current_row * NAME_ENTRY_GRID_COLS + name_entry.current_col;
+                                if (name_entry.index > 0 || name_entry.index <= 50)
                                 {
                                     entering_glyph = true;
                                     character_class_name_submission_state = CLASS_NAME_ENTER;
@@ -3942,13 +4012,13 @@ int main(int argc, char *argv[])
                 if (question_confirmation)
                 {
                     question_confirmation = false;
-                    ++questions_answered_index;
+                    ++personality_test.index;
                     
                     static bool follow_up_question_selected = false;
                     if (!follow_up_question_selected)
                     {
                         int skip_count = 5;
-                        int total = ArraySize(question_table) - skip_count;
+                        int total = ArraySize(personality_test.table) - skip_count;
                         rand_index = skip_count + (rand() % total);
                         follow_up_question_selected = true;
                     }
@@ -3960,7 +4030,7 @@ int main(int argc, char *argv[])
                     static bool first_question_selected = false;
                     if (!first_question_selected)
                     {
-                        int total = ArraySize(question_table) ;
+                        int total = ArraySize(personality_test.table) ;
                         rand_index = rand() % 5;
                         first_question_selected = true;
                     }
@@ -3968,12 +4038,14 @@ int main(int argc, char *argv[])
 
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                 RenderWrappedTextCentered(SDLWindow.Renderer, font_atlas, 
-                                      question_table[questions_answered_index], white, 
+                                      personality_test.table[personality_test.index], white, 
                                       0, -32,        // containerX, containerY
                                       256, 240,    // containerW, containerH
                                       2);          // lineSpacing
 
-                if (is_quiz)
+
+
+                if (personality_test.is_active)
                 {
                     switch (character_class_personality_test_result_state)
                     {
@@ -3984,44 +4056,44 @@ int main(int argc, char *argv[])
                         case CLASS_PERSONALITY_RESULT_VILLAGE:
                         {
                             is_village = true;
-                            is_quiz = false;
+                            personality_test.is_active = false;
                         } break;
                         case CLASS_PERSONALITY_RESULT_MONSTER:
                         {
                             is_monster = true;
                             personality_scenario[MONSTER].scenario.result |= SCENARIO_MONSTER;
                             personality_scenario[MONSTER].is_active = true;
-                            is_quiz = false;
+                            personality_test.is_active = false;
                         } break;
                         case CLASS_PERSONALITY_RESULT_FOREST:
                         {
                             is_forest = true;
-                            is_quiz = false;
+                            personality_test.is_active = false;
                         } break;
                         case CLASS_PERSONALITY_RESULT_CAVE:
                         {
                             is_cave = true;
-                            is_quiz = false;
+                            personality_test.is_active = false;
                         } break;
                         case CLASS_PERSONALITY_RESULT_DESERT:
                         {
                             is_desert = true;
-                            is_quiz = false;
+                            personality_test.is_active = false;
                         } break;
                         case CLASS_PERSONALITY_RESULT_TOWER:
                         {
                             is_tower = true;
-                            is_quiz = false;
+                            personality_test.is_active = false;
                         } break;
                         case CLASS_PERSONALITY_RESULT_THEATER:
                         {
                             is_theater = true;
-                            is_quiz = false;
+                            personality_test.is_active = false;
                         } break;
                         case CLASS_PERSONALITY_RESULT_CASTLE:
                         {
                             is_castle = true;
-                            is_quiz = false;
+                            personality_test.is_active = false;
                         } break;
                         default:
                         {
@@ -4057,7 +4129,7 @@ int main(int argc, char *argv[])
                 {
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                     RenderText(SDLWindow.Renderer, font_atlas,
-                                   CenterRenderedText(SCREEN_CENTER_X, "Scenario", 0), 
+                                   CenterRenderedText("Scenario", 0), 
                                    SCREEN_CENTER_Y - 108,
                                    "Scenario", 
                                    white);
@@ -4094,10 +4166,8 @@ int main(int argc, char *argv[])
                     }
 
 
-                    //is_monster = false;
-                
-                    //is_name_submission = true;
-                    //entering_glyph = true;
+                    is_monster = false;
+                    is_name_submission = true;
                 }
                 if (is_forest)
                 {
@@ -4134,7 +4204,7 @@ int main(int argc, char *argv[])
                 // a stack, where that stack is the name bar where you spell out your name. Deleting a 
                 // glyph will pop it off the stack. Name limit can be set.
                               
-                CursorForItems(&glyph_grid[glyph_index], &right_cursor_asset, 4, 1);
+                CursorForItems(&glyph_grid[name_entry.index], &right_cursor_asset, 4, 1);
                 RenderAndUpdateAsset(&right_cursor_asset);
                 for (int i = 0; i < ArraySize(glyph_grid); ++i)
                 {
@@ -4146,7 +4216,7 @@ int main(int argc, char *argv[])
 
                 }
              
-                if (entering_glyph && name_limit <= 10)
+                if (entering_glyph && name_entry.name_limit <= 10)
                 {
                     switch (character_class_name_submission_state)
                     {
@@ -4176,39 +4246,37 @@ int main(int argc, char *argv[])
                     // TODO: Remove selected glyph
                     // Render selected glyph
                     printf("select!\n");
-                    printf("name_pos: %d\n", name_pos);
-                    if (name_limit > 0 && name_pos <= 10)
+                    if (name_entry.name_limit > 0 && name_entry.name_pos <= 10)
                     {
-                        temp_glyph = test_glyph_grid[glyph_index].glyph;
-                        PushCharStack(name_array[name_pos].str, temp_glyph);
+                        temp_glyph = test_glyph_grid[name_entry.index].glyph;
+                        PushCharStack(name_array[name_entry.name_pos].str, temp_glyph);
                         PushCharStack(character_data.name, temp_glyph);
-                        --name_limit;
-                        ++name_pos;
+                        --name_entry.name_limit;
+                        ++name_entry.name_pos;
                     }
 
                     printf("player_name: %s\n", character_data.name);
-                    printf("name_limit: %d\n", name_limit);
+                    printf("name_entry.name_limit: %d\n", name_entry.name_limit);
                     is_glyph_selected = false;
                 }
             
                 if (is_glyph_deleted)
                 {
                     printf("delete!\n");
-                    printf("name_pos: %d\n", name_pos);
-                    if (name_limit < 10 && name_pos >= 0)
+                    if (name_entry.name_limit < 10 && name_entry.name_pos >= 0)
                     {
                         // Update the position before popping, otherwise we're popping the empty char from the new position 
                         // PushCharStack had placed us, and that results in having to press the backspace twice to delete, and 
                         // that leaves a weird render artifact for the glyphs to be rendered ontop of each other.
-                        ++name_limit;
-                        --name_pos;
-                        temp_glyph = test_glyph_grid[glyph_index].glyph;
-                        PopStack(name_array[name_pos].str);
+                        ++name_entry.name_limit;
+                        --name_entry.name_pos;
+                        temp_glyph = test_glyph_grid[name_entry.index].glyph;
+                        PopStack(name_array[name_entry.name_pos].str);
                         PopStack(character_data.name);
                     }
 
                     printf("player_name: %s\n", character_data.name);
-                    printf("name_limit: %d\n", name_limit);
+                    printf("name_entry.name_limit: %d\n", name_entry.name_limit);
                     is_glyph_deleted = false;
                 }
 
