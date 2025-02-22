@@ -90,7 +90,8 @@ typedef enum
 {
     CLASS_NAME_NONE,
     CLASS_NAME_ENTER,
-    CLASS_NAME_DELETE
+    CLASS_NAME_DELETE,
+    CLASS_NAME_CONFIRM
 } character_class_name_submission;
 character_class_name_submission character_class_name_submission_state = CLASS_NAME_NONE;
 

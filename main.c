@@ -823,32 +823,56 @@ void RenderAssetHealthBar(asset_t *assets)
     SDL_RenderDrawRect(SDLWindow.Renderer, &assets->stats.health_bar);
 }
 
-void RenderAndUpdateAsset(asset_t *enemies)
+void RenderAndUpdateAsset(asset_t *asset)
 {
-    enemies->x = enemies->body.x;
-    enemies->y = enemies->body.y;
-    enemies->body.x -= SDLCamera.X;
-    enemies->body.y -= SDLCamera.Y;
+    asset->x = asset->body.x;
+    asset->y = asset->body.y;
+    asset->body.x -= SDLCamera.X;
+    asset->body.y -= SDLCamera.Y;
     //SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
-    //SDL_RenderDrawRect(SDLWindow.Renderer, &enemies->body);
+    //SDL_RenderDrawRect(SDLWindow.Renderer, &asset->body);
 
-    if (enemies->texture)
+    if (asset->texture)
     {
-        SDL_SetTextureBlendMode(enemies->texture, SDL_BLENDMODE_BLEND);
-        if (SDL_RenderCopy(SDLWindow.Renderer, enemies->texture, NULL, &enemies->body) < 0)
+        SDL_SetTextureBlendMode(asset->texture, SDL_BLENDMODE_BLEND);
+        if (SDL_RenderCopy(SDLWindow.Renderer, asset->texture, NULL, &asset->body) < 0)
         {
             fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
             return;
         }
     }
   
-    enemies->body.x = enemies->x;
-    enemies->body.y = enemies->y;
+    asset->body.x = asset->x;
+    asset->body.y = asset->y;
 
-    if (enemies->stats.hp)
+    if (asset->stats.hp)
     {
-        RenderAssetHealthBar(enemies);
+        RenderAssetHealthBar(asset);
     }
+}
+
+void RenderAsset(asset_t *asset, int x, int y)
+{
+    asset->body.x = x;
+    asset->body.y = y;
+
+    if (asset->texture)
+    {
+        SDL_SetTextureBlendMode(asset->texture, SDL_BLENDMODE_BLEND);
+        if (SDL_RenderCopy(SDLWindow.Renderer, asset->texture, NULL, &asset->body) < 0)
+        {
+            fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
+            return;
+        }
+    }
+
+}
+
+
+void SetAssetPosition(asset_t *asset, int x, int y)
+{
+    asset->body.x =  x;
+    asset->body.y =  y;
 }
 
 void InitializeCamera()
@@ -1274,13 +1298,15 @@ typedef struct
     u32 name_limit;
     u32 current_row;
     u32 current_col;
+
+    char name[NAME_ENTRY_LIMIT];
 } name_entry_t;
 
 typedef struct 
 {
     vec2_t pos;
-    const char glyph[1];
-    const char *underline;
+    char name[NAME_ENTRY_LIMIT];
+    char *underline;
 } name_entry_bar_t;
 
 typedef struct
@@ -1291,7 +1317,7 @@ typedef struct
 
 typedef struct
 {
-    const char *glyph;
+    char *glyph;
     vec2_t pos;
     int x, y;
 } glyph_grid_t;
@@ -1352,16 +1378,16 @@ void NameEntry_EnterGlyph(name_entry_t *name_entry, name_entry_bar_t *name_entry
             if (name_entry->index >= 0 && name_entry->index < 50)
             {
                 temp = ascii_to_glyph_grid[name_entry->index].glyph;
-                PushCharStack(name_entry_bar[name_entry->name_pos].glyph, temp);
+                PushCharStack(name_entry_bar[name_entry->name_pos].name, temp);
                 
                 --name_entry->name_limit;
                 ++name_entry->name_pos;
             }
 
         }
-
-        name_entry->glyph_entered = false;
     }
+        
+    name_entry->glyph_entered = false;
 }
 
 void NameEntry_DeleteGlyph(name_entry_t *name_entry, name_entry_bar_t *name_entry_bar)
@@ -1373,11 +1399,11 @@ void NameEntry_DeleteGlyph(name_entry_t *name_entry, name_entry_bar_t *name_entr
             ++name_entry->name_limit;
             --name_entry->name_pos;
             
-            PopStack(name_entry_bar[name_entry->name_pos].glyph);
+            PopStack(name_entry_bar[name_entry->name_pos].name);
         }
-
-        name_entry->glyph_deleted = false;
     }
+
+    name_entry->glyph_deleted = false;
 }
 
 void NameEntry_RenderNameUnderline(name_entry_bar_t *name_entry_bar, SDL_Texture *font_atlas, SDL_Color color)
@@ -1399,15 +1425,49 @@ void NameEntry_RenderName(name_entry_bar_t *name_entry_bar, SDL_Texture *font_at
         RenderText(SDLWindow.Renderer, font_atlas,
                    name_entry_bar[i].pos.x, 
                    name_entry_bar[i].pos.y - 4,
-                   name_entry_bar[i].glyph, 
+                   name_entry_bar[i].name, 
                    color);
     }
 }
 
-void NameEntry_ConfirmName(name_entry_t *name_entry)
+char *NameEntry_GetName(name_entry_t *name_entry)
 {
+    char *name = NULL;
+    if (name_entry->name == NULL)
+    {
+        fprintf(stderr, "Name is NULL! -> %s\n", name_entry->name);
+        return name;
+    }
 
+    name = name_entry->name;
+    return name;
 }
+
+void NameEntry_ConfirmName(name_entry_t *name_entry, name_entry_bar_t *name_entry_bar)
+{
+    if (name_entry->name_confirmed)
+    {
+        for (int i = 0; i < NAME_ENTRY_LIMIT; ++i)
+        {
+            PushCharStack(name_entry->name, *name_entry_bar[i].name);
+        }
+
+        char *test_name = NameEntry_GetName(name_entry);
+    
+        printf("test_name: %s\n", test_name);
+
+
+        printf("name_entry->name: %s\n", name_entry->name);
+        printf("Confirmed!\n");
+    }
+
+
+
+    name_entry->name_confirmed = false;
+}
+
+
+
 // ----------------------- EXPERIEMENTAL --------------------------
 typedef struct
 {
@@ -1683,6 +1743,8 @@ int main(int argc, char *argv[])
     bool question_confirmation = false;
 
     bool is_name_submission = false;
+    bool is_class_overview_screen = false;
+
 
     asset_t blank_screen_asset = {0};
     LoadAsset(&blank_screen_asset, "assets/blank_screen.png");
@@ -2567,10 +2629,7 @@ int main(int argc, char *argv[])
     {
          int index;
          u32 experience;
-         struct 
-         {
-            u32 remaining;
-         } experience_next_level[20];
+         u32 remaining;
     } character_experience_t;
 
 
@@ -2580,13 +2639,8 @@ int main(int argc, char *argv[])
         u32 level; 
         u32 experience;
 
-        // 20 is max level
-        int experience_index;
-        u32 experience_to_next_level[20];
-        
         // character class model
         asset_t model;
-
         struct 
         {
             char name[32];
@@ -2598,32 +2652,36 @@ int main(int argc, char *argv[])
             char name[32]; // leave here for now
         } personality;
 
-        int equipment_index;
-        menu_item_t equipments_temp;
-        struct
-        {
-            // Instead of packing this with char for names, we should pack it with equipment_t types
-            char main_hand[12];
-            char off_hand[12];
-            char head[12];
-            char chest[12];
-            char assessories_left[12];
-            char assessories_right[12];
-        } equipment;
+
     } character_data_t;
     
     character_data_t character_data = {0};
     character_data.level = 1;
     character_data.experience = 0;
 
-    int experience_index = character_data.equipment_index;
-    character_data.experience_to_next_level[experience_index] = 1000;
+    typedef struct
+    {
+        int index;
+        bool is_active;
+
+
+
+    } class_overview_screen_t;
+
+    menu_item_t class_overview = {0};
+
+
+
+
+
 
 
     
 
     /////////////////////////////////////////////////////////////////////////
 
+
+ 
     // Start event
     bool some_input = true;
     is_title_screen = true;
@@ -3003,7 +3061,7 @@ int main(int argc, char *argv[])
                         } break;
                         case SDLK_BACKSPACE:
                         {
-                            if (is_name_submission && !name_entry.glyph_deleted)
+                            if (is_name_submission)
                             {
                                 name_entry.is_active = true;
                                 character_class_name_submission_state = CLASS_NAME_DELETE;
@@ -3575,24 +3633,22 @@ int main(int argc, char *argv[])
 
                             if (is_name_submission)
                             {
-                                if (!name_entry.glyph_entered)
+                                
+                                printf("name_entry.index: %d\n", name_entry.index);
+                                name_entry.index = name_entry.current_row * NAME_ENTRY_GRID_COLS + name_entry.current_col;
+                                if (name_entry.index >= 0 && name_entry.index < 50)
                                 {
-                                    printf("name_entry.index: %d\n", name_entry.index);
-
-                                    name_entry.index = name_entry.current_row * NAME_ENTRY_GRID_COLS + name_entry.current_col;
-                                    if (name_entry.index >= 0 || name_entry.index < 50)
-                                    {
-                                        name_entry.is_active = true;
-                                        character_class_name_submission_state = CLASS_NAME_ENTER;
-                                    }
-                                    
-                                    if (name_entry.index >= 50 || name_entry.index < 60)
-                                    {
-                                        name_entry.name_confirmed = true;
-                                    }
-
+                                    name_entry.is_active = true;
+                                    character_class_name_submission_state = CLASS_NAME_ENTER;
                                 }
 
+ 
+                               
+                                if (name_entry.index >= 50 && name_entry.index < 60)
+                                {
+                                    name_entry.is_active = true;
+                                    character_class_name_submission_state = CLASS_NAME_CONFIRM;
+                                }
                                 
 
                             }
@@ -3848,12 +3904,13 @@ int main(int argc, char *argv[])
                         } break;
                         case CLASS_KNIGHT:
                         {
-                            // TODO: Initialize class into character data entirely
+                            // TODO: Initialize class into character data entirely, AND at the final screen instead
+                            
                             PushString(character_data.class.name, "Knight");
                             printf("player_class: %s\n", character_data.class.name);
-        
                             character_data.class.base_stats = class_base_stats[0];
                             printf("player_class strength: %d\n", character_data.class.base_stats.strength);
+                            character_data.model = character_creation_screen.info[0].asset;
 
                             confirmation.is_active = true; 
                         } break;
@@ -4193,33 +4250,12 @@ int main(int argc, char *argv[])
 
             if (is_name_submission) //enter name screen
             {
-                SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-
-                // Create a grid of glyphs to iterate over either with menu_items_t or class_items_t so
-                // we can iterate through each one with the cursor. Entering a glyph will push that onto 
-                // a stack, where that stack is the name bar where you spell out your name. Deleting a 
-                // glyph will pop it off the stack. Name limit can be set.
-                              
-                Cursor(&right_cursor_asset, &glyph_grid[name_entry.index].pos, -4, -1);
-                RenderAndUpdateAsset(&right_cursor_asset);
-                for (int i = 0; i < ArraySize(glyph_grid); ++i)
-                {
-                    RenderText(SDLWindow.Renderer, font_atlas,
-                            glyph_grid[i].pos.x, 
-                            glyph_grid[i].pos.y,
-                            glyph_grid[i].glyph, 
-                            white);
-
-                }
-             
+       
                 if (name_entry.is_active)
                 {
 
                     switch (character_class_name_submission_state)
                     {
-                        case CLASS_NAME_NONE:
-                        {
-                        } break;
                         case CLASS_NAME_ENTER:
                         { 
                             name_entry.glyph_entered = true;
@@ -4230,33 +4266,85 @@ int main(int argc, char *argv[])
                             name_entry.glyph_deleted = true;
                             name_entry.is_active = false;
                         } break;
-                        default:    
+                        case CLASS_NAME_CONFIRM:
                         {
-                            character_class_name_submission_state = CLASS_NAME_NONE;
+                            name_entry.name_confirmed = true;
+                            name_entry.is_active = false;
+
+                            is_class_overview_screen = true;
+                            //is_game_running = true;
                         } break;
                     }
                 }
 
                 NameEntry_EnterGlyph(&name_entry, name_entry_bar, ascii_to_glyph_grid);
                 NameEntry_DeleteGlyph(&name_entry, name_entry_bar);
+                NameEntry_ConfirmName(&name_entry, name_entry_bar);
 
+                SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                
                 NameEntry_RenderNameUnderline(name_entry_bar, font_atlas, white);
                 NameEntry_RenderName(name_entry_bar, font_atlas, white);
-
-      
-
-
-                if (name_entry.name_confirmed)
+            
+                Cursor(&right_cursor_asset, &glyph_grid[name_entry.index].pos, -4, -1);
+                RenderAndUpdateAsset(&right_cursor_asset);
+                for (int i = 0; i < ArraySize(glyph_grid); ++i)
                 {
-                    PushString(character_data.name, name_entry_bar); 
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                            glyph_grid[i].pos.x, 
+                            glyph_grid[i].pos.y,
+                            glyph_grid[i].glyph, 
+                            white);
 
-                }
-
+                }    
+                
+                RenderText(SDLWindow.Renderer, font_atlas,
+                           CENTER_TEXT_X("Enter your name", 0), 
+                           SCREEN_CENTER_Y - 96,
+                           "Enter your name", 
+                           white);
+                
+                RenderAsset(&character_creation_screen.info[0].asset, SCREEN_CENTER_X - (16/2), 52);
             }
         }
 
-    
+        if (is_class_overview_screen)
+        {
+            SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+            
+            
+
+
+        }
+        
         // Final screen from new_game is the character overview into the game
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         if (is_game_running)
