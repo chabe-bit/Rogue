@@ -22,7 +22,7 @@
 #define CENTER_TEXT_X(text, offset) ( SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(text)) / 2) + offset )
 
 #define NAME_ENTRY_LIMIT 10
-#define NAME_ENTRY_GRID_ROWS 5
+#define NAME_ENTRY_GRID_ROWS 6 
 #define NAME_ENTRY_GRID_COLS 10
 
 static bool Running;
@@ -1264,14 +1264,14 @@ void PushString(char *dest, char *src)
 
 typedef struct
 {
-    int index;
-    int name_pos;
-    int name_limit;
-
     bool is_active;
     bool glyph_entered;
     bool glyph_deleted;
+    bool name_confirmed;
 
+    u32 index;
+    u32 name_pos;
+    u32 name_limit;
     u32 current_row;
     u32 current_col;
 } name_entry_t;
@@ -1305,6 +1305,7 @@ void NameEntry_Init(name_entry_t *name_entry)
     name_entry->is_active      = false;
     name_entry->glyph_entered  = false;
     name_entry->glyph_deleted  = false;
+    name_entry->name_confirmed  = false;
 
     name_entry->current_row = name_entry->index / NAME_ENTRY_GRID_COLS;
     name_entry->current_col = name_entry->index % NAME_ENTRY_GRID_ROWS;
@@ -1337,9 +1338,7 @@ void NameEntry_MoveLeft(name_entry_t *name_entry)
 void NameEntry_MoveRight(name_entry_t *name_entry)
 {
     name_entry->current_col = (name_entry->current_col + 1) % NAME_ENTRY_GRID_COLS;
-    name_entry->index = name_entry->current_row * 
-                        NAME_ENTRY_GRID_COLS + 
-                        name_entry->current_col;
+    name_entry->index = name_entry->current_row * NAME_ENTRY_GRID_COLS + name_entry->current_col;
 }
 
 void NameEntry_EnterGlyph(name_entry_t *name_entry, name_entry_bar_t *name_entry_bar, ascii_grid_t *ascii_to_glyph_grid)
@@ -1349,28 +1348,60 @@ void NameEntry_EnterGlyph(name_entry_t *name_entry, name_entry_bar_t *name_entry
     {
         if (name_entry->name_limit > 0 && name_entry->name_pos <= 10)
         {
-            temp = ascii_to_glyph_grid[name_entry->index].glyph;
-            PushCharStack(name_entry_bar[name_entry->name_pos].glyph, temp);
-            --name_entry->name_limit;
-            ++name_entry->name_pos;
+            // If we're on the maid grid and not on the last row of the grid (buttons)
+            if (name_entry->index >= 0 && name_entry->index < 50)
+            {
+                temp = ascii_to_glyph_grid[name_entry->index].glyph;
+                PushCharStack(name_entry_bar[name_entry->name_pos].glyph, temp);
+                
+                --name_entry->name_limit;
+                ++name_entry->name_pos;
+            }
+
         }
+
         name_entry->glyph_entered = false;
     }
 }
 
-void NameEntry_DeleteGlyph(name_entry_t *name_entry)
+void NameEntry_DeleteGlyph(name_entry_t *name_entry, name_entry_bar_t *name_entry_bar)
 {
+    if (name_entry->glyph_deleted)
+    {
+        if (name_entry->name_limit < 10 && name_entry->name_pos >= 0)
+        {
+            ++name_entry->name_limit;
+            --name_entry->name_pos;
+            
+            PopStack(name_entry_bar[name_entry->name_pos].glyph);
+        }
 
+        name_entry->glyph_deleted = false;
+    }
 }
 
-void NameEntry_RenderNameUnderline(name_entry_t *name_entry)
+void NameEntry_RenderNameUnderline(name_entry_bar_t *name_entry_bar, SDL_Texture *font_atlas, SDL_Color color)
 {
-
+    for (int i = 0; i < NAME_ENTRY_LIMIT; ++i)
+    {
+        RenderText(SDLWindow.Renderer, font_atlas,
+               name_entry_bar[i].pos.x,
+               name_entry_bar[i].pos.y,
+               name_entry_bar[i].underline,
+               color);
+    }
 }
 
-void NameEntry_RenderName(name_entry_t *name_entry)
+void NameEntry_RenderName(name_entry_bar_t *name_entry_bar, SDL_Texture *font_atlas, SDL_Color color)
 {
-
+    for (int i = 0; i < NAME_ENTRY_LIMIT; ++i)
+    {
+        RenderText(SDLWindow.Renderer, font_atlas,
+                   name_entry_bar[i].pos.x, 
+                   name_entry_bar[i].pos.y - 4,
+                   name_entry_bar[i].glyph, 
+                   color);
+    }
 }
 
 void NameEntry_ConfirmName(name_entry_t *name_entry)
@@ -2134,7 +2165,7 @@ int main(int argc, char *argv[])
     NameEntry_Init(&name_entry);
 
 
-    glyph_grid_t glyph_grid[50] = {
+    glyph_grid_t glyph_grid[60] = {
         // 10x5 grid
         // Every glyph has a padding of 12px around itself
         // Upper case
@@ -2196,10 +2227,21 @@ int main(int argc, char *argv[])
         { "8", SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 38 }, 
         { "9", SCREEN_CENTER_X + 64, SCREEN_CENTER_Y + 38 },
 
-        // Buttons (seperate?) -> Also should not be hardcoded to say keyboard keys
-        //{ "Confirm", SCREEN_CENTER_X, SCREEN_CENTER_Y },
+        { "", CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96 }, // Unused
+        { "", CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96 }, // Unused
+        { "", CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96 }, // Unused
+        { "", CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96 }, // Unused
+        { "", CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96 }, // Unused
+        { "", CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96 }, // Unused
+        { "", CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96 }, // Unused
+        { "", CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96 }, // Unused
+        { "", CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96 }, // Unused
+        { "Confirm", CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96 }
     };
 
+
+    printf("grid: %s\n", glyph_grid[50].glyph);
+  
 
 
     char temp_glyph;
@@ -3531,17 +3573,31 @@ int main(int argc, char *argv[])
                                 }
                             }
 
-                            if (is_name_submission && !name_entry.glyph_entered)
+                            if (is_name_submission)
                             {
-                                printf("name_entry.index: %d\n", name_entry.index);
-                                name_entry.index = name_entry.current_row * NAME_ENTRY_GRID_COLS + name_entry.current_col;
-                                if (name_entry.index > 0 || name_entry.index <= 50)
+                                if (!name_entry.glyph_entered)
                                 {
-                                    name_entry.is_active = true;
-                                    character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    printf("name_entry.index: %d\n", name_entry.index);
+
+                                    name_entry.index = name_entry.current_row * NAME_ENTRY_GRID_COLS + name_entry.current_col;
+                                    if (name_entry.index >= 0 || name_entry.index < 50)
+                                    {
+                                        name_entry.is_active = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    }
+                                    
+                                    if (name_entry.index >= 50 || name_entry.index < 60)
+                                    {
+                                        name_entry.name_confirmed = true;
+                                    }
+
                                 }
 
+                                
+
                             }
+
+                            
 
                             if (is_personality_test)
                             {
@@ -4144,7 +4200,6 @@ int main(int argc, char *argv[])
                 // a stack, where that stack is the name bar where you spell out your name. Deleting a 
                 // glyph will pop it off the stack. Name limit can be set.
                               
-                //CursorForItems(&glyph_grid[name_entry.index], &right_cursor_asset, 4, 1);
                 Cursor(&right_cursor_asset, &glyph_grid[name_entry.index].pos, -4, -1);
                 RenderAndUpdateAsset(&right_cursor_asset);
                 for (int i = 0; i < ArraySize(glyph_grid); ++i)
@@ -4159,6 +4214,7 @@ int main(int argc, char *argv[])
              
                 if (name_entry.is_active)
                 {
+
                     switch (character_class_name_submission_state)
                     {
                         case CLASS_NAME_NONE:
@@ -4180,57 +4236,21 @@ int main(int argc, char *argv[])
                         } break;
                     }
                 }
-                
-/*
-                if (name_entry.glyph_entered)
-                {
-                    if (name_entry.name_limit > 0 && name_entry.name_pos <= 10)
-                    {
-                        temp_glyph = ascii_to_glyph_grid[name_entry.index].glyph;
-                        PushCharStack(name_entry_bar[name_entry.name_pos].glyph, temp_glyph);
-                        PushCharStack(character_data.name, temp_glyph);
-                        --name_entry.name_limit;
-                        ++name_entry.name_pos;
-                    }
 
-                    name_entry.glyph_entered = false;
-                }
-*/
                 NameEntry_EnterGlyph(&name_entry, name_entry_bar, ascii_to_glyph_grid);
-                if (name_entry.glyph_deleted)
+                NameEntry_DeleteGlyph(&name_entry, name_entry_bar);
+
+                NameEntry_RenderNameUnderline(name_entry_bar, font_atlas, white);
+                NameEntry_RenderName(name_entry_bar, font_atlas, white);
+
+      
+
+
+                if (name_entry.name_confirmed)
                 {
-                    printf("delete!\n");
-                    if (name_entry.name_limit < 10 && name_entry.name_pos >= 0)
-                    {
-                        ++name_entry.name_limit;
-                        --name_entry.name_pos;
-                        temp_glyph = ascii_to_glyph_grid[name_entry.index].glyph;
-                        PopStack(name_entry_bar[name_entry.name_pos].glyph);
-                        PopStack(character_data.name);
-                    }
+                    PushString(character_data.name, name_entry_bar); 
 
-                    name_entry.glyph_deleted = false;
                 }
-
-
-                // Array sitting outside to hold an array of chars that's passed in for every glyph we've pressed enter on, from which we pushed into
-                for (int i = 0; i < ArraySize(name_entry_bar); ++i)
-                {
-                    RenderText(SDLWindow.Renderer, font_atlas,
-                           name_entry_bar[i].pos.x,
-                           name_entry_bar[i].pos.y,
-                           name_entry_bar[i].underline,
-                           white);
-
-                    RenderText(SDLWindow.Renderer, font_atlas,
-                               name_entry_bar[i].pos.x, 
-                               name_entry_bar[i].pos.y - 4,
-                               name_entry_bar[i].glyph, 
-                               white);
-                }
-
-                
-           
 
             }
         }
