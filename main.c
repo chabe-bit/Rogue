@@ -2667,33 +2667,47 @@ int main(int argc, char *argv[])
         vec2_t pos;
         char *text;
     } class_status_overview_t;
-   
-    const char *text_test = "Name:                   Ben";
-    printf("text_test: %d\n", strlen(text_test));
+
+    bool init_name = true;
+    char name_buffer[28];
+    const char *dst_txt = "Name:                      ";
+    const char *src_txt = "Ben";
+
+    size_t total_width = 27;
+    size_t append_len = strlen(src_txt);
+    size_t insert_index = total_width - append_len;
+
+    strncpy(name_buffer, dst_txt, total_width);
+    name_buffer[total_width] = '\0';
+    strncpy(name_buffer + insert_index, src_txt, append_len);
+    name_buffer[total_width] = '\0';
+
+    printf("Results: %s\n", name_buffer);
     
     class_status_overview_t class_status_overview[14] = {
         // Box 1 - Info
-        { {CENTER_TEXT_X(text_test, 0),                 SCREEN_CENTER_Y - 96},    "Name:                   Ben" },
-        { {CENTER_TEXT_X(text_test, 0),                 SCREEN_CENTER_Y - 86},    "Lv:                       1" },
-        { {CENTER_TEXT_X(text_test, 0),                 SCREEN_CENTER_Y - 76},    "Class:               Knight" },
-        { {CENTER_TEXT_X(text_test, 0),                 SCREEN_CENTER_Y - 66},    "Personality:            Wit" },
+        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 96},    "Name:                     " },
+        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 86},    "Lv:                       1" },
+        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 76},    "Class:               Knight" },
+        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 66},    "Personality:            Wit" },
 
         // Box 2 - Stats
-        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y - 46},                  "Strength:                11" },
-        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y - 36},                  "Resillience:              8" },
-        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y - 26},                  "Agility:                 11" },
-        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y - 16},                  "Stamina:                 11" },
-        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y - 6},                   "Wisdom:                  11" },
-        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y + 5},                   "Luck:                    11" },
-        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y + 15},                  "Max HP:                  11" },
-        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y + 25},                  "Max MP:                  11" },
-        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y + 35},                  "Attack:                  11" },
-        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y + 45},                  "Defense:                 11" },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 46},                  "Strength:                11" },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 36},                  "Resillience:              8" },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 26},                  "Agility:                 11" },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 16},                  "Stamina:                 11" },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 6},                   "Wisdom:                  11" },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 4},                   "Luck:                    11" },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 14},                  "Max HP:                  11" },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 24},                  "Max MP:                  11" },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 34},                  "Attack:                  11" },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 44},                  "Defense:                 11" },
 
 
     };
    
-/* 
+/*
+    // SAVE FOR IN-GAME STAT OVERVIEW
     class_status_overview_t class_status_overview[6] = {
         // Box 1 - Info
         { {CENTER_TEXT_X("Name", -64),                  SCREEN_CENTER_Y - 96}, "Name:                " },
@@ -4337,8 +4351,6 @@ int main(int argc, char *argv[])
                 NameEntry_RenderNameUnderline(name_entry_bar, font_atlas, white);
                 NameEntry_RenderName(name_entry_bar, font_atlas, white);
             
-                Cursor(&right_cursor_asset, &glyph_grid[name_entry.index].pos, -4, -1);
-                RenderAndUpdateAsset(&right_cursor_asset);
                 for (int i = 0; i < ArraySize(glyph_grid); ++i)
                 {
                     RenderText(SDLWindow.Renderer, font_atlas,
@@ -4355,6 +4367,9 @@ int main(int argc, char *argv[])
                            "Enter your name", 
                            white);
                 
+                Cursor(&right_cursor_asset, &glyph_grid[name_entry.index].pos, -4, -1);
+                // Render after the glyph grid so it renders over rather than behind, looks decent but still considering a change
+                RenderAndUpdateAsset(&right_cursor_asset);
                 RenderAsset(&character_creation_screen.info[0].asset, SCREEN_CENTER_X - (16/2), 52);
             }
         }
@@ -4362,10 +4377,31 @@ int main(int argc, char *argv[])
         if (is_class_overview_screen)
         {
             SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-            
+           
+            if (init_name)
+            {
+                char name_buffer[28];
+                const char *dst_txt = "Name:                      ";
+                char *src_txt = NameEntry_GetName(&name_entry);
+
+                size_t total_width = 27;
+                size_t append_len = strlen(src_txt);
+                size_t insert_index = total_width - append_len;
+
+                strncpy(name_buffer, class_status_overview[0].text, total_width);
+                name_buffer[total_width] = '\0';
+                strncpy(name_buffer + insert_index, src_txt, append_len);
+                name_buffer[total_width] = '\0';
+
+                class_status_overview[0].text = name_buffer;
+                            
+                init_name = false;
+            }
+
+
             for (int i = 0; i < ArraySize(class_status_overview); ++i)
             {
-
+                // TODO: Color code stat attributes to what's a boon, bane or neutral
                 RenderText(SDLWindow.Renderer, font_atlas,
                            class_status_overview[i].pos.x,
                            class_status_overview[i].pos.y,
@@ -4373,7 +4409,7 @@ int main(int argc, char *argv[])
                            white);
 
             }
-
+    
             RenderAssetT(&character_creation_screen.info[0].asset, (SCREEN_CENTER_X - (32/2)) + 32, SCREEN_CENTER_Y, 32, 48);
 
         }
