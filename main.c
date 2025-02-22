@@ -2312,14 +2312,6 @@ int main(int argc, char *argv[])
         { "Confirm", CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96 }
     };
 
-
-    printf("grid: %s\n", glyph_grid[50].glyph);
-  
-
-
-    char temp_glyph;
-
-
     name_entry_bar_t name_entry_bar[NAME_ENTRY_LIMIT] = {
         { { SCREEN_CENTER_X - 32, SCREEN_CENTER_Y - 28 }, "", "_", }, 
         { { SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 28 }, "", "_", }, 
@@ -2672,18 +2664,66 @@ int main(int argc, char *argv[])
 
     typedef struct
     {
-        int index;
-        bool is_active;
+        vec2_t pos;
+        char *text;
+    } class_status_overview_t;
+   
+    const char *text_test = "Name:                   Ben";
+    printf("text_test: %d\n", strlen(text_test));
+    
+    class_status_overview_t class_status_overview[14] = {
+        // Box 1 - Info
+        { {CENTER_TEXT_X(text_test, 0),                 SCREEN_CENTER_Y - 96},    "Name:                   Ben" },
+        { {CENTER_TEXT_X(text_test, 0),                 SCREEN_CENTER_Y - 86},    "Lv:                       1" },
+        { {CENTER_TEXT_X(text_test, 0),                 SCREEN_CENTER_Y - 76},    "Class:               Knight" },
+        { {CENTER_TEXT_X(text_test, 0),                 SCREEN_CENTER_Y - 66},    "Personality:            Wit" },
+
+        // Box 2 - Stats
+        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y - 46},                  "Strength:                11" },
+        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y - 36},                  "Resillience:              8" },
+        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y - 26},                  "Agility:                 11" },
+        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y - 16},                  "Stamina:                 11" },
+        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y - 6},                   "Wisdom:                  11" },
+        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y + 5},                   "Luck:                    11" },
+        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y + 15},                  "Max HP:                  11" },
+        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y + 25},                  "Max MP:                  11" },
+        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y + 35},                  "Attack:                  11" },
+        { {CENTER_TEXT_X(text_test, 0),   SCREEN_CENTER_Y + 45},                  "Defense:                 11" },
 
 
+    };
+   
+/* 
+    class_status_overview_t class_status_overview[6] = {
+        // Box 1 - Info
+        { {CENTER_TEXT_X("Name", -64),                  SCREEN_CENTER_Y - 96}, "Name:                " },
+        { {CENTER_TEXT_X("Lv", -64),                    SCREEN_CENTER_Y - 88}, "Lv:                  " },
+        { {CENTER_TEXT_X("Class", -64),                 SCREEN_CENTER_Y - 80}, "Class:               " },
+        { {CENTER_TEXT_X("Personality", -64),           SCREEN_CENTER_Y - 72}, "Personality:         " },
+        { {CENTER_TEXT_X("Experience", -64),            SCREEN_CENTER_Y - 64}, "Experience:          " },
+        { {CENTER_TEXT_X("Exp. to Next Level", -64),    SCREEN_CENTER_Y - 56}, "Exp. to Next Level:  " },
+    
+        // Box 2 - Equipments
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Sword:           " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Shield:          " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Helm:            " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Chestplate:      " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Accessory 1:     " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Accessory 2:     " },
 
-    } class_overview_screen_t;
-
-    menu_item_t class_overview = {0};
-
-
-
-
+        // Box 3 - Stats
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Strength:        " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Resillience:     " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Agility:         " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Stamina:         " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Wisdom:          " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Luck:            " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Max HP:          " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Max MP:          " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Attack:          " },
+        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Defense:         " },
+    };
+*/
 
 
 
@@ -4323,7 +4363,16 @@ int main(int argc, char *argv[])
         {
             SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
             
-            
+            for (int i = 0; i < ArraySize(class_status_overview); ++i)
+            {
+
+                RenderText(SDLWindow.Renderer, font_atlas,
+                           class_status_overview[i].pos.x,
+                           class_status_overview[i].pos.y,
+                           class_status_overview[i].text,
+                           white);
+
+            }
 
             RenderAssetT(&character_creation_screen.info[0].asset, (SCREEN_CENTER_X - (32/2)) + 32, SCREEN_CENTER_Y, 32, 48);
 
