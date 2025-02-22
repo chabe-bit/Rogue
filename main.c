@@ -865,15 +865,26 @@ void RenderAsset(asset_t *asset, int x, int y)
             return;
         }
     }
-
 }
 
-
-void SetAssetPosition(asset_t *asset, int x, int y)
+void RenderAssetT(asset_t *asset, int x, int y, int w, int h)
 {
-    asset->body.x =  x;
-    asset->body.y =  y;
+    asset->body.x = x;
+    asset->body.y = y;
+    asset->body.w = w;
+    asset->body.h = h;
+
+    if (asset->texture)
+    {
+        SDL_SetTextureBlendMode(asset->texture, SDL_BLENDMODE_BLEND);
+        if (SDL_RenderCopy(SDLWindow.Renderer, asset->texture, NULL, &asset->body) < 0)
+        {
+            fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
+            return;
+        }
+    }
 }
+
 
 void InitializeCamera()
 {
@@ -4314,6 +4325,7 @@ int main(int argc, char *argv[])
             
             
 
+            RenderAssetT(&character_creation_screen.info[0].asset, (SCREEN_CENTER_X - (32/2)) + 32, SCREEN_CENTER_Y, 32, 48);
 
         }
         
