@@ -19,15 +19,18 @@
 #define GLYPH_HEIGHT 5
 #define NUM_GLYPHS ArraySize(GUIFontData)
 
-#define CenterRenderedText(text, offset) ( SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(text)) / 2) + offset )
+#define CENTER_TEXT_X(text, offset) ( SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(text)) / 2) + offset )
 
 #define NAME_ENTRY_LIMIT 10
 #define NAME_ENTRY_GRID_ROWS 5
 #define NAME_ENTRY_GRID_COLS 10
 
-
-
 static bool Running;
+
+typedef struct
+{
+    int x, y;
+} vec2_t;
 
 struct
 {
@@ -647,6 +650,12 @@ void CursorForItems(menu_item_t *menu_items, asset_t *cursor, int x_offset, int 
     cursor->body.y = menu_items->y + (GLYPH_HEIGHT / 2) - (cursor->h / 2) - y_offset; // Subtracting by 1 at the end is the center the cursor
 }
 
+void Cursor(asset_t *cursor, vec2_t *pos, int x_offset, int y_offset)
+{
+    cursor->body.x = pos->x - (cursor->w) + x_offset;
+    cursor->body.y = pos->y + (GLYPH_HEIGHT / 2) - (cursor->h / 2) + y_offset; 
+}
+
 void CursorForAssets(asset_t *asset, asset_t *cursor, int x_offset, int y_offset)
 {
     cursor->body.x = asset->x + x_offset;
@@ -907,23 +916,23 @@ typedef struct
 void Sound_InitSettings(sound_settings_t *sound_settings)
 {
     sound_settings->options[0].text = "Volume";
-    sound_settings->options[0].x = CenterRenderedText(sound_settings->options[0].text, 0);
+    sound_settings->options[0].x = CENTER_TEXT_X(sound_settings->options[0].text, 0);
     sound_settings->options[0].y = SCREEN_CENTER_Y - 48;
 
     sound_settings->options[1].text = "Master";
-    sound_settings->options[1].x = CenterRenderedText(sound_settings->options[1].text, 0);
+    sound_settings->options[1].x = CENTER_TEXT_X(sound_settings->options[1].text, 0);
     sound_settings->options[1].y = SCREEN_CENTER_Y + 0;
 
     sound_settings->options[2].text = "Music";
-    sound_settings->options[2].x = CenterRenderedText(sound_settings->options[2].text, 0);
+    sound_settings->options[2].x = CENTER_TEXT_X(sound_settings->options[2].text, 0);
     sound_settings->options[2].y = SCREEN_CENTER_Y + 24;
 
     sound_settings->options[3].text = "SFX";
-    sound_settings->options[3].x = CenterRenderedText(sound_settings->options[3].text, 0);
+    sound_settings->options[3].x = CENTER_TEXT_X(sound_settings->options[3].text, 0);
     sound_settings->options[3].y = SCREEN_CENTER_Y + 48;
 
     sound_settings->options[4].text = "Apply";
-    sound_settings->options[4].x = CenterRenderedText(sound_settings->options[4].text, 0);
+    sound_settings->options[4].x = CENTER_TEXT_X(sound_settings->options[4].text, 0);
     sound_settings->options[4].y = SCREEN_CENTER_Y + 76;
 
     sound_settings->volume_body[0].x = SCREEN_CENTER_X - ((96/2));
@@ -974,7 +983,7 @@ void Sound_InitVolumeControl(sound_settings_t *sound_settings, volume_controller
     }
 }
 
-void UpdateAndRenderVolumeBars(volume_controller_t *volume_controller)
+void Sound_UpdateVolumeBars(volume_controller_t *volume_controller)
 {
     switch (volume_controller->index)
     {
@@ -1043,19 +1052,20 @@ void UpdateAndRenderVolumeBars(volume_controller_t *volume_controller)
             
         } break;
     }
+}
 
-    // Render updated volume blocks and its color
-    /*SDL_SetRenderDrawColor(SDLWindow.Renderer, 
-                           volume_controller->colors.r, 
-                           volume_controller->colors.g, 
-                           volume_controller->colors.b, 
-                           volume_controller->colors.a);*/
-
-    for (int i = 0; i < volume_controller->index; ++i)
+void Sound_RenderVolumeBars(volume_controller_t *volume_controller, int volume_controller_count)
+{
+    for (int vc = 0; vc < volume_controller_count; ++vc)
     {
-        //SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller->blocks[i]);
+        for (int i = 0; i < volume_controller[vc].index; ++i)
+        {
+            SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_controller[vc].colors.r, volume_controller[vc].colors.g, volume_controller[vc].colors.b, volume_controller[vc].colors.a);
+            SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[vc].blocks[i]);
+        }
     }
 }
+
 
 void Audio_SFXCallback(void *user_data, u8 *stream, int length)
 {
@@ -1203,84 +1213,6 @@ LoadWavFileTest(wav_t *wav, const char *filename, bool music)
     }
 }
 
-typedef struct
-{
-    int index;
-    int name_pos;
-    int name_limit;
-
-    bool is_active;
-    bool glyph_entered;
-    bool glyph_deleted;
-
-    u32 current_row;
-    u32 current_col;
-} name_entry_t;
-
-void NameEntry_Init(name_entry_t *name_entry)
-{
-    name_entry->index       = 0;
-    name_entry->name_pos    = 0;
-name_entry->name_limit  = NAME_ENTRY_LIMIT;
-    
-    name_entry->is_active      = false;
-    name_entry->glyph_entered  = false;
-    name_entry->glyph_deleted  = false;
-
-    name_entry->current_row = name_entry->index / NAME_ENTRY_GRID_COLS;
-    name_entry->current_col = name_entry->index % NAME_ENTRY_GRID_ROWS;
-}
-
-void NameEntry_MoveUp(name_entry_t *name_entry)
-{
-    name_entry->current_row = (name_entry->current_row - 1 + NAME_ENTRY_GRID_ROWS) % NAME_ENTRY_GRID_ROWS;
-    name_entry->index = name_entry->current_row * 
-                        NAME_ENTRY_GRID_COLS + 
-                        name_entry->current_col;
-}
-
-void NameEntry_MoveDown(name_entry_t *name_entry)
-{
-    name_entry->current_row = (name_entry->current_row + 1) % NAME_ENTRY_GRID_ROWS;
-    name_entry->index = name_entry->current_row * 
-                        NAME_ENTRY_GRID_COLS + 
-                        name_entry->current_col;
-}
-
-void NameEntry_MoveLeft(name_entry_t *name_entry)
-{
-    name_entry->current_col = (name_entry->current_col - 1 + NAME_ENTRY_GRID_COLS) % NAME_ENTRY_GRID_COLS;
-    name_entry->index = name_entry->current_row * 
-                        NAME_ENTRY_GRID_COLS + 
-                        name_entry->current_col;
-}
-
-void NameEntry_MoveRight(name_entry_t *name_entry)
-{
-    name_entry->current_col = (name_entry->current_col + 1) % NAME_ENTRY_GRID_COLS;
-    name_entry->index = name_entry->current_row * 
-                        NAME_ENTRY_GRID_COLS + 
-                        name_entry->current_col;
-}
-
-void NameEntry_EnterGlyph(name_entry_t *name_entry)
-{
-    if (name_entry->name_limit > 0 && name_entry->name_pos <= 10)
-    {
-        //temp_glyph = test_glyph_grid[name_entry.index].glyph;
-        //PushCharStack(name_array[name_entry.name_pos].str, temp_glyph);
-        --name_entry->name_limit;
-        ++name_entry->name_pos;
-    }
-
-    name_entry->glyph_entered = false;
-}
-
-void NameEntry_DeleteGlyph(name_entry_t *name_entry)
-{
-
-}
-
 // general push and pop function
 void PushCharStack(char *array, char value)
 {
@@ -1329,6 +1261,122 @@ void PushString(char *dest, char *src)
     }
 }
 
+
+typedef struct
+{
+    int index;
+    int name_pos;
+    int name_limit;
+
+    bool is_active;
+    bool glyph_entered;
+    bool glyph_deleted;
+
+    u32 current_row;
+    u32 current_col;
+} name_entry_t;
+
+typedef struct 
+{
+    vec2_t pos;
+    const char glyph[1];
+    const char *underline;
+} name_entry_bar_t;
+
+typedef struct
+{
+    char glyph;
+    int x, y;
+} ascii_grid_t;
+
+typedef struct
+{
+    const char *glyph;
+    vec2_t pos;
+    int x, y;
+} glyph_grid_t;
+
+void NameEntry_Init(name_entry_t *name_entry)
+{
+    name_entry->index       = 0;
+    name_entry->name_pos    = 0;
+    name_entry->name_limit  = NAME_ENTRY_LIMIT;
+    
+    name_entry->is_active      = false;
+    name_entry->glyph_entered  = false;
+    name_entry->glyph_deleted  = false;
+
+    name_entry->current_row = name_entry->index / NAME_ENTRY_GRID_COLS;
+    name_entry->current_col = name_entry->index % NAME_ENTRY_GRID_ROWS;
+}
+
+void NameEntry_MoveUp(name_entry_t *name_entry)
+{
+    name_entry->current_row = (name_entry->current_row - 1 + NAME_ENTRY_GRID_ROWS) % NAME_ENTRY_GRID_ROWS;
+    name_entry->index = name_entry->current_row * 
+                        NAME_ENTRY_GRID_COLS + 
+                        name_entry->current_col;
+}
+
+void NameEntry_MoveDown(name_entry_t *name_entry)
+{
+    name_entry->current_row = (name_entry->current_row + 1) % NAME_ENTRY_GRID_ROWS;
+    name_entry->index = name_entry->current_row * 
+                        NAME_ENTRY_GRID_COLS + 
+                        name_entry->current_col;
+}
+
+void NameEntry_MoveLeft(name_entry_t *name_entry)
+{
+    name_entry->current_col = (name_entry->current_col - 1 + NAME_ENTRY_GRID_COLS) % NAME_ENTRY_GRID_COLS;
+    name_entry->index = name_entry->current_row * 
+                        NAME_ENTRY_GRID_COLS + 
+                        name_entry->current_col;
+}
+
+void NameEntry_MoveRight(name_entry_t *name_entry)
+{
+    name_entry->current_col = (name_entry->current_col + 1) % NAME_ENTRY_GRID_COLS;
+    name_entry->index = name_entry->current_row * 
+                        NAME_ENTRY_GRID_COLS + 
+                        name_entry->current_col;
+}
+
+void NameEntry_EnterGlyph(name_entry_t *name_entry, name_entry_bar_t *name_entry_bar, ascii_grid_t *ascii_to_glyph_grid)
+{
+    char temp;
+    if (name_entry->glyph_entered)
+    {
+        if (name_entry->name_limit > 0 && name_entry->name_pos <= 10)
+        {
+            temp = ascii_to_glyph_grid[name_entry->index].glyph;
+            PushCharStack(name_entry_bar[name_entry->name_pos].glyph, temp);
+            --name_entry->name_limit;
+            ++name_entry->name_pos;
+        }
+        name_entry->glyph_entered = false;
+    }
+}
+
+void NameEntry_DeleteGlyph(name_entry_t *name_entry)
+{
+
+}
+
+void NameEntry_RenderNameUnderline(name_entry_t *name_entry)
+{
+
+}
+
+void NameEntry_RenderName(name_entry_t *name_entry)
+{
+
+}
+
+void NameEntry_ConfirmName(name_entry_t *name_entry)
+{
+
+}
 // ----------------------- EXPERIEMENTAL --------------------------
 typedef struct
 {
@@ -1926,23 +1974,23 @@ int main(int argc, char *argv[])
     personality_scenario_t personality_scenario[1] = {0};
     
     personality_scenario[MONSTER].info.monster_options[0].text = "Kill fewer than three people";
-    personality_scenario[MONSTER].info.monster_options[0].x = CenterRenderedText(personality_scenario[MONSTER].info.monster_options[0].text, 0);
+    personality_scenario[MONSTER].info.monster_options[0].x = CENTER_TEXT_X(personality_scenario[MONSTER].info.monster_options[0].text, 0);
     personality_scenario[MONSTER].info.monster_options[0].y = SCREEN_CENTER_Y;
     
     personality_scenario[MONSTER].info.monster_options[1].text = "Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children";
-    personality_scenario[MONSTER].info.monster_options[1].x = CenterRenderedText(personality_scenario[MONSTER].info.monster_options[1].text, 176);
+    personality_scenario[MONSTER].info.monster_options[1].x = CENTER_TEXT_X(personality_scenario[MONSTER].info.monster_options[1].text, 176);
     personality_scenario[MONSTER].info.monster_options[1].y = SCREEN_CENTER_Y + 16;
 
     personality_scenario[MONSTER].info.monster_options[2].text = "Kill three or more people, \nbut don't kill the women, \nthe elderly, or children";
-    personality_scenario[MONSTER].info.monster_options[2].x = CenterRenderedText(personality_scenario[MONSTER].info.monster_options[2].text, 164);
+    personality_scenario[MONSTER].info.monster_options[2].x = CENTER_TEXT_X(personality_scenario[MONSTER].info.monster_options[2].text, 164);
     personality_scenario[MONSTER].info.monster_options[2].y = SCREEN_CENTER_Y + 48;
     
     personality_scenario[MONSTER].info.monster_options[3].text = "Kill three or more poeple, \nincluding children";
-    personality_scenario[MONSTER].info.monster_options[3].x = CenterRenderedText(personality_scenario[MONSTER].info.monster_options[3].text, 64);
+    personality_scenario[MONSTER].info.monster_options[3].x = CENTER_TEXT_X(personality_scenario[MONSTER].info.monster_options[3].text, 64);
     personality_scenario[MONSTER].info.monster_options[3].y = SCREEN_CENTER_Y + 78;
 
     personality_scenario[MONSTER].info.monster_options[4].text = "Kill nine or more people, but \ndon't kill the man by the inn";
-    personality_scenario[MONSTER].info.monster_options[4].x = CenterRenderedText(personality_scenario[MONSTER].info.monster_options[4].text, 88);
+    personality_scenario[MONSTER].info.monster_options[4].x = CENTER_TEXT_X(personality_scenario[MONSTER].info.monster_options[4].text, 88);
     personality_scenario[MONSTER].info.monster_options[4].y = SCREEN_CENTER_Y + 102;
    
 
@@ -2019,13 +2067,8 @@ int main(int argc, char *argv[])
 
     ////////////// Enter name grid 
 
-    typedef struct
-    {
-        char glyph;
-        int x, y;
-    } glyph_grid_t;
 
-    glyph_grid_t test_glyph_grid[50] = 
+    ascii_grid_t ascii_to_glyph_grid[50] = 
     {
         { 'A', SCREEN_CENTER_X - 52 , SCREEN_CENTER_Y - 8 }, 
         { 'B', SCREEN_CENTER_X - 40 , SCREEN_CENTER_Y - 8 },
@@ -2090,11 +2133,12 @@ int main(int argc, char *argv[])
     name_entry_t name_entry = {0};
     NameEntry_Init(&name_entry);
 
-    menu_item_t glyph_grid[50] = {
+
+    glyph_grid_t glyph_grid[50] = {
         // 10x5 grid
         // Every glyph has a padding of 12px around itself
         // Upper case
-        { "A", SCREEN_CENTER_X - 52 , SCREEN_CENTER_Y - 8 }, 
+        { "A", { SCREEN_CENTER_X - 52 , SCREEN_CENTER_Y - 8} }, 
         { "B", SCREEN_CENTER_X - 40 , SCREEN_CENTER_Y - 8 },
         { "C", SCREEN_CENTER_X - 28, SCREEN_CENTER_Y - 8 }, 
         { "D", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y - 8 }, 
@@ -2156,40 +2200,22 @@ int main(int argc, char *argv[])
         //{ "Confirm", SCREEN_CENTER_X, SCREEN_CENTER_Y },
     };
 
-    // Something maybe unnecessary, but lines underneath the to be entered glyphs to indicate where the player is entering their name
-    int name_bar_index = 0;
-    menu_item_t name_bar_underline[NAME_ENTRY_LIMIT] = {
-        { "_", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y - 28 }, 
-        { "_", SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 28 }, 
-        { "_", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y - 28 }, 
-        { "_", SCREEN_CENTER_X - 8, SCREEN_CENTER_Y - 28 }, 
-        { "_", SCREEN_CENTER_X - 0, SCREEN_CENTER_Y - 28 }, 
-        { "_", SCREEN_CENTER_X + 8, SCREEN_CENTER_Y - 28 }, 
-        { "_", SCREEN_CENTER_X + 16, SCREEN_CENTER_Y - 28 }, 
-        { "_", SCREEN_CENTER_X + 24, SCREEN_CENTER_Y - 28 }, 
-        { "_", SCREEN_CENTER_X + 32, SCREEN_CENTER_Y - 28 }, 
-        { "_", SCREEN_CENTER_X + 40, SCREEN_CENTER_Y - 28 }, 
-    };
+
 
     char temp_glyph;
 
-    typedef struct 
-    {
-        char str[1];
-        int x, y;
-    } i_want_to_see_t;
 
-    i_want_to_see_t name_array[NAME_ENTRY_LIMIT] = {
-        { "", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y - 28 }, 
-        { "", SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 28 }, 
-        { "", SCREEN_CENTER_X - 16, SCREEN_CENTER_Y - 28 }, 
-        { "", SCREEN_CENTER_X - 8, SCREEN_CENTER_Y - 28 }, 
-        { "", SCREEN_CENTER_X - 0, SCREEN_CENTER_Y - 28 }, 
-        { "", SCREEN_CENTER_X + 8, SCREEN_CENTER_Y - 28 }, 
-        { "", SCREEN_CENTER_X + 16, SCREEN_CENTER_Y - 28 }, 
-        { "", SCREEN_CENTER_X + 24, SCREEN_CENTER_Y - 28 }, 
-        { "", SCREEN_CENTER_X + 32, SCREEN_CENTER_Y - 28 }, 
-        { "", SCREEN_CENTER_X + 40, SCREEN_CENTER_Y - 28 }, 
+    name_entry_bar_t name_entry_bar[NAME_ENTRY_LIMIT] = {
+        { { SCREEN_CENTER_X - 32, SCREEN_CENTER_Y - 28 }, "", "_", }, 
+        { { SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 28 }, "", "_", }, 
+        { { SCREEN_CENTER_X - 15, SCREEN_CENTER_Y - 28 }, "", "_", }, 
+        { { SCREEN_CENTER_X - 8,  SCREEN_CENTER_Y - 28 }, "", "_", }, 
+        { { SCREEN_CENTER_X - 0,  SCREEN_CENTER_Y - 28 }, "", "_", }, 
+        { { SCREEN_CENTER_X + 8,  SCREEN_CENTER_Y - 28 }, "", "_", }, 
+        { { SCREEN_CENTER_X + 16, SCREEN_CENTER_Y - 28 }, "", "_", }, 
+        { { SCREEN_CENTER_X + 24, SCREEN_CENTER_Y - 28 }, "", "_", }, 
+        { { SCREEN_CENTER_X + 32, SCREEN_CENTER_Y - 28 }, "", "_", }, 
+        { { SCREEN_CENTER_X + 40, SCREEN_CENTER_Y - 28 }, "", "_", }, 
     };
 
 
@@ -3680,113 +3706,18 @@ int main(int argc, char *argv[])
                 } break;
                 case VOL_SETTINGS_MASTER:
                 {
-                    switch (volume_controller[0].index)
-                    {
-                        // Usage code of updating a volume bar
-                        case 0:
-                        {
-                            if (volume_controller[0].mute)
-                            {
-                                volume_controller[0].volume = 0;
-                                volume_controller[0].mute = false;
-                            }
-                        } break;
-                        case 1:
-                        {
-                            volume_controller[0].colors.r = 0;
-                            volume_controller[0].colors.g = 255;
-                            volume_controller[0].colors.b = 0;
-                            volume_controller[0].colors.a = 255;
-                            
-                            if (volume_controller[0].one)
-                            {
-                                volume_controller[0].volume = 32;
-                                volume_controller[0].one = false;
-                            }
-                        } break;
-                        case 2:
-                        {
-                            volume_controller[0].colors.r = 255;
-                            volume_controller[0].colors.g = 255;
-                            volume_controller[0].colors.b = 0;
-                            volume_controller[0].colors.a = 255;
-
-                            if (volume_controller[0].two)
-                            {
-                                volume_controller[0].volume = 64;
-                                volume_controller[0].two = false;
-                            }
-                        } break;
-                        case 3:
-                        {
-                            volume_controller[0].colors.r = 255;
-                            volume_controller[0].colors.g = 165;
-                            volume_controller[0].colors.b = 0;
-                            volume_controller[0].colors.a = 255;
-
-                            if (volume_controller[0].three)
-                            {
-                                volume_controller[0].volume = 96;
-                                volume_controller[0].three = false;
-                            }
-                        } break;
-                        case 4:
-                        {
-                            volume_controller[0].colors.r = 255;
-                            volume_controller[0].colors.g = 0;
-                            volume_controller[0].colors.b = 0;
-                            volume_controller[0].colors.a = 255;
-                            
-                            if (volume_controller[0].max)
-                            {
-                                volume_controller[0].volume = SDL_MIX_MAXVOLUME;
-                                volume_controller[0].max = false;
-                            }
-                        } break;
-                        default:
-                        {
-                            
-                        } break;
-                    }
-
-                    // Render updated volume blocks and its color
-                    
-                    for (int j = 0; j < 3; ++j)
-                    {
-                        for (int i = 0; i < volume_controller[j].index; ++i)
-                        {
-                            SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_controller[j].colors.r, volume_controller[j].colors.g, volume_controller[j].colors.b, volume_controller[j].colors.a);
-                            SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[j].blocks[i]);
-                        }
-                    }
+                    Sound_UpdateVolumeBars(&volume_controller[0]);
+                    Sound_RenderVolumeBars(volume_controller, VOLUME_CONTROLLER_COUNT);
                 } break;
                 case VOL_SETTINGS_MUSIC:
                 {
-                    UpdateAndRenderVolumeBars(&volume_controller[1]);
-
-                    // this will have to do!
-                    for (int j = 0; j < 3; ++j)
-                    {
-                        for (int i = 0; i < volume_controller[j].index; ++i)
-                        {
-                            SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_controller[j].colors.r, volume_controller[j].colors.g, volume_controller[j].colors.b, volume_controller[j].colors.a);
-                            SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[j].blocks[i]);
-                        }
-                    }
-                    
+                    Sound_UpdateVolumeBars(&volume_controller[1]);
+                    Sound_RenderVolumeBars(volume_controller, VOLUME_CONTROLLER_COUNT);
                 } break;
                 case VOL_SETTINGS_SFX:
                 {
-                    UpdateAndRenderVolumeBars(&volume_controller[2]);
-                    for (int j = 0; j < 3; ++j)
-                    {
-                        for (int i = 0; i < volume_controller[j].index; ++i)
-                        {
-                            SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_controller[j].colors.r, volume_controller[j].colors.g, volume_controller[j].colors.b, volume_controller[j].colors.a);
-                            SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[j].blocks[i]);
-                        }
-                    }
-
+                    Sound_UpdateVolumeBars(&volume_controller[2]);
+                    Sound_RenderVolumeBars(volume_controller, VOLUME_CONTROLLER_COUNT);
                 } break;
                 case VOL_SETTINGS_APPLY:
                 {
@@ -3804,15 +3735,7 @@ int main(int argc, char *argv[])
                         }
                     }
 
-
-                    for (int j = 0; j < 3; ++j)
-                    {
-                        for (int i = 0; i < volume_controller[j].index; ++i)
-                        {
-                            SDL_SetRenderDrawColor(SDLWindow.Renderer, volume_controller[j].colors.r, volume_controller[j].colors.g, volume_controller[j].colors.b, volume_controller[j].colors.a);
-                            SDL_RenderFillRect(SDLWindow.Renderer, &volume_controller[j].blocks[i]);
-                        }
-                    }
+                    Sound_RenderVolumeBars(volume_controller, VOLUME_CONTROLLER_COUNT);
                 } break;
                 default:
                 {
@@ -4146,7 +4069,7 @@ int main(int argc, char *argv[])
                 {
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                     RenderText(SDLWindow.Renderer, font_atlas,
-                                   CenterRenderedText("Scenario", 0), 
+                                   CENTER_TEXT_X("Scenario", 0), 
                                    SCREEN_CENTER_Y - 108,
                                    "Scenario", 
                                    white);
@@ -4221,19 +4144,20 @@ int main(int argc, char *argv[])
                 // a stack, where that stack is the name bar where you spell out your name. Deleting a 
                 // glyph will pop it off the stack. Name limit can be set.
                               
-                CursorForItems(&glyph_grid[name_entry.index], &right_cursor_asset, 4, 1);
+                //CursorForItems(&glyph_grid[name_entry.index], &right_cursor_asset, 4, 1);
+                Cursor(&right_cursor_asset, &glyph_grid[name_entry.index].pos, -4, -1);
                 RenderAndUpdateAsset(&right_cursor_asset);
                 for (int i = 0; i < ArraySize(glyph_grid); ++i)
                 {
                     RenderText(SDLWindow.Renderer, font_atlas,
-                            glyph_grid[i].x, 
-                            glyph_grid[i].y,
-                            glyph_grid[i].text, 
+                            glyph_grid[i].pos.x, 
+                            glyph_grid[i].pos.y,
+                            glyph_grid[i].glyph, 
                             white);
 
                 }
              
-                if (name_entry.is_active && name_entry.name_limit <= 10)
+                if (name_entry.is_active)
                 {
                     switch (character_class_name_submission_state)
                     {
@@ -4257,13 +4181,13 @@ int main(int argc, char *argv[])
                     }
                 }
                 
-
+/*
                 if (name_entry.glyph_entered)
                 {
                     if (name_entry.name_limit > 0 && name_entry.name_pos <= 10)
                     {
-                        temp_glyph = test_glyph_grid[name_entry.index].glyph;
-                        PushCharStack(name_array[name_entry.name_pos].str, temp_glyph);
+                        temp_glyph = ascii_to_glyph_grid[name_entry.index].glyph;
+                        PushCharStack(name_entry_bar[name_entry.name_pos].glyph, temp_glyph);
                         PushCharStack(character_data.name, temp_glyph);
                         --name_entry.name_limit;
                         ++name_entry.name_pos;
@@ -4271,7 +4195,8 @@ int main(int argc, char *argv[])
 
                     name_entry.glyph_entered = false;
                 }
-            
+*/
+                NameEntry_EnterGlyph(&name_entry, name_entry_bar, ascii_to_glyph_grid);
                 if (name_entry.glyph_deleted)
                 {
                     printf("delete!\n");
@@ -4279,8 +4204,8 @@ int main(int argc, char *argv[])
                     {
                         ++name_entry.name_limit;
                         --name_entry.name_pos;
-                        temp_glyph = test_glyph_grid[name_entry.index].glyph;
-                        PopStack(name_array[name_entry.name_pos].str);
+                        temp_glyph = ascii_to_glyph_grid[name_entry.index].glyph;
+                        PopStack(name_entry_bar[name_entry.name_pos].glyph);
                         PopStack(character_data.name);
                     }
 
@@ -4288,24 +4213,24 @@ int main(int argc, char *argv[])
                 }
 
 
-                for (int i = 0; i < ArraySize(name_bar_underline); ++i)
-                {
-                    RenderText(SDLWindow.Renderer, font_atlas,
-                           name_bar_underline[i].x,
-                           name_bar_underline[i].y,
-                           name_bar_underline[i].text,
-                           white);
-                }
-
                 // Array sitting outside to hold an array of chars that's passed in for every glyph we've pressed enter on, from which we pushed into
-                for (int i = 0; i < ArraySize(name_array); ++i)
+                for (int i = 0; i < ArraySize(name_entry_bar); ++i)
                 {
                     RenderText(SDLWindow.Renderer, font_atlas,
-                               name_bar_underline[i].x, 
-                               name_bar_underline[i].y - 4,
-                               name_array[i].str, 
+                           name_entry_bar[i].pos.x,
+                           name_entry_bar[i].pos.y,
+                           name_entry_bar[i].underline,
+                           white);
+
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               name_entry_bar[i].pos.x, 
+                               name_entry_bar[i].pos.y - 4,
+                               name_entry_bar[i].glyph, 
                                white);
                 }
+
+                
+           
 
             }
         }
