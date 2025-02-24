@@ -31,6 +31,34 @@ typedef double f64;
 
 #define ArraySize(array) (sizeof(array) / sizeof((array)[0]))
 
+#define WINDOW_WIDTH  480
+#define WINDOW_HEIGHT 464
+
+#define ASPECT_WIDTH  256
+#define ASPECT_HEIGHT 240
+
+#define SCREEN_CENTER_X (ASPECT_WIDTH  / 2)
+#define SCREEN_CENTER_Y (ASPECT_HEIGHT / 2)
+
+#define GLYPH_WIDTH  6
+#define GLYPH_HEIGHT 5
+#define NUM_GLYPHS ArraySize(GUIFontData)
+
+#define CENTER_TEXT_X(text, offset) ( SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(text)) / 2) + offset )
+
+
+typedef struct
+{
+    int x, y;
+} vec2_t;
+
+typedef struct
+{
+    u32 r, g, b, a;
+} color_t;
+
+
+
 
 
 #endif

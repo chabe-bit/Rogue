@@ -1,43 +1,24 @@
 #include "common.h"
-#include "gui.h"
+#include "helper_funcs.h"
+
 #include "global_states.h"
+
+#include "sound.h"
+#include "name_entry.h"
+#include "gui_text.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 #include <SDL2/SDL.h>
 
-#define WINDOW_WIDTH  480
-#define WINDOW_HEIGHT 464
-
-#define ASPECT_WIDTH  256
-#define ASPECT_HEIGHT 240
-
-#define SCREEN_CENTER_X (ASPECT_WIDTH  / 2)
-#define SCREEN_CENTER_Y (ASPECT_HEIGHT / 2)
-
-#define GLYPH_WIDTH  6
-#define GLYPH_HEIGHT 5
-#define NUM_GLYPHS ArraySize(GUIFontData)
-
-#define CENTER_TEXT_X(text, offset) ( SCREEN_CENTER_X - ((GLYPH_WIDTH * strlen(text)) / 2) + offset )
-
-#define NAME_ENTRY_LIMIT 10
-#define NAME_ENTRY_GRID_ROWS 6 
-#define NAME_ENTRY_GRID_COLS 10
-
 static bool Running;
-
-typedef struct
-{
-    int x, y;
-} vec2_t;
 
 struct
 {
     bool up, down, left, right;
 } Orientation;
 
-typedef struct window_t 
+typedef struct
 {
     SDL_Event e;
     SDL_Window *Window;
@@ -46,7 +27,7 @@ typedef struct window_t
 } window_t;
 window_t SDLWindow;
 
-typedef struct camera_t
+typedef struct
 {
     int X, Y, W, H;
     int TargetWidth, TargetHeight;
@@ -54,7 +35,7 @@ typedef struct camera_t
 } camera_t;
 camera_t SDLCamera;
 
-typedef struct base_abilities_t
+typedef struct
 {
     struct {   
         int strength, dexterity, constitution;
@@ -65,14 +46,14 @@ typedef struct base_abilities_t
     } mental;
 } base_abilities_t;
 
-typedef struct stats_t
+typedef struct
 {
     int hp, atk, def, exp;
     SDL_Rect health_bar;
 } stats_t;
 
 #define NUM_ENEMIES 2
-typedef struct asset_t
+typedef struct
 {
     //bool collidable;
     int x, y, w, h;
@@ -90,56 +71,16 @@ typedef struct asset_t
     SDL_Texture *texture;
 } asset_t;
 
-typedef struct wav_t
-{
-    bool reset_audio;
-    int volume;
-    u32 offset;
-    u32 length;
-    u8 *buffer;
-    SDL_AudioSpec spec;
-    SDL_AudioDeviceID device_id;
-} wav_t;
-
-typedef struct music_t
-{
-    int volume;
-    wav_t music; 
-} music_t;
-
-typedef struct sfx_t
-{
-    int volume;
-    wav_t sfx; 
-} sfx_t;
-
-typedef struct master_volume_t
-{
-    // any audio output will only go as high as the master volume,
-    // if the sfx audio was maxed but master volume was set to 10%, it'll
-    // only be 10% as strong though it's maxed 
-    
-    int volume;
-
-    // array size will stay to be hardcoded in, why tf malloc?
-    music_t music[2]; 
-    sfx_t sfx[2];
-} master_volume_t;
-
 static void
-LoadWavFile(wav_t *wav, const char *file_name)
+LoadWavFile(sound_wav_t *wav, const char *file_name)
 {
     SDL_LoadWAV(file_name, &wav->spec, &wav->buffer, &wav->length);
     wav->device_id = SDL_OpenAudioDevice(NULL, 0, &wav->spec, NULL, 0);   
 }
 
 static void
-PlayMusic(wav_t *sound)
+Sound_PlayMusic(sound_wav_t *sound)
 {
-    if (SDL_GetQueuedAudioSize(sound->device_id) == 0)
-    {
-        SDL_QueueAudio(sound->device_id, sound->buffer, sound->length);            
-    }
     SDL_PauseAudioDevice(sound->device_id, 0);
 }
 
@@ -150,7 +91,7 @@ typedef struct mix_audio_t
 } mix_audio_t;
 
 static void
-PlaySFX(wav_t *sound)
+Sound_PlaySFX(sound_wav_t *sound)
 {
     SDL_PauseAudioDevice(sound->device_id, 0);
 
@@ -161,310 +102,11 @@ PlaySFX(wav_t *sound)
 }
 
 static void 
-PauseAudio(wav_t *sound)
+Sound_PauseMusic(sound_wav_t *sound)
 {
     SDL_PauseAudioDevice(sound->device_id, 1);
 }
 
-
-typedef struct text_t
-{   
-    int font_height;
-    int font_width;
-    SDL_Texture *font_atlas;
-} text_t;
-
-text_t CreateText(SDL_Texture *font_atlas)
-{
-    text_t text_data = {0};
-    text_data.font_atlas = font_atlas;
-    return text_data;
-}
-
-SDL_Texture* CreateFontAtlas(SDL_Renderer *renderer) {
-    const int atlasCols = 16;
-    const int atlasRows = (NUM_GLYPHS + atlasCols - 1) / atlasCols;
-    const int atlasWidth  = atlasCols * GLYPH_WIDTH;
-    const int atlasHeight = atlasRows * GLYPH_HEIGHT;
-
-    // Create an RGBA surface with transparency.
-    SDL_Surface *surface = SDL_CreateRGBSurface(0, atlasWidth, atlasHeight,
-                                                32,
-                                                0x00FF0000,
-                                                0x0000FF00,
-                                                0x000000FF,
-                                                0xFF000000);
-    if (!surface) {
-        fprintf(stderr, "SDL_CreateRGBSurface Error: %s\n", SDL_GetError());
-        return NULL;
-    }
-    // Fill with transparent (0 alpha)
-    SDL_FillRect(surface, NULL, SDL_MapRGBA(surface->format, 0, 0, 0, 0));
-
-    // For each glyph in our font data, draw it into the surface.
-    for (int glyphIndex = 0; glyphIndex < NUM_GLYPHS; glyphIndex++) {
-        // Compute glyph’s position in atlas:
-        int col = glyphIndex % atlasCols;
-        int row = glyphIndex / atlasCols;
-        int dstX = col * GLYPH_WIDTH;
-        int dstY = row * GLYPH_HEIGHT;
-
-        // Draw the glyph pixel by pixel.
-        // For our font, each glyph is GLYPH_HEIGHT rows and GLYPH_WIDTH columns.
-        // We assume the most significant 6 bits in each byte represent the 6 columns.
-        for (int y = 0; y < GLYPH_HEIGHT; y++) {
-            u1 rowData = GUIFontData[glyphIndex][y];
-            for (int x = 0; x < GLYPH_WIDTH; x++) {
-                // Check the bit corresponding to this column.
-                if (rowData & (0x80 >> x)) {
-                    // Set pixel to white (fully opaque).
-                    Uint32 *pixel = (Uint32 *)((Uint8 *)surface->pixels +
-                                        (dstY + y) * surface->pitch +
-                                        (dstX + x) * 4);
-                    *pixel = SDL_MapRGBA(surface->format, 255, 255, 255, 255);
-                }
-            }
-        }
-    }
-
-    // Create a texture from the surface.
-    SDL_Texture *fontAtlas = SDL_CreateTextureFromSurface(renderer, surface);
-    if (!fontAtlas) {
-        fprintf(stderr, "SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
-    }
-    SDL_FreeSurface(surface);
-    return fontAtlas;
-}
-
-void RenderText(SDL_Renderer *renderer, SDL_Texture *fontAtlas, int x, int y,
-                const char *text, SDL_Color color)
-{
-    // Since our atlas is white, we can tint it by setting the texture color mod.
-    SDL_SetTextureColorMod(fontAtlas, color.r, color.g, color.b);
-    SDL_SetTextureAlphaMod(fontAtlas, color.a);
-
-    const int atlasCols = 16;
-
-    // For each character in the text:
-    for (const char *p = text; *p != '\0'; p++) {
-        u1 ascii = (u1)*p;
-        // Look up the corresponding glyph index.
-        // (Assuming ASCII2Font is defined for your ASCII range.)
-        u1 glyphIndex = ASCII2Font[ascii];
-
-        // Compute source rectangle in the atlas.
-        SDL_Rect src;
-        src.x = (glyphIndex % atlasCols) * GLYPH_WIDTH;
-        src.y = (glyphIndex / atlasCols) * GLYPH_HEIGHT;
-        src.w = GLYPH_WIDTH;
-        src.h = GLYPH_HEIGHT;
-
-        // Destination rectangle on screen.
-        SDL_Rect dst;
-        dst.x = x;
-        dst.y = y;
-        dst.w = GLYPH_WIDTH;
-        dst.h = GLYPH_HEIGHT;
-
-        // Render this glyph.
-        SDL_RenderCopy(renderer, fontAtlas, &src, &dst);
-
-        // Advance the x position.
-        x += GLYPH_WIDTH;
-    }
-}
-
-char** WrapText(const char *text, int maxWidth, int *outLineCount)
-{
-    // Maximum number of characters per line for a fixed-width font:
-    int maxCharsPerLine = maxWidth / GLYPH_WIDTH;
-
-    // Copy the input string because strtok_r modifies it.
-    char *copy = strdup(text);
-    if (!copy) return NULL;
-
-    // Prepare dynamic array for lines.
-    int capacity = 32;
-    char **lines = malloc(capacity * sizeof(*lines));
-    if (!lines) {
-        free(copy);
-        return NULL;
-    }
-    int lineCount = 0;
-
-    // Temporary line buffer and pointer to the current end.
-    char lineBuffer[512];
-    int bufferPos = 0;  // current length in lineBuffer
-    lineBuffer[0] = '\0';
-
-    // Use strtok_r for reentrancy.
-    char *saveptr = NULL;
-    char *token = strtok_r(copy, " \t\n\r", &saveptr);
-    while (token) {
-        int wordLen = strlen(token);
-        // If lineBuffer is not empty, you need one extra character for the space.
-        int needed = (bufferPos == 0) ? wordLen : (bufferPos + 1 + wordLen);
-
-        // If the word itself is longer than maxCharsPerLine, you may want to handle that
-        // separately (e.g., break the word). For now, we assume words are short enough.
-        if (needed > maxCharsPerLine) {
-            // Finalize the current line if not empty.
-            if (bufferPos > 0) {
-                lines[lineCount] = strdup(lineBuffer);
-                if (!lines[lineCount]) {
-                    // On allocation failure, free everything.
-                    for (int i = 0; i < lineCount; i++) free(lines[i]);
-                    free(lines);
-                    free(copy);
-                    return NULL;
-                }
-                lineCount++;
-                if (lineCount >= capacity) {
-                    capacity *= 2;
-                    char **tmp = realloc(lines, capacity * sizeof(*lines));
-                    if (!tmp) {
-                        for (int i = 0; i < lineCount; i++) free(lines[i]);
-                        free(lines);
-                        free(copy);
-                        return NULL;
-                    }
-                    lines = tmp;
-                }
-                // Start a new line.
-                bufferPos = 0;
-                lineBuffer[0] = '\0';
-            }
-            // Place the long word on a new line (or split it if desired)
-            strncpy(lineBuffer, token, sizeof(lineBuffer) - 1);
-            lineBuffer[sizeof(lineBuffer) - 1] = '\0';
-            bufferPos = strlen(lineBuffer);
-        } else {
-            // Append the word to the current line.
-            if (bufferPos == 0) {
-                // First word in the line.
-                snprintf(lineBuffer, sizeof(lineBuffer), "%s", token);
-                bufferPos = wordLen;
-            } else {
-                // Append a space and then the word.
-                int written = snprintf(lineBuffer + bufferPos, sizeof(lineBuffer) - bufferPos, " %s", token);
-                if (written < 0 || written >= (int)(sizeof(lineBuffer) - bufferPos)) {
-                    // Handle error or overflow.
-                    break;
-                }
-                bufferPos += written;
-            }
-        }
-        token = strtok_r(NULL, " \t\n\r", &saveptr);
-    }
-
-    // If there's any remaining text in the buffer, push it as the last line.
-    if (bufferPos > 0) {
-        lines[lineCount] = strdup(lineBuffer);
-        if (!lines[lineCount]) {
-            for (int i = 0; i < lineCount; i++) free(lines[i]);
-            free(lines);
-            free(copy);
-            return NULL;
-        }
-        lineCount++;
-    }
-
-    // Null-terminate the array.
-    lines[lineCount] = NULL;
-    free(copy);
-    *outLineCount = lineCount;
-    return lines;
-}
-
-void RenderWrappedTextCentered(SDL_Renderer *renderer, SDL_Texture *fontAtlas,
-                               const char *text, SDL_Color color,
-                               int containerX, int containerY,
-                               int containerW, int containerH,
-                               int lineSpacing /* extra spacing between lines */)
-{
-    // 1) Wrap the text
-    int lineCount = 0;
-    char **lines = WrapText(text, containerW, &lineCount);
-    if (!lines) return;
-
-    // 2) Calculate total text block height
-    //    Each line is GLYPH_HEIGHT tall + lineSpacing (except maybe the last)
-    int totalHeight = lineCount * GLYPH_HEIGHT + (lineCount - 1) * lineSpacing;
-
-    // 3) Compute the top coordinate so the block is vertically centered
-    int startY = containerY + (containerH - totalHeight) / 2;
-
-    // 4) For each line, center it horizontally and render
-    int currentY = startY;
-    for (int i = 0; i < lineCount; i++) {
-        char *line = lines[i];
-        int lineLen = strlen(line);
-        int lineWidth = lineLen * GLYPH_WIDTH;
-
-        // Horizontal center
-        int x = containerX + (containerW - lineWidth) / 2;
-        int y = currentY;
-
-        // Render the line
-        RenderText(renderer, fontAtlas, x, y, line, color);
-
-        currentY += GLYPH_HEIGHT + lineSpacing;
-        free(line); // free each line after rendering
-    }
-
-    free(lines); // free the array of line pointers
-}
-
-void RenderWrappedText(SDL_Renderer *renderer, SDL_Texture *fontAtlas,
-                       const char *text, SDL_Color color,
-                       int containerX, int containerY,
-                       int containerW, int containerH,
-                       int lineSpacing)
-{
-    // Wrap the text into lines that fit within containerW.
-    int lineCount = 0;
-    char **lines = WrapText(text, containerW, &lineCount);
-    if (!lines) return;
-    
-    // Start rendering at containerY.
-    int currentY = containerY;
-    
-    // For each wrapped line, render it left-aligned at containerX.
-    for (int i = 0; i < lineCount; i++) {
-        char *line = lines[i];
-        // RenderText is assumed to render a single line of text at (x,y).
-        RenderText(renderer, fontAtlas, containerX, currentY, line, color);
-        currentY += GLYPH_HEIGHT + lineSpacing;
-        free(line); // free each allocated line
-    }
-    free(lines);
-}
-
-
-void RenderTextWithNewlines(SDL_Renderer *renderer, SDL_Texture *fontAtlas,
-                            int startX, int startY,
-                            const char *text, SDL_Color color, int lineSpacing)
-{
-    // Make a copy of the text because strtok modifies the string.
-    char *copy = strdup(text);
-    if (!copy) return;
-
-    int x = startX;
-    int y = startY;
-    
-    // Use strtok to split the text by newline.
-    char *line = strtok(copy, "\n");
-    while (line) {
-        // Render the current line at (x, y).
-        RenderText(renderer, fontAtlas, x, y, line, color);
-        // Move y down for the next line (add line spacing if desired).
-        y += GLYPH_HEIGHT + lineSpacing;
-        // Get the next line.
-        line = strtok(NULL, "\n");
-    }
-    
-    free(copy);
-}
 
 typedef struct
 {
@@ -739,7 +381,7 @@ CombatCheck(asset_t *player, asset_t* asset)
 }
 
 static void
-CombatUpdate(asset_t *player, asset_t *asset, wav_t *sound) 
+CombatUpdate(asset_t *player, asset_t *asset, sound_wav_t *sound) 
 {
     if (asset->conditions.is_under_attack)
     {
@@ -753,13 +395,13 @@ CombatUpdate(asset_t *player, asset_t *asset, wav_t *sound)
             asset->texture = NULL;    
 
         }
-        PlaySFX(sound);
+        Sound_PlaySFX(sound);
         asset->stats.hp -= player->stats.atk;
         printf("enemy took %d damage \n", player->stats.atk);
     }
 }
 
-void UpdatePlayer(asset_t *player, asset_t *enemy, wav_t *sound)
+void UpdatePlayer(asset_t *player, asset_t *enemy, sound_wav_t *sound)
 {
     player->x = player->body.x; 
     player->y = player->body.y; 
@@ -767,25 +409,25 @@ void UpdatePlayer(asset_t *player, asset_t *enemy, wav_t *sound)
     if (Orientation.up)
     {       
         player->body.y -= player->body.h;
-        PlaySFX(sound);
+        Sound_PlaySFX(sound);
         Orientation.up = false;
     }
     if (Orientation.left)
     {
         player->body.x -= player->body.w; 
-        PlaySFX(sound);
+        Sound_PlaySFX(sound);
         Orientation.left = false;
     }
     if (Orientation.down)
     {
         player->body.y += player->body.h; 
-        PlaySFX(sound);
+        Sound_PlaySFX(sound);
         Orientation.down = false;
     }
     if (Orientation.right)
     {
         player->body.x += player->body.w; 
-        PlaySFX(sound);
+        Sound_PlaySFX(sound);
         Orientation.right = false;
     }
 }
@@ -933,11 +575,6 @@ void DestroyAssets(asset_t *assets)
 {
     SDL_DestroyTexture(assets->texture);
 }
-
-typedef struct
-{
-    u32 r, g, b, a;
-} color_t;
 
 typedef struct
 {
@@ -1101,10 +738,9 @@ void Sound_RenderVolumeBars(volume_controller_t *volume_controller, int volume_c
     }
 }
 
-
-void Audio_SFXCallback(void *user_data, u8 *stream, int length)
+void Sound_SFXCallback(void *user_data, u8 *stream, int length)
 {
-    wav_t *context = (wav_t *)user_data;
+    sound_wav_t *context = (sound_wav_t *)user_data;
 
     // Clear the output buffer.
     SDL_memset(stream, 0, length);
@@ -1135,9 +771,9 @@ void Audio_SFXCallback(void *user_data, u8 *stream, int length)
     //printf("SFX played, offset now: %u\n", context->offset);
 }
 
-void Audio_MusicCallback(void *user_data, u8 *stream, int length)
+void Sound_MusicCallback(void *user_data, u8 *stream, int length)
 {
-    wav_t *context = (wav_t *)user_data;
+    sound_wav_t *context = (sound_wav_t *)user_data;
 
     // Clear the output buffer.
     SDL_memset(stream, 0, length);
@@ -1166,7 +802,7 @@ void Audio_MusicCallback(void *user_data, u8 *stream, int length)
 }
 
 static void
-LoadWavFileTest(wav_t *wav, const char *filename, bool music)
+LoadWavFileTest(sound_wav_t *wav, const char *filename, bool music)
 {
     // Must convert the raw audio data to match the system's sample rate 
     SDL_AudioSpec loadedSpec;
@@ -1190,11 +826,11 @@ LoadWavFileTest(wav_t *wav, const char *filename, bool music)
     // TEMP
     if (music)
     {
-        desiredSpec.callback = Audio_MusicCallback;  // our callback function
+        desiredSpec.callback = Sound_MusicCallback;  // our callback function
     }
     else
     {
-        desiredSpec.callback = Audio_SFXCallback;  // our callback function
+        desiredSpec.callback = Sound_SFXCallback;  // our callback function
     }
     
     SDL_AudioCVT cvt;
@@ -1247,236 +883,6 @@ LoadWavFileTest(wav_t *wav, const char *filename, bool music)
         return;
     }
 }
-
-// general push and pop function
-void PushCharStack(char *array, char value)
-{
-    int size = strlen(array);
-    int limit = NAME_ENTRY_LIMIT;
-    printf("size: %d - char: %c\n", size, value);
-    if (limit > 0)
-    {
-        limit--; // do we decrement first? i'm thinking we do because we need to have a pocket of space first, otherwise fail
-        array[size] = value;
-        array[size + 1] = '\0';
-    }
-    
-    // TODO: limit needs to be out of this function's scope to consider 0
-    if (limit == 0)
-    {
-        printf("Name limit!\n");
-    }
-}
-
-void PopStack(char *array)
-{
-    int size = strlen(array);
-    if (size == 0)
-    {
-        printf("Cannot pop an empty string.\n");
-        return;
-    }
-
-    char popped = array[size - 1];
-    printf("popped: %c\n", popped);
-
-    array[size - 1] = '\0';
-}
-
-// small helper function
-void PushString(char *dest, char *src)
-{
-    int index = 0;
-    int size = strlen(src);
-    for (int i = 0; i < size; ++i)
-    {
-        dest[index] = src[i];
-        dest[index + 1] = '\0';
-        ++index;
-    }
-}
-
-
-typedef struct
-{
-    bool is_active;
-    bool glyph_entered;
-    bool glyph_deleted;
-    bool name_confirmed;
-
-    u32 index;
-    u32 name_pos;
-    u32 name_limit;
-    u32 current_row;
-    u32 current_col;
-
-    char name[NAME_ENTRY_LIMIT];
-} name_entry_t;
-
-typedef struct 
-{
-    vec2_t pos;
-    char name[NAME_ENTRY_LIMIT];
-    char *underline;
-} name_entry_bar_t;
-
-typedef struct
-{
-    char glyph;
-    int x, y;
-} ascii_grid_t;
-
-typedef struct
-{
-    char *glyph;
-    vec2_t pos;
-    int x, y;
-} glyph_grid_t;
-
-void NameEntry_Init(name_entry_t *name_entry)
-{
-    name_entry->index       = 0;
-    name_entry->name_pos    = 0;
-    name_entry->name_limit  = NAME_ENTRY_LIMIT;
-    
-    name_entry->is_active      = false;
-    name_entry->glyph_entered  = false;
-    name_entry->glyph_deleted  = false;
-    name_entry->name_confirmed  = false;
-
-    name_entry->current_row = name_entry->index / NAME_ENTRY_GRID_COLS;
-    name_entry->current_col = name_entry->index % NAME_ENTRY_GRID_ROWS;
-}
-
-void NameEntry_MoveUp(name_entry_t *name_entry)
-{
-    name_entry->current_row = (name_entry->current_row - 1 + NAME_ENTRY_GRID_ROWS) % NAME_ENTRY_GRID_ROWS;
-    name_entry->index = name_entry->current_row * 
-                        NAME_ENTRY_GRID_COLS + 
-                        name_entry->current_col;
-}
-
-void NameEntry_MoveDown(name_entry_t *name_entry)
-{
-    name_entry->current_row = (name_entry->current_row + 1) % NAME_ENTRY_GRID_ROWS;
-    name_entry->index = name_entry->current_row * 
-                        NAME_ENTRY_GRID_COLS + 
-                        name_entry->current_col;
-}
-
-void NameEntry_MoveLeft(name_entry_t *name_entry)
-{
-    name_entry->current_col = (name_entry->current_col - 1 + NAME_ENTRY_GRID_COLS) % NAME_ENTRY_GRID_COLS;
-    name_entry->index = name_entry->current_row * 
-                        NAME_ENTRY_GRID_COLS + 
-                        name_entry->current_col;
-}
-
-void NameEntry_MoveRight(name_entry_t *name_entry)
-{
-    name_entry->current_col = (name_entry->current_col + 1) % NAME_ENTRY_GRID_COLS;
-    name_entry->index = name_entry->current_row * NAME_ENTRY_GRID_COLS + name_entry->current_col;
-}
-
-void NameEntry_EnterGlyph(name_entry_t *name_entry, name_entry_bar_t *name_entry_bar, ascii_grid_t *ascii_to_glyph_grid)
-{
-    char temp;
-    if (name_entry->glyph_entered)
-    {
-        if (name_entry->name_limit > 0 && name_entry->name_pos <= 10)
-        {
-            // If we're on the maid grid and not on the last row of the grid (buttons)
-            if (name_entry->index >= 0 && name_entry->index < 50)
-            {
-                temp = ascii_to_glyph_grid[name_entry->index].glyph;
-                PushCharStack(name_entry_bar[name_entry->name_pos].name, temp);
-                
-                --name_entry->name_limit;
-                ++name_entry->name_pos;
-            }
-
-        }
-    }
-        
-    name_entry->glyph_entered = false;
-}
-
-void NameEntry_DeleteGlyph(name_entry_t *name_entry, name_entry_bar_t *name_entry_bar)
-{
-    if (name_entry->glyph_deleted)
-    {
-        if (name_entry->name_limit < 10 && name_entry->name_pos >= 0)
-        {
-            ++name_entry->name_limit;
-            --name_entry->name_pos;
-            
-            PopStack(name_entry_bar[name_entry->name_pos].name);
-        }
-    }
-
-    name_entry->glyph_deleted = false;
-}
-
-void NameEntry_RenderNameUnderline(name_entry_bar_t *name_entry_bar, SDL_Texture *font_atlas, SDL_Color color)
-{
-    for (int i = 0; i < NAME_ENTRY_LIMIT; ++i)
-    {
-        RenderText(SDLWindow.Renderer, font_atlas,
-               name_entry_bar[i].pos.x,
-               name_entry_bar[i].pos.y,
-               name_entry_bar[i].underline,
-               color);
-    }
-}
-
-void NameEntry_RenderName(name_entry_bar_t *name_entry_bar, SDL_Texture *font_atlas, SDL_Color color)
-{
-    for (int i = 0; i < NAME_ENTRY_LIMIT; ++i)
-    {
-        RenderText(SDLWindow.Renderer, font_atlas,
-                   name_entry_bar[i].pos.x, 
-                   name_entry_bar[i].pos.y - 4,
-                   name_entry_bar[i].name, 
-                   color);
-    }
-}
-
-char *NameEntry_GetName(name_entry_t *name_entry)
-{
-    char *name = NULL;
-    if (name_entry->name == NULL)
-    {
-        fprintf(stderr, "Name is NULL! -> %s\n", name_entry->name);
-        return name;
-    }
-
-    name = name_entry->name;
-    return name;
-}
-
-void NameEntry_ConfirmName(name_entry_t *name_entry, name_entry_bar_t *name_entry_bar)
-{
-    if (name_entry->name_confirmed)
-    {
-        for (int i = 0; i < NAME_ENTRY_LIMIT; ++i)
-        {
-            PushCharStack(name_entry->name, *name_entry_bar[i].name);
-        }
-
-        char *test_name = NameEntry_GetName(name_entry);
-    
-        printf("test_name: %s\n", test_name);
-
-
-        printf("name_entry->name: %s\n", name_entry->name);
-        printf("Confirmed!\n");
-    }
-
-
-
-    name_entry->name_confirmed = false;
-}
-
 
 
 // ----------------------- EXPERIEMENTAL --------------------------
@@ -1656,11 +1062,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    wav_t title_screen_theme = {0};
-    wav_t ambience = {0};
-    wav_t sfx_attack = {0};
-    wav_t sfx_move = {0};
-    wav_t sfx_option = {0};
+    sound_wav_t title_screen_theme = {0};
+    sound_wav_t ambience = {0};
+    sound_wav_t sfx_attack = {0};
+    sound_wav_t sfx_move = {0};
+    sound_wav_t sfx_option = {0};
 
     LoadWavFile(&title_screen_theme, "assets/music/6. Simpler Times.wav");
     LoadWavFile(&ambience, "assets/music/8. Temple of Tomb.wav");
@@ -1677,22 +1083,22 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    music_t music_volume[2] = {0};
+    sound_music_t music_volume[2] = {0};
     LoadWavFileTest(&music_volume[0].music, "assets/music/5. Smooth As Glass.wav", true);
     LoadWavFileTest(&music_volume[1].music, "assets/music/4. Church of Order.wav", true);
 
-    sfx_t sfx_volume_test[2] = {0};
+    sound_sfx_t sfx_volume_test[2] = {0};
     LoadWavFileTest(&sfx_volume_test[0].sfx, "assets/sfx/fire_a.wav", false); 
     LoadWavFileTest(&sfx_volume_test[1].sfx, "assets/sfx/fire_b.wav", false); 
 
 
     // 2 different sfx "files"
-    sfx_t sfx_volume[2] = {0};
+    sound_sfx_t sfx_volume[2] = {0};
     LoadWavFile(&sfx_volume[0].sfx, "assets/sfx/fire_a.wav"); 
     LoadWavFile(&sfx_volume[1].sfx, "assets/sfx/fire_b.wav"); 
 
 
-    master_volume_t master_volume = {0};
+    sound_master_volume_t master_volume = {0};
     master_volume.volume = 32;
     for (int i = 0; i < 2; ++i)
     {
@@ -2170,160 +1576,10 @@ int main(int argc, char *argv[])
 
 
     ////////////// Enter name grid 
-
-
-    ascii_grid_t ascii_to_glyph_grid[50] = 
-    {
-        { 'A', SCREEN_CENTER_X - 52 , SCREEN_CENTER_Y - 8 }, 
-        { 'B', SCREEN_CENTER_X - 40 , SCREEN_CENTER_Y - 8 },
-        { 'C', SCREEN_CENTER_X - 28, SCREEN_CENTER_Y - 8 }, 
-        { 'D', SCREEN_CENTER_X - 16, SCREEN_CENTER_Y - 8 }, 
-        { 'E', SCREEN_CENTER_X - 4, SCREEN_CENTER_Y - 8 }, 
-        { 'F', SCREEN_CENTER_X + 16, SCREEN_CENTER_Y - 8 }, 
-        { 'G', SCREEN_CENTER_X + 28, SCREEN_CENTER_Y - 8 }, 
-        { 'H', SCREEN_CENTER_X + 40, SCREEN_CENTER_Y - 8 }, 
-        { 'I', SCREEN_CENTER_X + 52, SCREEN_CENTER_Y - 8 }, 
-        { 'J', SCREEN_CENTER_X + 64, SCREEN_CENTER_Y - 8 }, 
-
-        { 'K', SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 2 }, 
-        { 'L', SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 2 }, 
-        { 'M', SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 2 }, 
-        { 'N', SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 2 }, 
-        { 'O', SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 2 }, 
-        { 'P', SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 2 }, 
-        { 'Q', SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 2 }, 
-        { 'R', SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 2 }, 
-        { 'S', SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 2 }, 
-        { 'T', SCREEN_CENTER_X + 64, SCREEN_CENTER_Y + 2 },
-
-        { 'U', SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 14 }, 
-        { 'V', SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 14 }, 
-        { 'W', SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 14 }, 
-        { 'X', SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 14 }, 
-        { 'Y', SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 14 }, 
-        { 'Z', SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 14 }, 
-        { ' ', SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 14 }, // Unused 
-        { ' ', SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 14 }, // Unused
-        { ' ', SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 14 }, // Unused
-        { ' ', SCREEN_CENTER_X + 64, SCREEN_CENTER_Y + 14 }, // Unused
-  
-
-        // Special characters 
-        { '[', SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 26 }, 
-        { ']', SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 26 }, 
-        { '.', SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 26 }, 
-        { ',', SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 26 }, 
-        { '!', SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 26 }, 
-        { '?', SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 26 }, 
-        { '-', SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 26 }, 
-        { '_', SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 26 }, 
-        { ':', SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 26 }, 
-        { ';', SCREEN_CENTER_X + 60, SCREEN_CENTER_Y + 26 }, 
-        
-        // Nums
-        { '0', SCREEN_CENTER_X - 52, SCREEN_CENTER_Y + 38 }, 
-        { '1', SCREEN_CENTER_X - 40, SCREEN_CENTER_Y + 38 }, 
-        { '2', SCREEN_CENTER_X - 28, SCREEN_CENTER_Y + 38 }, 
-        { '3', SCREEN_CENTER_X - 16, SCREEN_CENTER_Y + 38 }, 
-        { '4', SCREEN_CENTER_X - 4, SCREEN_CENTER_Y + 38 }, 
-        { '5', SCREEN_CENTER_X + 16, SCREEN_CENTER_Y + 38 }, 
-        { '6', SCREEN_CENTER_X + 28, SCREEN_CENTER_Y + 38 }, 
-        { '7', SCREEN_CENTER_X + 40, SCREEN_CENTER_Y + 38 }, 
-        { '8', SCREEN_CENTER_X + 52, SCREEN_CENTER_Y + 38 }, 
-        { '9', SCREEN_CENTER_X + 64, SCREEN_CENTER_Y + 38 },
-
-    };
-
     name_entry_t name_entry = {0};
     NameEntry_Init(&name_entry);
 
 
-    glyph_grid_t glyph_grid[60] = {
-        // 10x5 grid
-        // Every glyph has a padding of 12px around itself
-        // Upper case
-        { "A", { CENTER_TEXT_X("A", - 52) , SCREEN_CENTER_Y - 8} }, 
-        { "B", { CENTER_TEXT_X("B", - 40) , SCREEN_CENTER_Y - 8} },
-        { "C", { CENTER_TEXT_X("C", - 28), SCREEN_CENTER_Y - 8} }, 
-        { "D", { CENTER_TEXT_X("D", - 16), SCREEN_CENTER_Y - 8} }, 
-        { "E", { CENTER_TEXT_X("E", - 4), SCREEN_CENTER_Y - 8} }, 
-        { "F", { CENTER_TEXT_X("F", + 16), SCREEN_CENTER_Y - 8} }, 
-        { "G", { CENTER_TEXT_X("G", + 28), SCREEN_CENTER_Y - 8} }, 
-        { "H", { CENTER_TEXT_X("H", + 40), SCREEN_CENTER_Y - 8} }, 
-        { "I", { CENTER_TEXT_X("I", + 52), SCREEN_CENTER_Y - 8} }, 
-        { "J", { CENTER_TEXT_X("J", + 64), SCREEN_CENTER_Y - 8} }, 
-
-        { "K", { CENTER_TEXT_X("K", - 52), SCREEN_CENTER_Y + 2} }, 
-        { "L", { CENTER_TEXT_X("L", - 40), SCREEN_CENTER_Y + 2} }, 
-        { "M", { CENTER_TEXT_X("M", - 28), SCREEN_CENTER_Y + 2} }, 
-        { "N", { CENTER_TEXT_X("N", - 16), SCREEN_CENTER_Y + 2} }, 
-        { "O", { CENTER_TEXT_X("O", - 4), SCREEN_CENTER_Y + 2} }, 
-        { "P", { CENTER_TEXT_X("P", + 16), SCREEN_CENTER_Y + 2} }, 
-        { "Q", { CENTER_TEXT_X("Q", + 28), SCREEN_CENTER_Y + 2} }, 
-        { "R", { CENTER_TEXT_X("R", + 40), SCREEN_CENTER_Y + 2} }, 
-        { "S", { CENTER_TEXT_X("S", + 52), SCREEN_CENTER_Y + 2} }, 
-        { "T", { CENTER_TEXT_X("T", + 64), SCREEN_CENTER_Y + 2} },
-
-        { "U", { CENTER_TEXT_X("U", - 52), SCREEN_CENTER_Y + 14} }, 
-        { "V", { CENTER_TEXT_X("V", - 40), SCREEN_CENTER_Y + 14} }, 
-        { "W", { CENTER_TEXT_X("W", - 28), SCREEN_CENTER_Y + 14} }, 
-        { "X", { CENTER_TEXT_X("X", - 16), SCREEN_CENTER_Y + 14} }, 
-        { "Y", { CENTER_TEXT_X("Y", - 4), SCREEN_CENTER_Y + 14} }, 
-        { "Z", { CENTER_TEXT_X("Z", + 16), SCREEN_CENTER_Y + 14} }, 
-        { "", { CENTER_TEXT_X("", + 28), SCREEN_CENTER_Y + 14} }, // Unused 
-        { "", { CENTER_TEXT_X("", + 40), SCREEN_CENTER_Y + 14} }, // Unused
-        { "", { CENTER_TEXT_X("", + 52), SCREEN_CENTER_Y + 14} }, // Unused
-        { "", { CENTER_TEXT_X("", + 64), SCREEN_CENTER_Y + 14} }, // Unused
-  
-
-        // Special characters 
-        { "[", { CENTER_TEXT_X("[", - 52), SCREEN_CENTER_Y + 26} }, 
-        { "]", { CENTER_TEXT_X("]", - 40), SCREEN_CENTER_Y + 26} }, 
-        { ".", { CENTER_TEXT_X(".", - 28), SCREEN_CENTER_Y + 26} }, 
-        { ",", { CENTER_TEXT_X(",", - 16), SCREEN_CENTER_Y + 26} }, 
-        { "!", { CENTER_TEXT_X("!", - 4), SCREEN_CENTER_Y + 26} }, 
-        { "?", { CENTER_TEXT_X("?", + 16), SCREEN_CENTER_Y + 26} }, 
-        { "-", { CENTER_TEXT_X("-", + 28), SCREEN_CENTER_Y + 26} }, 
-        { "_", { CENTER_TEXT_X("_", + 40), SCREEN_CENTER_Y + 26} }, 
-        { ":", { CENTER_TEXT_X(":", + 52), SCREEN_CENTER_Y + 26} }, 
-        { ";", { CENTER_TEXT_X(";", + 60), SCREEN_CENTER_Y + 26} }, 
-        
-        // Nums
-        { "0", { CENTER_TEXT_X("0", - 52), SCREEN_CENTER_Y + 38} }, 
-        { "1", { CENTER_TEXT_X("1", - 40), SCREEN_CENTER_Y + 38} }, 
-        { "2", { CENTER_TEXT_X("2", - 28), SCREEN_CENTER_Y + 38} }, 
-        { "3", { CENTER_TEXT_X("3", - 16), SCREEN_CENTER_Y + 38} }, 
-        { "4", { CENTER_TEXT_X("4", - 4), SCREEN_CENTER_Y + 38} }, 
-        { "5", { CENTER_TEXT_X("5", + 16), SCREEN_CENTER_Y + 38} }, 
-        { "6", { CENTER_TEXT_X("6", + 28), SCREEN_CENTER_Y + 38} }, 
-        { "7", { CENTER_TEXT_X("7", + 40), SCREEN_CENTER_Y + 38} }, 
-        { "8", { CENTER_TEXT_X("8", + 52), SCREEN_CENTER_Y + 38} }, 
-        { "9", { CENTER_TEXT_X("9", + 64), SCREEN_CENTER_Y + 38} },
-
-        { "", { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96} }, // Unused
-        { "", { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96} }, // Unused
-        { "", { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96} }, // Unused
-        { "", { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96} }, // Unused
-        { "", { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96} }, // Unused
-        { "", { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96} }, // Unused
-        { "", { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96} }, // Unused
-        { "", { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96} }, // Unused
-        { "", { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96} }, // Unused
-        { "Confirm", { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96} }
-    };
-
-    name_entry_bar_t name_entry_bar[NAME_ENTRY_LIMIT] = {
-        { { SCREEN_CENTER_X - 32, SCREEN_CENTER_Y - 28 }, "", "_", }, 
-        { { SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 28 }, "", "_", }, 
-        { { SCREEN_CENTER_X - 15, SCREEN_CENTER_Y - 28 }, "", "_", }, 
-        { { SCREEN_CENTER_X - 8,  SCREEN_CENTER_Y - 28 }, "", "_", }, 
-        { { SCREEN_CENTER_X - 0,  SCREEN_CENTER_Y - 28 }, "", "_", }, 
-        { { SCREEN_CENTER_X + 8,  SCREEN_CENTER_Y - 28 }, "", "_", }, 
-        { { SCREEN_CENTER_X + 16, SCREEN_CENTER_Y - 28 }, "", "_", }, 
-        { { SCREEN_CENTER_X + 24, SCREEN_CENTER_Y - 28 }, "", "_", }, 
-        { { SCREEN_CENTER_X + 32, SCREEN_CENTER_Y - 28 }, "", "_", }, 
-        { { SCREEN_CENTER_X + 40, SCREEN_CENTER_Y - 28 }, "", "_", }, 
-    };
 
 
     /////////////////////////////////////////////////////////////////////////
@@ -2783,7 +2039,7 @@ int main(int argc, char *argv[])
                                 option_index--;
                                 if (option_index < 0)
                                     option_index = ArraySize(menu_items) - 1;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                             }
                             
                             if (is_new_game)
@@ -2791,7 +2047,7 @@ int main(int argc, char *argv[])
                                 button_select--;
                                 if (button_select < 0)
                                     button_select = ArraySize(confirmation_buttons) - 1;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                             }
                             
                             if (confirmation.is_active)
@@ -2799,7 +2055,7 @@ int main(int argc, char *argv[])
                                 confirmation.index--;
                                 if (confirmation.index < 0)
                                     confirmation.index = ArraySize(confirmation.info.buttons) - 1;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                             }
 
                             if (is_settings)
@@ -2831,7 +2087,7 @@ int main(int argc, char *argv[])
                                 option_index++;
                                 if (option_index >= ArraySize(menu_items))
                                     option_index = 0;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                             }
 
                             if (is_new_game)
@@ -2839,7 +2095,7 @@ int main(int argc, char *argv[])
                                 button_select++;
                                 if (button_select >= ArraySize(confirmation_buttons))
                                     button_select = 0;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                             }
     
                             if (confirmation.is_active)
@@ -2847,7 +2103,7 @@ int main(int argc, char *argv[])
                                 confirmation.index++;
                                 if (confirmation.index >= ArraySize(confirmation.info.buttons))
                                     confirmation.index = 0;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                             }
 
                             if (is_settings)
@@ -2877,7 +2133,7 @@ int main(int argc, char *argv[])
                                 character_creation_screen.index--;
                                 if (character_creation_screen.index < 0)
                                     character_creation_screen.index = ArraySize(character_creation_screen.info) - 1;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                             }
 
                             if (character_allocation_select_screen.is_active && !confirmation.is_active)
@@ -2885,7 +2141,7 @@ int main(int argc, char *argv[])
                                 character_allocation_select_screen.index--;
                                 if (character_allocation_select_screen.index < 0)
                                     character_allocation_select_screen.index = ArraySize(character_allocation_select_screen.info) - 1;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                             }
                       
                             // switch case below
@@ -2894,7 +2150,7 @@ int main(int argc, char *argv[])
                                 volume_controller[0].index--;
                                 if (volume_controller[0].index < 0)
                                     volume_controller[0].index = 0;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                                 sound_settings_touched = true;
                             }
 
@@ -2903,7 +2159,7 @@ int main(int argc, char *argv[])
                                 volume_controller[1].index--;
                                 if (volume_controller[1].index < 0)
                                     volume_controller[1].index = 0;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                                 sound_settings_touched = true;
                             }
 
@@ -2912,7 +2168,7 @@ int main(int argc, char *argv[])
                                 volume_controller[2].index--;
                                 if (volume_controller[2].index < 0)
                                     volume_controller[2].index = 0;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                                 sound_settings_touched = true;
                             } 
 
@@ -2983,7 +2239,7 @@ int main(int argc, char *argv[])
                                 character_creation_screen.index++;
                                 if (character_creation_screen.index >= ArraySize(character_creation_screen.info))
                                     character_creation_screen.index = 0;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                             }
 
                             if (character_allocation_select_screen.is_active && !confirmation.is_active)
@@ -2991,7 +2247,7 @@ int main(int argc, char *argv[])
                                 character_allocation_select_screen.index++;
                                 if (character_allocation_select_screen.index >= ArraySize(character_allocation_select_screen.info))
                                     character_allocation_select_screen.index = 0;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                             }
 
                             if (is_settings)
@@ -3011,7 +2267,7 @@ int main(int argc, char *argv[])
                                         if (volume_controller[0].index >= ArraySize(sound_settings.options))
                                             volume_controller[0].index = ArraySize(sound_settings.options) - 1;
                   
-                                        PlaySFX(&sfx_volume_test[0].sfx);
+                                        Sound_PlaySFX(&sfx_volume_test[0].sfx);
 
                                         sound_settings_touched = true;
                                     } break;
@@ -3022,7 +2278,7 @@ int main(int argc, char *argv[])
                                         volume_controller[1].index++;
                                         if (volume_controller[1].index >= ArraySize(sound_settings.options))
                                             volume_controller[1].index = ArraySize(sound_settings.options) - 1;
-                                        PlaySFX(&sfx_volume_test[0].sfx);
+                                        Sound_PlaySFX(&sfx_volume_test[0].sfx);
                                         sound_settings_touched = true;
 
                                     } break;
@@ -3033,7 +2289,7 @@ int main(int argc, char *argv[])
                                         volume_controller[2].index++;
                                         if (volume_controller[2].index >= ArraySize(sound_settings.options))
                                             volume_controller[2].index = ArraySize(sound_settings.options) - 1;
-                                        PlaySFX(&sfx_volume_test[0].sfx);
+                                        Sound_PlaySFX(&sfx_volume_test[0].sfx);
                                         sound_settings_touched = true;
                                     } break;
                                 }
@@ -3080,7 +2336,7 @@ int main(int argc, char *argv[])
                                 back_and_apply_buttons_index--;
                                 if (back_and_apply_buttons_index < 0)
                                     back_and_apply_buttons_index = 0;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
                                 printf("%d\n", back_and_apply_buttons_index);
                                 printf("%s\n", back_and_apply_buttons[back_or_next_cursor_index].text);
                                 
@@ -3107,7 +2363,7 @@ int main(int argc, char *argv[])
                                 back_and_apply_buttons_index++;
                                 if (back_and_apply_buttons_index >= ArraySize(back_and_apply_buttons))
                                     back_and_apply_buttons_index = ArraySize(back_and_apply_buttons) - 1;
-                                PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
 
                                 printf("%s\n", back_and_apply_buttons[back_or_next_cursor_index].text);
                                 
@@ -3793,7 +3049,7 @@ int main(int argc, char *argv[])
                 case TITLE_NONE:
                 {
                     //SDL_PauseAudioDevice(master_volume.music[0].music.device_id, 0);
-
+                    Sound_PlayMusic(&master_volume.music[0].music);
                     SDL_RenderCopy(SDLWindow.Renderer, title_screen_asset.texture, NULL, &title_screen_asset.body);
                     CursorForItems(&menu_items[option_index], &right_cursor_asset, 4, 1);
                     RenderAndUpdateAsset(&right_cursor_asset);
@@ -4347,8 +3603,8 @@ int main(int argc, char *argv[])
 
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                 
-                NameEntry_RenderNameUnderline(name_entry_bar, font_atlas, white);
-                NameEntry_RenderName(name_entry_bar, font_atlas, white);
+                NameEntry_RenderNameUnderline(name_entry_bar, SDLWindow.Renderer, font_atlas, white);
+                NameEntry_RenderName(name_entry_bar, SDLWindow.Renderer, font_atlas, white);
             
                 for (int i = 0; i < ArraySize(glyph_grid); ++i)
                 {
@@ -4458,7 +3714,7 @@ int main(int argc, char *argv[])
 
         if (is_game_running)
         {
-            //PlayMusic(&ambience);
+            //Sound_PlayMusic(&ambience);
             UpdatePlayer(&player_asset, enemy_arr, &sfx_move);
             for (int i = 0; i < ArraySize(enemy_arr); ++i)
             {
