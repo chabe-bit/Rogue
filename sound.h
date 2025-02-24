@@ -3,6 +3,13 @@
 
 #include "common.h"
 
+#define MUSIC_FILE_COUNT 2
+#define SFX_FILE_COUNT 2
+#define VOLUME_CONTROLLER_COUNT 3
+
+extern const char *music_files[MUSIC_FILE_COUNT];
+extern const char *sfx_files[SFX_FILE_COUNT];
+
 typedef struct
 {
     bool reset_audio;
@@ -17,37 +24,45 @@ typedef struct
 typedef struct
 {
     int volume;
-    sound_wav_t music; 
+    sound_wav_t wav; 
 } sound_music_t;
 
 typedef struct
 {
     int volume;
-    sound_wav_t sfx; 
+    sound_wav_t wav; 
 } sound_sfx_t;
 
 typedef struct 
 {
-    // any audio output will only go as high as the master volume,
-    // if the sfx audio was maxed but master volume was set to 10%, it'll
-    // only be 10% as strong though it's maxed 
-    
     int volume;
-
-    // array size will stay to be hardcoded in, why tf malloc?
-    sound_music_t music[2]; 
-    sound_sfx_t sfx[2];
+    sound_music_t music[MUSIC_FILE_COUNT]; 
+    sound_sfx_t sfx[SFX_FILE_COUNT];
 } sound_master_volume_t;
 
 typedef struct
 {
+
     bool mute;
     bool one;
     bool two;
     bool three;
     bool max;
     bool apply;
-
+/*
+    Ideal way of creating 3 instances of volume controllers rather than this entire struct itself because then from above, we have three instances of each, where we only need one. 
+    struct
+    {
+        int index;
+        int volume_size_bars;
+        int volume;
+        color_t colors;
+        SDL_Rect blocks[5];
+    } info[3];
+   */
+    
+    bool touched;
+    
     int index;
     int volume_size_bars;
     int volume;
@@ -63,7 +78,6 @@ typedef struct
     SDL_Rect volume_body[3];
     menu_item_t options[5];
 } sound_settings_t;
-
 
 typedef enum
 {
@@ -94,10 +108,9 @@ typedef enum
 } sound_volume_level_type;
 extern sound_volume_level_type volume_level_state;
 
-
-
-#define VOLUME_CONTROLLER_COUNT 3
-
+void Sound_InitMusic(sound_music_t *music, const char *file_name[]);
+void Sound_InitSFX(sound_sfx_t *sfx, const char *file_name[]);
+void Sound_InitMaster(sound_master_volume_t* master, sound_music_t *music, sound_sfx_t *sfx);
 
 void Sound_PlayMusic(sound_wav_t *sound);
 void Sound_PlaySFX(sound_wav_t *sound);

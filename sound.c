@@ -4,6 +4,45 @@ sound_wav_audio_type audio_type_state = AUDIO_TYPE_NONE;
 sound_volume_settings_type volume_settings_state = VOL_SETTINGS_NONE;
 sound_volume_level_type volume_level_state = VOL_LEVEL_NONE;
 
+const char *music_files[MUSIC_FILE_COUNT] = {
+    {"assets/music/5. Smooth As Glass.wav"},
+    {"assets/music/4. Church of Order.wav"}
+};
+
+const char *sfx_files[SFX_FILE_COUNT] = {
+    {"assets/sfx/fire_a.wav"},
+    {"assets/sfx/fire_b.wav"}
+};
+
+void Sound_InitMusic(sound_music_t *music, const char *file_name[])
+{
+    for (int i = 0; i < MUSIC_FILE_COUNT; ++i)
+    {
+        Sound_LoadWavFile(&music[i].wav, file_name[i], AUDIO_TYPE_MUSIC);
+    }
+}
+
+void Sound_InitSFX(sound_sfx_t *sfx, const char *file_name[])
+{
+    for (int i = 0; i < SFX_FILE_COUNT; ++i)
+    {
+        Sound_LoadWavFile(&sfx[i].wav, file_name[i], AUDIO_TYPE_SFX);
+    }
+}
+
+void Sound_InitMaster(sound_master_volume_t* master, sound_music_t *music, sound_sfx_t *sfx)
+{
+    for (int i = 0; i < MUSIC_FILE_COUNT; ++i)
+    {
+        master->music[i].wav = music[i].wav;
+    }
+
+    for (int i = 0; i < SFX_FILE_COUNT; ++i)
+    {
+        master->sfx[i].wav = sfx[i].wav;
+    }
+}
+
 void Sound_PlayMusic(sound_wav_t *sound)
 {
     SDL_PauseAudioDevice(sound->device_id, 0);

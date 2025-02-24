@@ -243,10 +243,10 @@ const char *castle_scenario[] = {
 
 };
 
-void CursorForItems(menu_item_t *menu_items, asset_t *cursor, int x_offset, int y_offset)
+void CursorForItems(menu_item_t *title_screen_options, asset_t *cursor, int x_offset, int y_offset)
 {
-    cursor->body.x = menu_items->x - cursor->w - x_offset;
-    cursor->body.y = menu_items->y + (GLYPH_HEIGHT / 2) - (cursor->h / 2) - y_offset; // Subtracting by 1 at the end is the center the cursor
+    cursor->body.x = title_screen_options->x - cursor->w - x_offset;
+    cursor->body.y = title_screen_options->y + (GLYPH_HEIGHT / 2) - (cursor->h / 2) - y_offset; // Subtracting by 1 at the end is the center the cursor
 }
 
 void Cursor(asset_t *cursor, vec2_t *pos, int x_offset, int y_offset)
@@ -676,10 +676,6 @@ void Personality_ScenarioInitialize(test_personality_scenario_t *personality,
 int main(int argc, char *argv[])
 {
     srand(time(NULL));
-
-    personality_test_t personality_test = {0};
-    PersonalityTest_Init(&personality_test);
-
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
         fprintf(stderr, "Failed to init sdl: %s\n", SDL_GetError());
@@ -712,6 +708,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    // TEMP sound instances
     sound_wav_t title_screen_theme = {0};
     sound_wav_t ambience = {0};
     sound_wav_t sfx_attack = {0};
@@ -725,28 +722,19 @@ int main(int argc, char *argv[])
     Sound_LoadWavFile(&sfx_option, "assets/sfx/option.wav", AUDIO_TYPE_SFX);
 
 
-    sound_music_t music_volume[2] = {0};
-    Sound_LoadWavFile(&music_volume[0].music, "assets/music/5. Smooth As Glass.wav", AUDIO_TYPE_MUSIC);
-    Sound_LoadWavFile(&music_volume[1].music, "assets/music/4. Church of Order.wav", AUDIO_TYPE_MUSIC);
+    sound_music_t music_volume[MUSIC_FILE_COUNT] = {0};
+    Sound_InitMusic(music_volume, music_files); 
 
-    sound_sfx_t sfx_volume_test[2] = {0};
-    Sound_LoadWavFile(&sfx_volume_test[0].sfx, "assets/sfx/fire_a.wav", AUDIO_TYPE_SFX); 
-    Sound_LoadWavFile(&sfx_volume_test[1].sfx, "assets/sfx/fire_b.wav", AUDIO_TYPE_SFX); 
-
-
-    // 2 different sfx "files"
-    sound_sfx_t sfx_volume[2] = {0};
-    Sound_LoadWavFile(&sfx_volume[0].sfx, "assets/sfx/fire_a.wav", AUDIO_TYPE_SFX); 
-    Sound_LoadWavFile(&sfx_volume[1].sfx, "assets/sfx/fire_b.wav", AUDIO_TYPE_SFX); 
-
+    sound_sfx_t sfx_volume[SFX_FILE_COUNT] = {0};
+    Sound_InitSFX(sfx_volume, sfx_files); 
 
     sound_master_volume_t master_volume = {0};
-    master_volume.volume = 32;
-    for (int i = 0; i < 2; ++i)
-    {
-        master_volume.music[i].music = music_volume[i].music;
-        master_volume.sfx[i] = sfx_volume[i];
-    }
+    Sound_InitMaster(&master_volume, music_volume, sfx_volume);
+
+    personality_test_t personality_test = {0};
+    PersonalityTest_Init(&personality_test);
+
+
 
     bool updated_sound = false;
 
@@ -868,11 +856,6 @@ int main(int argc, char *argv[])
         printf("enemy hp: %d -> %d\n", i, enemy_arr[i].stats.hp);
     }
 
-    int frames_per_second = 60;
-    int frames_per_ms = 1000 / frames_per_second;
-    u32 frame_start;
-    int frame_time;
-
     SDL_Texture *font_atlas = CreateFontAtlas(SDLWindow.Renderer);
     if (!font_atlas)
     {
@@ -885,11 +868,11 @@ int main(int argc, char *argv[])
     SDL_Color green = {0, 255, 0, 255};
     SDL_Color white = {255, 255, 255, 255};
     int option_index = 0;
-    menu_item_t menu_items[4] = {
-        { "New Game", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y},
-        { "Continue Game", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y + 16 },
-        { "Settings", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y + 32 },
-        { "Exit", SCREEN_CENTER_X - 32, SCREEN_CENTER_Y + 48 },
+    menu_item_t title_screen_options[4] = {
+        { "New Game", CENTER_TEXT_X("New Game", 0), SCREEN_CENTER_Y},
+        { "Continue Game", CENTER_TEXT_X("Continue Game", 0), SCREEN_CENTER_Y + 16 },
+        { "Settings", CENTER_TEXT_X("Settings", 0), SCREEN_CENTER_Y + 32 },
+        { "Exit", CENTER_TEXT_X("Exit", 0), SCREEN_CENTER_Y + 48 },
     };
 
     asset_t up_cursor_asset = {0};
@@ -1621,8 +1604,6 @@ int main(int argc, char *argv[])
 
     while (Running) 
     {
-        frame_start = SDL_GetTicks();
-                                                              
         // Poll events
         while (SDL_PollEvent(&SDLWindow.e))
         {
@@ -1645,8 +1626,8 @@ int main(int argc, char *argv[])
                             {
                                 option_index--;
                                 if (option_index < 0)
-                                    option_index = ArraySize(menu_items) - 1;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                    option_index = ArraySize(title_screen_options) - 1;
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
                             
                             if (is_new_game)
@@ -1654,7 +1635,7 @@ int main(int argc, char *argv[])
                                 button_select--;
                                 if (button_select < 0)
                                     button_select = ArraySize(confirmation_buttons) - 1;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
                             
                             if (confirmation.is_active)
@@ -1662,13 +1643,13 @@ int main(int argc, char *argv[])
                                 confirmation.index--;
                                 if (confirmation.index < 0)
                                     confirmation.index = ArraySize(confirmation.info.buttons) - 1;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
 
                             if (is_settings)
                             {
                                 Sound_MoveUpSettings(&sound_settings); 
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
                         
                             if (is_name_submission)
@@ -1691,9 +1672,9 @@ int main(int argc, char *argv[])
                             if (is_title_screen)
                             {
                                 option_index++;
-                                if (option_index >= ArraySize(menu_items))
+                                if (option_index >= ArraySize(title_screen_options))
                                     option_index = 0;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
 
                             if (is_new_game)
@@ -1701,7 +1682,7 @@ int main(int argc, char *argv[])
                                 button_select++;
                                 if (button_select >= ArraySize(confirmation_buttons))
                                     button_select = 0;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
     
                             if (confirmation.is_active)
@@ -1709,13 +1690,13 @@ int main(int argc, char *argv[])
                                 confirmation.index++;
                                 if (confirmation.index >= ArraySize(confirmation.info.buttons))
                                     confirmation.index = 0;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
 
                             if (is_settings)
                             {
                                 Sound_MoveDownSettings(&sound_settings); 
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
 
                             if (is_name_submission)
@@ -1738,7 +1719,7 @@ int main(int argc, char *argv[])
                                 character_creation_screen.index--;
                                 if (character_creation_screen.index < 0)
                                     character_creation_screen.index = ArraySize(character_creation_screen.info) - 1;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
 
                             if (character_allocation_select_screen.is_active && !confirmation.is_active)
@@ -1746,26 +1727,26 @@ int main(int argc, char *argv[])
                                 character_allocation_select_screen.index--;
                                 if (character_allocation_select_screen.index < 0)
                                     character_allocation_select_screen.index = ArraySize(character_allocation_select_screen.info) - 1;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
                       
                             // switch case below
                             if (is_settings && sound_settings.index == 0)
                             {
                                 Sound_DecreaseVolume(&volume_controller[0]);
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
 
                             if (is_settings && sound_settings.index == 1)
                             {
                                 Sound_DecreaseVolume(&volume_controller[1]);
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
 
                             if (is_settings && sound_settings.index == 2)
                             {
                                 Sound_DecreaseVolume(&volume_controller[2]);
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             } 
 
                             if (is_settings)
@@ -1839,7 +1820,7 @@ int main(int argc, char *argv[])
                                 character_creation_screen.index++;
                                 if (character_creation_screen.index >= ArraySize(character_creation_screen.info))
                                     character_creation_screen.index = 0;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
 
                             if (character_allocation_select_screen.is_active && !confirmation.is_active)
@@ -1847,7 +1828,7 @@ int main(int argc, char *argv[])
                                 character_allocation_select_screen.index++;
                                 if (character_allocation_select_screen.index >= ArraySize(character_allocation_select_screen.info))
                                     character_allocation_select_screen.index = 0;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&master_volume.sfx[0].wav);
                             }
 
                             if (is_settings)
@@ -1856,27 +1837,32 @@ int main(int argc, char *argv[])
                                 {
                                     case 0:
                                     {
-                                        volume_settings_state = VOL_SETTINGS_MASTER;
-
                                         Sound_IncreaseVolume(&volume_controller[0]);
-                                        Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                        Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                        
+                                        volume_controller[0].touched = true;
+                                        printf("master touched\n");
+                                        volume_settings_state = VOL_SETTINGS_MASTER;
 
                                     } break;
                                     case 1:
                                     {
-                                        volume_settings_state = VOL_SETTINGS_MUSIC;
-
-                                       
                                         Sound_IncreaseVolume(&volume_controller[1]);
-                                        Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                        Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                       
+                                        volume_controller[1].touched = true;
+                                        printf("music touched\n");
+                                        volume_settings_state = VOL_SETTINGS_MUSIC;
 
                                     } break;
                                     case 2:
                                     {
-                                        volume_settings_state = VOL_SETTINGS_SFX;
-    
                                         Sound_IncreaseVolume(&volume_controller[2]);
-                                        Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                        Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                        
+                                        volume_controller[2].touched = true;
+                                        printf("sfx touched\n");
+                                        volume_settings_state = VOL_SETTINGS_SFX;
                                     } break;
                                     case 3:
                                     {
@@ -1931,7 +1917,7 @@ int main(int argc, char *argv[])
                                 back_and_apply_buttons_index--;
                                 if (back_and_apply_buttons_index < 0)
                                     back_and_apply_buttons_index = 0;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume[0].sfx);
                                 printf("%d\n", back_and_apply_buttons_index);
                                 printf("%s\n", back_and_apply_buttons[back_or_next_cursor_index].text);
                                 
@@ -1958,7 +1944,7 @@ int main(int argc, char *argv[])
                                 back_and_apply_buttons_index++;
                                 if (back_and_apply_buttons_index >= ArraySize(back_and_apply_buttons))
                                     back_and_apply_buttons_index = ArraySize(back_and_apply_buttons) - 1;
-                                Sound_PlaySFX(&sfx_volume_test[0].sfx);
+                                Sound_PlaySFX(&sfx_volume[0].sfx);
 
                                 printf("%s\n", back_and_apply_buttons[back_or_next_cursor_index].text);
                                 
@@ -2530,14 +2516,20 @@ int main(int argc, char *argv[])
 
                             if (is_settings)
                             {
+
                                 switch (sound_settings.index)
                                 {
                                     case 3: // apply
                                     {
-                                        for (int i = 0; i < 3; ++i)
-                                        {
-                                            volume_controller[i].apply = true;
-                                        }
+                                        if (volume_controller[0].touched)
+                                            volume_controller[0].apply = true;
+    
+                                        if (volume_controller[1].touched)
+                                            volume_controller[1].apply = true;
+
+                                        if (volume_controller[2].touched)
+                                            volume_controller[2].apply = true;
+
                                         volume_settings_state = VOL_SETTINGS_APPLY;
                                     } break;
                                     case 4:
@@ -2643,18 +2635,7 @@ int main(int argc, char *argv[])
        
         if (is_title_screen)
         {
-            //SDL_PauseAudioDevice(master_volume.music[0].music.device_id, 0);
-            Sound_PlayMusic(&master_volume.music[0].music);
-            SDL_RenderCopy(SDLWindow.Renderer, title_screen_asset.texture, NULL, &title_screen_asset.body);
-            CursorForItems(&menu_items[option_index], &right_cursor_asset, 4, 1);
-            RenderAndUpdateAsset(&right_cursor_asset);
-            
-            // Render options
-            for (int i = 0; i < ArraySize(menu_items); ++i)
-            {
-                RenderText(SDLWindow.Renderer, font_atlas, menu_items[i].x, menu_items[i].y,
-                           menu_items[i].text, white);
-            }
+            Sound_PlayMusic(&master_volume.music[0].wav);
 
             switch (title_screen_state)
             {
@@ -2687,7 +2668,22 @@ int main(int argc, char *argv[])
                 {
                     title_screen_state = TITLE_NONE;
                 } break;
-            }       
+            }      
+
+                        
+            SDL_RenderCopy(SDLWindow.Renderer, title_screen_asset.texture, NULL, &title_screen_asset.body);
+    
+            // Render options
+            for (int i = 0; i < ArraySize(title_screen_options); ++i)
+            {
+                RenderText(SDLWindow.Renderer, font_atlas, 
+                           title_screen_options[i].x, 
+                           title_screen_options[i].y,
+                           title_screen_options[i].text, white);
+            }
+            CursorForItems(&title_screen_options[option_index], &right_cursor_asset, 4, 1);
+            RenderAndUpdateAsset(&right_cursor_asset);
+        
         }
     
         if (is_settings) 
@@ -2721,7 +2717,7 @@ int main(int argc, char *argv[])
             {
                 case VOL_SETTINGS_NONE:
                 {
-                    // Nothing
+                    Sound_RenderVolumeBars(SDLWindow.Renderer, volume_controller, VOLUME_CONTROLLER_COUNT);
                 } break;
                 case VOL_SETTINGS_MASTER:
                 {
@@ -2743,12 +2739,108 @@ int main(int argc, char *argv[])
                     switch (sound_settings.index)
                     {
                         case 3:
-                        {
+                        {           
+                            // Music and SFX should not be any louder than the Master volume if set to be,
+                            // so they can only be as loud as Master. The simple attempt was to set the 
+                            // music and sfx volume to master's if that was the case and it works, but it 
+                            // doesn't FEEL right that when I have the master volume at bar 1, it feels like
+                            // nothing's happening messing with the music volume, I would 
+                            // like to feel it where if I increased the volume of the music, it would go
+                            // up, but relative to where the volume master's set at. The next attempt is
+                            // to average the volume of music or sfx according to the master's.
+
                             if (volume_controller[0].apply)
                             {
-                                printf("volume_apply\n");
-                                music_volume[0].music.volume = volume_controller[0].volume;
+                                // If master volume is touched, set every other volume level as master's
+                                if (volume_controller[0].touched)
+                                {
+                                    int avg = 0;
+                                    for (int i = 0; i < MUSIC_FILE_COUNT; ++i)
+                                    {
+                                        master_volume.music[i].wav.volume = volume_controller[0].volume;
+                                        printf("master_music: %d\n", music_volume[i].wav.volume);
+
+                                        if (master_volume.music[i].wav.volume == 0)
+                                        {
+                                            master_volume.music[i].wav.volume = 0;
+                                            music_volume[i].wav.volume = 0;
+                                        }
+                                        else if (music_volume[i].wav.volume > master_volume.music[i].wav.volume)
+                                        {
+                                            // Take average, we're working with powers of 2s, so it shouldn't matter we're using an int.
+                                            avg = (music_volume[i].wav.volume + master_volume.music[i].wav.volume) / 2;
+                                            master_volume.music[i].wav.volume = avg;
+                                           
+
+
+                                            printf("avg: %d\n", avg);
+                                        }
+                                    }
+
+                                    for (int i = 0; i < SFX_FILE_COUNT; ++i)
+                                    {
+                                        master_volume.sfx[i].wav.volume = volume_controller[0].volume;
+                                        printf("master_sfx: %d\n", sfx_volume[i].wav.volume);
+
+                                    }
+                                }
+/*
+                                if (volume_controller[1].touched)
+                                {
+                                    int avg = 0;
+                                    for (int i = 0; i < MUSIC_FILE_COUNT; ++i)
+                                    {
+                                        music_volume[i].wav.volume = volume_controller[0].volume;
+
+                                        if (music_volume[i].wav.volume > master_volume.music[i].wav.volume)
+                                        {
+                                            // Take average, we're working with powers of 2s, so it shouldn't matter we're using an int.
+                                            avg = (music_volume[i].wav.volume + master_volume.music[i].wav.volume) / 2;
+                                            music_volume[i].wav.volume = avg;
+                                            
+                                            printf("avg: %d\n", avg);
+                                        }
+                                    }
+                                }
+*/
+
+                                if (volume_controller[2].touched)
+                                {
+                                    for (int i = 0; i < SFX_FILE_COUNT; ++i)
+                                    {
+                                       // master_volume.sfx[i].wav.volume = volume_controller[2].volume;
+                                    }
+                                }
+                                
+
+                                printf("master volume: %d\n", master_volume.music[0].wav.volume);
+                                printf("music volume: %d\n", music_volume[0].wav.volume);
+    
+
+
                                 volume_controller[0].apply = false;
+                            }
+
+                            if (volume_controller[1].apply)
+                            {
+                                if (volume_controller[1].touched)
+                                {
+                                    int avg = 0;
+                                    for (int i = 0; i < MUSIC_FILE_COUNT; ++i)
+                                    {
+                                        music_volume[i].wav.volume = volume_controller[1].volume;
+                                        
+                                        if (music_volume[i].wav.volume > master_volume.music[i].wav.volume)
+                                        {
+                                            avg = (music_volume[i].wav.volume + master_volume.music[i].wav.volume) / 2;
+                                            music_volume[i].wav.volume = avg;
+                                        }
+                                    }
+
+                                    //volume_controller[1].touched;
+                                }
+
+                                volume_controller[1].apply = false;
                             }
                         }
                     }
@@ -2759,6 +2851,7 @@ int main(int argc, char *argv[])
                 {
                     is_settings = false;
                     is_title_screen = true;
+                    volume_settings_state = VOL_SETTINGS_NONE;
                     title_screen_state = TITLE_NONE;
                 } break;
                 default:
@@ -2875,12 +2968,16 @@ int main(int argc, char *argv[])
                 CursorForAssets(&character_allocation_select_screen.info[character_allocation_select_screen.index].asset, &up_cursor_asset, 24, 20);
                 RenderAndUpdateAsset(&up_cursor_asset);
                 
-                RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
-                           (ASPECT_WIDTH / 2) - 80,
-                           (ASPECT_HEIGHT / 2) - 48,
-                           "How will you allocate your\npoints for your character?",
-                           white,
-                           2);
+                RenderText(SDLWindow.Renderer, font_atlas,
+                           CENTER_TEXT_X("How will you allocate your", 0),
+                           SCREEN_CENTER_Y - 48,
+                           "How will you allocate your",
+                           white);
+                RenderText(SDLWindow.Renderer, font_atlas,
+                           CENTER_TEXT_X("points for your character?", 0),
+                           SCREEN_CENTER_Y - 40,
+                           "points for your character?",
+                           white);
                   
                 for (int i = 0; i < ArraySize(back_or_next_cursor); ++i)
                 {
@@ -3385,14 +3482,6 @@ int main(int argc, char *argv[])
 
         SDL_RenderSetLogicalSize(SDLWindow.Renderer, ASPECT_WIDTH, ASPECT_HEIGHT);    
         SDL_RenderPresent(SDLWindow.Renderer);
-
-        frame_time = SDL_GetTicks() - frame_start;
-        if (frame_time < frames_per_ms)
-        {
-            SDL_Delay(frames_per_ms - frame_time);
-        }
-
-
     }
 
     DestroyCamera(); 
