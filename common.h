@@ -57,6 +57,13 @@ typedef struct
     u32 r, g, b, a;
 } color_t;
 
+typedef struct menu_item_t
+{
+    const char *text;
+    int x, y;
+} menu_item_t;
+
+
 
 
 

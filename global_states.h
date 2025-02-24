@@ -31,26 +31,6 @@ typedef enum
 } title_screen;
 title_screen title_screen_state = TITLE_NONE;
 
-typedef enum
-{
-    VOL_SETTINGS_NONE,
-    VOL_SETTINGS_MASTER,
-    VOL_SETTINGS_MUSIC,
-    VOL_SETTINGS_SFX,
-    VOL_SETTINGS_APPLY
-} volume_settings;
-volume_settings volume_settings_state = VOL_SETTINGS_NONE;
-
-typedef enum
-{
-    VOL_LEVEL_NONE,
-    VOL_LEVEL_GREEN,
-    VOL_LEVEL_YELLOW,
-    VOL_LEVEL_ORANGE,
-    VOL_LEVEL_RED
-} volume_level;
-volume_level volume_level_state = VOL_LEVEL_NONE;
-
 typedef enum 
 {
     CLASS_NONE,
