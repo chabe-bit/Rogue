@@ -3,13 +3,16 @@
 
 #include "global_states.h"
 
+#include "sdl_colors.h"
+#include "personality.h"
 #include "sound.h"
 #include "name_entry.h"
 #include "gui_text.h"
 
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
-#include <SDL2/SDL.h>
+//#include <SDL2/SDL.h>
 
 static bool Running;
 
@@ -556,21 +559,6 @@ typedef struct
 
 } personality_scenario_t; 
 
-typedef struct
-{
-    int index; 
-    bool is_active;
-    char personality[32];
-    SDL_Rect box;
-    menu_item_t options[5];
-} scenario_t;
-
-typedef struct
-{
-    u8 result; 
-    scenario_t scenario[8];
-} test_personality_scenario_t; 
-
 typedef enum
 {
     SCENARIO_NONE       = -1,
@@ -584,120 +572,76 @@ typedef enum
     SCENARIO_CASTLE     = (1 << 7),
 } scenario_type;
 
-#define VILLAGE_INDEX   0
-#define MONSTER_INDEX   1 
-#define FOREST_INDEX    2
-#define CAVE_INDEX      3
-#define DESERT_INDEX    4
-#define TOWER_INDEX     5
-#define THEATER_INDEX   6
-#define CASTLE_INDEX    7
 
-#define VILLAGE_OPTION_COUNT 3
-#define MONSTER_OPTION_COUNT 5
-#define CAVE_OPTION_COUNT    5
-#define DESERT_OPTION_COUNT  3
+
+                
+test_personality_test_results_t results = {
+    .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
+    .scenario = "Desert Scenario",
+    .name = "Thug",
+    .description = {
+         "You appear to be a thug...",
+         "and though you may not realize it,",
+         "your thuggishness is a worry and an",
+         "inconvenience to all around you.",
+         "Even you had done so, your",
+         "lack of empathy would",
+         "probably lead you to assume",
+         "that they think as you do...",
+         "+ STR",
+         "- AGL",
+         "- VIT",
+         "- WIS",
+         "- LCK"
+    }
+};
 
 typedef struct
 {
+    int index; 
+    bool is_active;
+    char personality[32];
+    SDL_Rect box;
+    test_personality_test_results_t results;
+    menu_item_t options[5];
+} scenario_t;
 
-    int x_positions[13];
-    char scenario[50];
-    char name[50]; // personality name
-    char description[][100]; // personality description
-} personality_test_results_t;
-
-#define THUG_DESCRIPTION_COUNT 13
-
-personality_test_results_t test_results = {0};
-
-
-char test_name[50] = "Thug";
-char test_scenario[50] = "Desert Scenario";
-
-char test_description[][100] = {
-    {"You appear to be a thug..."},
-    {"and though you may not realize it,"},
-    {"your thuggishness is a worry and an"},
-    {"inconvenience to all around you."},
-
-    // Remove
-    {"Even you had done so, your"},
-    {"lack of empathy would"},
-    {"probably lead you to assume"},
-    {"that they think as you do..."},
-
-    // Stat growth
-    {"+ STR"},
-    {"- AGL"},
-    {"- VIT"},
-    {"- WIS"},
-    {"- LCK"},
-}; 
-
-int test_positions[THUG_DESCRIPTION_COUNT] = {
-    1,2,3,4,5,6,7,8,9,10,11,12,13 
-};
-
-void PersonalityTest_Results()
+typedef struct
 {
-    /*
+    u8 result; 
+    scenario_t scenario[8];
+} test_personality_scenario_t; 
+
+void PersonalityTest_InitResults(test_personality_scenario_t *personality, test_personality_test_results_t *results, int SCENARIO, int description_size)
+{
+    personality->scenario[SCENARIO].results.name = results->name;
+    personality->scenario[SCENARIO].results.scenario = results->scenario;
+
+    for (int i = 0; i < description_size; ++i)
+    {
+        personality->scenario[SCENARIO].results.x_coords[i] = results->x_coords[i];
+        personality->scenario[SCENARIO].results.description[i] = results->description[i];
+        printf("description: %s\n", personality->scenario[SCENARIO].results.description[i]);
+    }
+
+}
+
+void PersonalityTest_RenderResults(test_personality_scenario_t *personality, SDL_Texture *font_atlas, int SCENARIO, int description_size)
+{
     RenderText(SDLWindow.Renderer, font_atlas,
-               CENTER_TEXT_X(test_scenarios.scenario[DESERT_INDEX].personality, 0),
+               CENTER_TEXT_X(personality->scenario[SCENARIO].results.scenario, 0),
                SCREEN_CENTER_Y - 80,
-               test_scenarios.scenario[DESERT_INDEX].personality,
+               personality->scenario[SCENARIO].results.scenario,
                white);
 
-    int DESCRIPTION_COUNT = 13;
-
-    char thug_personality_description[][100] = {
-        {"You appear to be a thug..."},
-        {"and though you may not realize it,"},
-        {"your thuggishness is a worry and an"},
-        {"inconvenience to all around you."},
-
-        // Remove
-        {"Even you had done so, your"},
-        {"lack of empathy would"},
-        {"probably lead you to assume"},
-        {"that they think as you do..."},
-
-        // Stat growth
-        {"+ STR"},
-        {"- AGL"},
-        {"- VIT"},
-        {"- WIS"},
-        {"- LCK"},
-    
-    }; 
-
-    int p_position[DESCRIPTION_COUNT];
-    p_position[0] = -64;
-    p_position[1] = -56;
-    p_position[2] = -48;
-    p_position[3] = -40;
-    p_position[4] = -32;
-    p_position[5] = -24;
-    p_position[6] = -16;
-    p_position[7] = -8;
-    
-    p_position[8] = 16;
-    p_position[9] = 24;
-    p_position[10] = 32;
-    p_position[11] = 40;
-    p_position[12] = 48;
-  
-
-
-    for (int i = 0; i < DESCRIPTION_COUNT; ++i)
+    for (int i = 0; i < description_size; ++i)
     {
         RenderText(SDLWindow.Renderer, font_atlas,
-                   CENTER_TEXT_X(thug_personality_description[i], 0),
-                   SCREEN_CENTER_Y + p_position[i],
-                   thug_personality_description[i],
+                   CENTER_TEXT_X(personality->scenario[SCENARIO].results.description[i], 0),
+                   SCREEN_CENTER_Y + personality->scenario[SCENARIO].results.x_coords[i],
+                   personality->scenario[SCENARIO].results.description[i],
                    white);
     }
-*/
 }
 
 int Personality_GetScenarioOptionCount(test_personality_scenario_t *scenario)
@@ -797,17 +741,6 @@ void Personality_MoveDownScenario(test_personality_scenario_t *personality)
 int main(int argc, char *argv[])
 {
     srand(time(NULL));
-
-    for (int i = 0; i < THUG_DESCRIPTION_COUNT; ++i)
-    {
-        test_results.x_positions[i] = test_positions[i];
-        PushString(test_results.description[i], test_description[i]);
-        //printf("test_results: %d\n", test_results.x_positions[i]);
-        //printf("test_results: %s\n", test_results.description[i]);
-    }
-
-    PushString(test_results.name, test_name);
-    PushString(test_results.scenario, test_scenario);
 
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
@@ -998,8 +931,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    SDL_Color green = {0, 255, 0, 255};
-    SDL_Color white = {255, 255, 255, 255};
+
     int option_index = 0;
     menu_item_t title_screen_options[4] = {
         { "New Game", CENTER_TEXT_X("New Game", 0), SCREEN_CENTER_Y},
@@ -1717,11 +1649,16 @@ int main(int argc, char *argv[])
     next_and_back_button.button[1].y = SCREEN_CENTER_Y + 96;
 
 
+    
+
     // Start event
     is_title_screen = true;
     Running = true;
 
+    SDL_Color hold_my_color = {0};
+
     bool personality_results_screen = false;
+    bool loading_results = false;
     while (Running) 
     {
         // Poll events
@@ -2815,7 +2752,9 @@ int main(int argc, char *argv[])
                                         case 0: 
                                         {
                                             printf("Thug\n");
+                                            personality_types_state = PERSONALITY_THUG;
                                             PushString(test_scenarios.scenario[DESERT_INDEX].personality, "Thug");
+                                            loading_results = true;
                                             test_scenarios.scenario[DESERT_INDEX].is_active = false;
                                             is_personality_test = false;
                                             test_scenarios.result &= ~SCENARIO_DESERT;
@@ -3647,64 +3586,35 @@ int main(int argc, char *argv[])
                                SCREEN_CENTER_Y - 88,
                                "Personality:", 
                                white);
-  
-                RenderText(SDLWindow.Renderer, font_atlas,
-                           CENTER_TEXT_X(test_scenarios.scenario[DESERT_INDEX].personality, 0),
-                           SCREEN_CENTER_Y - 80,
-                           test_scenarios.scenario[DESERT_INDEX].personality,
-                           white);
-
-                int DESCRIPTION_COUNT = 13;
-
-                char thug_personality_description[][100] = {
-                    {"You appear to be a thug..."},
-                    {"and though you may not realize it,"},
-                    {"your thuggishness is a worry and an"},
-                    {"inconvenience to all around you."},
-
-                    // Remove
-                    {"Even you had done so, your"},
-                    {"lack of empathy would"},
-                    {"probably lead you to assume"},
-                    {"that they think as you do..."},
-
-                    // Stat growth
-                    {"+ STR"},
-                    {"- AGL"},
-                    {"- VIT"},
-                    {"- WIS"},
-                    {"- LCK"},
-                
-                }; 
-    
-                int p_position[DESCRIPTION_COUNT];
-                p_position[0] = -64;
-                p_position[1] = -56;
-                p_position[2] = -48;
-                p_position[3] = -40;
-                p_position[4] = -32;
-                p_position[5] = -24;
-                p_position[6] = -16;
-                p_position[7] = -8;
-                
-                p_position[8] = 16;
-                p_position[9] = 24;
-                p_position[10] = 32;
-                p_position[11] = 40;
-                p_position[12] = 48;
-              
 
 
-                for (int i = 0; i < DESCRIPTION_COUNT; ++i)
+                static int SCENARIO_INDEX = -1;
+                static int SCENARIO_DIALOGUE_SIZE = -1;
+
+
+                if (loading_results)
                 {
-                    RenderText(SDLWindow.Renderer, font_atlas,
-                               CENTER_TEXT_X(thug_personality_description[i], 0),
-                               SCREEN_CENTER_Y + p_position[i],
-                               thug_personality_description[i],
-                               white);
+                    switch (personality_types_state)
+                    {
+                        case PERSONALITY_THUG:
+                        {
+                            SCENARIO_INDEX = DESERT_INDEX;
+                            SCENARIO_DIALOGUE_SIZE = 13;
+                            
+                                            
+                            PersonalityTest_InitResults(&test_scenarios, &results, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            loading_results = false;
+                        } break;
+                        default:
+                        {
+                            personality_types_state = PERSONALITY_UNUSED;
+                        } break;
+                    }
                 }
 
 
+                PersonalityTest_RenderResults(&test_scenarios, font_atlas, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                
                 CursorForItems(&next_and_back_button.button[next_and_back_button.index], &right_cursor_asset, 4, 1);
                 RenderAndUpdateAsset(&right_cursor_asset);
                 for (int i = 0; i < ArraySize(next_and_back_button.button); ++i)
@@ -3714,7 +3624,7 @@ int main(int argc, char *argv[])
                                next_and_back_button.button[i].y,
                                next_and_back_button.button[i].text,
                                white);
-        
+         
 
                 }
 
