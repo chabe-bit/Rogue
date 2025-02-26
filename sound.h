@@ -3,6 +3,10 @@
 
 #include "common.h"
 
+#define MASTER_INDEX    0
+#define MUSIC_INDEX     1
+#define SFX_INDEX       2
+
 #define MUSIC_FILE_COUNT 2
 #define SFX_FILE_COUNT 2
 #define VOLUME_CONTROLLER_COUNT 3
@@ -36,8 +40,8 @@ typedef struct
 typedef struct 
 {
     int volume;
-    sound_music_t music[MUSIC_FILE_COUNT]; 
-    sound_sfx_t sfx[SFX_FILE_COUNT];
+    sound_music_t *music[MUSIC_FILE_COUNT]; 
+    sound_sfx_t *sfx[SFX_FILE_COUNT];
 } sound_master_volume_t;
 
 typedef struct
@@ -49,17 +53,23 @@ typedef struct
     bool three;
     bool max;
     bool apply;
-/*
-    Ideal way of creating 3 instances of volume controllers rather than this entire struct itself because then from above, we have three instances of each, where we only need one. 
+    
+    // Ideal way of creating 3 instances of volume controllers rather than this entire struct itself because then from above, we have three instances of each, where we only need one. 
     struct
     {
+        bool touched;
+        bool mute;
+        bool one;
+        bool two;
+        bool three;
+        bool max;
+
         int index;
         int volume_size_bars;
         int volume;
         color_t colors;
         SDL_Rect blocks[5];
     } info[3];
-   */
     
     bool touched;
     
@@ -126,12 +136,21 @@ void Sound_MoveDownSettings(sound_settings_t *sound_settings);
 void Sound_MoveRightSettings(sound_settings_t *sound_settings);
 void Sound_MoveLeftSettings(sound_settings_t *sound_settings);
 
-
 void Sound_IncreaseVolume(sound_volume_controller_t *volume_controller); 
 void Sound_DecreaseVolume(sound_volume_controller_t *volume_controller);
 
 void Sound_InitVolumeBar(sound_settings_t *sound_settings, sound_volume_controller_t *volume_controller, int volume_controller_count);
+
 void Sound_UpdateVolumeBars(sound_volume_controller_t *volume_controller);
 void Sound_RenderVolumeBars(SDL_Renderer *renderer, sound_volume_controller_t *volume_controller, int volume_controller_count);
+
+
+void Sound_TestInitVolumeBar(sound_settings_t *sound_settings, sound_volume_controller_t *volume_controller, int volume_controller_count);
+void Sound_TestIncreaseVolume(sound_volume_controller_t *volume_controller, int INDEX); 
+void Sound_TestDecreaseVolume(sound_volume_controller_t *volume_controller, int INDEX);
+void Sound_TestUpdateVolumeBars(sound_volume_controller_t *volume_controller, int INDEX);
+void Sound_TestRenderVolumeBars(SDL_Renderer *renderer, sound_volume_controller_t *volume_controller, int volume_controller_count);
+
+
 
 #endif

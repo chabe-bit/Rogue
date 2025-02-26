@@ -34,12 +34,14 @@ void Sound_InitMaster(sound_master_volume_t* master, sound_music_t *music, sound
 {
     for (int i = 0; i < MUSIC_FILE_COUNT; ++i)
     {
-        master->music[i].wav = music[i].wav;
+        master->music[i] = &music[i];
     }
+    printf("master->music length: %d\n", master->music[0]->wav.length);
+    printf("master->music volume: %d\n", master->music[0]->wav.volume);
 
     for (int i = 0; i < SFX_FILE_COUNT; ++i)
     {
-        master->sfx[i].wav = sfx[i].wav;
+        master->sfx[i] = &sfx[i];
     }
 }
 
@@ -325,6 +327,8 @@ void Sound_InitVolumeBar(sound_settings_t *sound_settings, sound_volume_controll
             volume_controller[vc].volume_size_bars += (sound_settings->volume_body[vc].w / 4);
         }
     }
+    
+    printf("volume_controller: %d\n", volume_controller[0].blocks[0].x);
 }
 
 void Sound_IncreaseVolume(sound_volume_controller_t *volume_controller) 
@@ -341,9 +345,6 @@ void Sound_DecreaseVolume(sound_volume_controller_t *volume_controller)
     if (volume_controller->index < 0)
         volume_controller->index = 0; // Stay at the start rather than wrapping around 
 }
-
-
-
 
 void Sound_UpdateVolumeBars(sound_volume_controller_t *volume_controller)
 {
@@ -424,4 +425,123 @@ void Sound_RenderVolumeBars(SDL_Renderer *renderer, sound_volume_controller_t *v
     }
 }
 
+
+
+void Sound_TestInitVolumeBar(sound_settings_t *sound_settings, sound_volume_controller_t *volume_controller, int volume_controller_count)
+{
+    for (int vc = 0; vc < volume_controller_count; ++vc)
+    {
+        for (int i = 0; i < ArraySize(volume_controller->info[vc].blocks); ++i)
+        {
+            volume_controller->info[vc].blocks[i].x = sound_settings->volume_body[vc].x + volume_controller->info[vc].volume_size_bars;
+            volume_controller->info[vc].blocks[i].y = sound_settings->volume_body[vc].y;
+            volume_controller->info[vc].blocks[i].w = sound_settings->volume_body[vc].w / 4;
+            volume_controller->info[vc].blocks[i].h = sound_settings->volume_body[vc].h;
+            volume_controller->info[vc].volume_size_bars += (sound_settings->volume_body[vc].w / 4);
+        }
+    }
+    
+}
+
+void Sound_TestRenderVolumeBars(SDL_Renderer *renderer, sound_volume_controller_t *volume_controller, int volume_controller_count)
+{
+    for (int vc = 0; vc < volume_controller_count; ++vc)
+    {
+        for (int i = 0; i < volume_controller->info[vc].index; ++i)
+        {
+            SDL_SetRenderDrawColor(renderer, volume_controller->info[vc].colors.r, volume_controller->info[vc].colors.g, volume_controller->info[vc].colors.b, volume_controller[vc].colors.a);
+            SDL_RenderFillRect(renderer, &volume_controller->info[vc].blocks[i]);
+        }
+    }
+}
+
+
+void Sound_TestIncreaseVolume(sound_volume_controller_t *volume_controller, int INDEX) 
+{
+    volume_controller->info[INDEX].index++;
+    if (volume_controller->info[INDEX].index >= ArraySize(volume_controller->info[INDEX].blocks))
+        volume_controller->info[INDEX].index = ArraySize(volume_controller->info[INDEX].blocks) - 1;
+                  
+}
+
+void Sound_TestDecreaseVolume(sound_volume_controller_t *volume_controller, int INDEX)
+{
+    volume_controller->info[INDEX].index--;
+    if (volume_controller->info[INDEX].index < 0)
+        volume_controller->info[INDEX].index = 0;
+}
+
+void Sound_TestUpdateVolumeBars(sound_volume_controller_t *volume_controller, int INDEX)
+{
+    switch (volume_controller->info[INDEX].index)
+    {
+        case 0:
+        {
+            if (volume_controller->info[INDEX].mute)
+            {
+                volume_controller->info[INDEX].volume = 0;
+                printf("mute: %d\n", volume_controller->info[INDEX].volume);
+                volume_controller->info[INDEX].mute = false;
+    
+            }
+        } break;
+        case 1:
+        {
+            volume_controller->info[INDEX].colors.r = 0;
+            volume_controller->info[INDEX].colors.g = 255;
+            volume_controller->info[INDEX].colors.b = 0;
+            volume_controller->info[INDEX].colors.a = 255;
+            
+            if (volume_controller->info[INDEX].one)
+            {
+                volume_controller->info[INDEX].volume = 32;
+                printf("mute: %d\n", volume_controller->info[INDEX].volume);
+                volume_controller->info[INDEX].one = false;
+            }
+        } break;
+        case 2:
+        {
+            volume_controller->info[INDEX].colors.r = 255;
+            volume_controller->info[INDEX].colors.g = 255;
+            volume_controller->info[INDEX].colors.b = 0;
+            volume_controller->info[INDEX].colors.a = 255;
+
+            if (volume_controller->info[INDEX].two)
+            {
+                volume_controller->info[INDEX].volume = 64;
+                printf("two: %d\n", volume_controller->info[INDEX].volume);
+                volume_controller->info[INDEX].two = false;
+            }
+        } break;
+        case 3:
+        {
+            volume_controller->info[INDEX].colors.r = 255;
+            volume_controller->info[INDEX].colors.g = 165;
+            volume_controller->info[INDEX].colors.b = 0;
+            volume_controller->info[INDEX].colors.a = 255;
+
+            if (volume_controller->info[INDEX].three)
+            {
+                volume_controller->info[INDEX].volume = 96;
+                printf("three: %d\n", volume_controller->info[INDEX].volume);
+                volume_controller->info[INDEX].three = false;
+            }
+        } break;
+        case 4:
+        {
+            volume_controller->info[INDEX].colors.r = 255;
+            volume_controller->info[INDEX].colors.g = 0;
+            volume_controller->info[INDEX].colors.b = 0;
+            volume_controller->info[INDEX].colors.a = 255;
+            
+            if (volume_controller->info[INDEX].max)
+            {
+                volume_controller->info[INDEX].volume = SDL_MIX_MAXVOLUME;
+                printf("max: %d\n", volume_controller->info[INDEX].volume);
+                volume_controller->info[INDEX].max = false;
+            }
+        } break;
+    }
+
+}
 

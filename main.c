@@ -59,7 +59,7 @@ typedef struct
     int x, y, w, h;
     stats_t stats;
     union 
-    { 
+    {
         bool is_moving;
         bool is_under_attack;
         bool is_attacking;
@@ -558,25 +558,20 @@ typedef struct
 
 typedef struct
 {
-    u8 result; 
+    int index; 
+    bool is_active; 
     menu_item_t options[5];
 } scenario_t;
 
 typedef struct
 {
-    int index; 
-    bool is_active;    
+    u8 result; 
     scenario_t scenario[8];
 } test_personality_scenario_t; 
 
-#define VILLAGE   0
-#define MONSTER_1 1
-
-#define MONSTER 0 // 0 for now
-
 typedef enum
 {
-    SCENARIO_NONE,
+    SCENARIO_NONE       = -1,
     SCENARIO_VILLAGE    = (1 << 0),
     SCENARIO_MONSTER    = (1 << 1),
     SCENARIO_FOREST     = (1 << 2),
@@ -585,91 +580,111 @@ typedef enum
     SCENARIO_TOWER      = (1 << 5),
     SCENARIO_THEATER    = (1 << 6),
     SCENARIO_CASTLE     = (1 << 7),
-} scenario_results;
+} scenario_type;
 
-#define VILLAGE_NUM_OPTIONS 3
-#define MONSTER_NUM_OPTIONS 5
+#define VILLAGE_INDEX   0
+#define MONSTER_INDEX   1 
+#define FOREST_INDEX    2
+#define CAVE_INDEX      3
+#define DESERT_INDEX    4
+#define TOWER_INDEX     5
+#define THEATER_INDEX   6
+#define CASTLE_INDEX    7
 
-typedef struct
-{   
-    const char text[3][100];
-    int x[3];
-    int y[3];
-} village_scenario_t;
+#define VILLAGE_OPTION_COUNT 3
+#define MONSTER_OPTION_COUNT 5
 
+int Personality_GetScenarioOptionCount(test_personality_scenario_t *scenario)
+{
+    int option_count = 0;
+  
+    if (scenario->result & SCENARIO_VILLAGE)
+        option_count = VILLAGE_OPTION_COUNT;
+
+    if (scenario->result & SCENARIO_MONSTER)
+        option_count = MONSTER_OPTION_COUNT;
    
-village_scenario_t village_options = {
-    // Village Options
-    {
-        {"Steal the coins openly with pride"},
-        {"Steal the coins sneakily"},
-        {"Don't steal the coins and return them"}
-    },
-    // X position for rendering
-    {
-        1, 1, 1,
-    },
-    // Y position for rendering
-    {
-        1, 1, 1,
-    },
-};
+    if (scenario->result & SCENARIO_FOREST)
+        option_count = FOREST_INDEX;
 
-const char monster_scenario_options[MONSTER_NUM_OPTIONS][100] = {
-    {"Kill fewer than three people"},
-    {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
-    {"Kill three or more people, \nbut don't kill the women, \nthe elderly, or children"},
-    {"Kill three or more poeple, \nincluding children"},
-    {"Kill nine or more people, but \ndon't kill the man by the inn"}
-};
+    if (scenario->result & SCENARIO_CAVE)
+        option_count = CAVE_INDEX;
+   
+    if (scenario->result & SCENARIO_DESERT)
+        option_count = DESERT_INDEX;
 
-int Scenario_GetNumOptions(scenario_results scenario)
+    if (scenario->result & SCENARIO_TOWER)
+        option_count = TOWER_INDEX;
+   
+    if (scenario->result & SCENARIO_THEATER)
+        option_count = THEATER_INDEX;
+
+    if (scenario->result & SCENARIO_CASTLE)
+        option_count = CASTLE_INDEX;
+
+
+    return option_count;
+}
+int Personality_GetScenario(test_personality_scenario_t *scenario)
 {
-    int results = 0;
+    int result = 0;
+  
+    if (scenario->result & SCENARIO_VILLAGE)
+        result = VILLAGE_INDEX;
 
-    switch (scenario)
-    {
-        case VILLAGE:
-        {
-            results = VILLAGE_NUM_OPTIONS;
-        } break;
-        case MONSTER_1:
-        {
-            results = MONSTER_NUM_OPTIONS;
-        } break;
-        default:
-        {
-            results = 0;
-        } break;
-    }
+    if (scenario->result & SCENARIO_MONSTER)
+        result = MONSTER_INDEX;
+   
+    if (scenario->result & SCENARIO_FOREST)
+        result = FOREST_INDEX;
+
+    if (scenario->result & SCENARIO_CAVE)
+        result = CAVE_INDEX;
+   
+    if (scenario->result & SCENARIO_DESERT)
+        result = DESERT_INDEX;
+
+    if (scenario->result & SCENARIO_TOWER)
+        result = TOWER_INDEX;
+   
+    if (scenario->result & SCENARIO_THEATER)
+        result = THEATER_INDEX;
+
+    if (scenario->result & SCENARIO_CASTLE)
+        result = CASTLE_INDEX;
 
 
-    return results;
+    return result;
 }
 
-void Personality_ScenarioInitialize(test_personality_scenario_t *personality, 
-                                    //const char scenario_options[][100],
-                                    village_scenario_t *scenario,
-                                    scenario_results results) 
+
+void Personality_MoveUpScenario(test_personality_scenario_t *personality)
 {
-    int num_options = Scenario_GetNumOptions(results);
-    printf("num_options: %d\n", num_options);
+    int SCENARIO = Personality_GetScenario(personality);
+    int OPTIONS = Personality_GetScenarioOptionCount(personality);
 
-    for (int i = 0; i < num_options; ++i)
+    if (personality->scenario[SCENARIO].is_active)
     {
-        personality->scenario[results].options[i].text = scenario->text[i];
-        personality->scenario[results].options[i].x = scenario->y[i];
-        personality->scenario[results].options[i].y = scenario->y[i];
+        personality->scenario[SCENARIO].index--;
+        if (personality->scenario[SCENARIO].index < 0)
+            personality->scenario[SCENARIO].index = OPTIONS - 1;
     }
-
-    for (int i = 0; i < num_options; ++i)
-    {
-        printf("scenario_text: %s\n", personality->scenario[results].options[i].text);
-        printf("scenario_x: %d\n", personality->scenario[results].options[i].x);
-        printf("scenario_y: %d\n", personality->scenario[results].options[i].y);
-    }
-
 }
+
+void Personality_MoveDownScenario(test_personality_scenario_t *personality)
+{
+    int SCENARIO = Personality_GetScenario(personality);
+    int OPTIONS = Personality_GetScenarioOptionCount(personality);
+
+    if (personality->scenario[SCENARIO].is_active)
+    {
+        personality->scenario[SCENARIO].index++;
+        if (personality->scenario[SCENARIO].index >= OPTIONS)
+            personality->scenario[SCENARIO].index = 0;
+    }
+}
+
+
 
 // ------------------------------------------------------------------------------
 
@@ -1072,50 +1087,63 @@ int main(int argc, char *argv[])
     */
 
     personality_scenario_t personality_scenario[1] = {0};
-    
-    personality_scenario[MONSTER].info.monster_options[0].text = "Kill fewer than three people";
-    personality_scenario[MONSTER].info.monster_options[0].x = CENTER_TEXT_X(personality_scenario[MONSTER].info.monster_options[0].text, 0);
-    personality_scenario[MONSTER].info.monster_options[0].y = SCREEN_CENTER_Y;
-    
-    personality_scenario[MONSTER].info.monster_options[1].text = "Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children";
-    personality_scenario[MONSTER].info.monster_options[1].x = CENTER_TEXT_X(personality_scenario[MONSTER].info.monster_options[1].text, 176);
-    personality_scenario[MONSTER].info.monster_options[1].y = SCREEN_CENTER_Y + 16;
+/    
+    const char *scenario_name = '\0';
 
-    personality_scenario[MONSTER].info.monster_options[2].text = "Kill three or more people, \nbut don't kill the women, \nthe elderly, or children";
-    personality_scenario[MONSTER].info.monster_options[2].x = CENTER_TEXT_X(personality_scenario[MONSTER].info.monster_options[2].text, 164);
-    personality_scenario[MONSTER].info.monster_options[2].y = SCREEN_CENTER_Y + 48;
+    test_personality_scenario_t test_scenarios = {0};
+    test_scenarios.scenario[VILLAGE_INDEX].options[0].text = "Steal the coins openly with pride.";
+    test_scenarios.scenario[VILLAGE_INDEX].options[0].x = CENTER_TEXT_X(test_scenarios.scenario[VILLAGE_INDEX].options[0].text, 0);
+    test_scenarios.scenario[VILLAGE_INDEX].options[0].y = SCREEN_CENTER_Y - 16;
     
-    personality_scenario[MONSTER].info.monster_options[3].text = "Kill three or more poeple, \nincluding children";
-    personality_scenario[MONSTER].info.monster_options[3].x = CENTER_TEXT_X(personality_scenario[MONSTER].info.monster_options[3].text, 64);
-    personality_scenario[MONSTER].info.monster_options[3].y = SCREEN_CENTER_Y + 78;
+    test_scenarios.scenario[VILLAGE_INDEX].options[1].text = "Steal the coins sneakily.";
+    test_scenarios.scenario[VILLAGE_INDEX].options[1].x = CENTER_TEXT_X(test_scenarios.scenario[VILLAGE_INDEX].options[1].text, 0);
+    test_scenarios.scenario[VILLAGE_INDEX].options[1].y = SCREEN_CENTER_Y + 0;
 
-    personality_scenario[MONSTER].info.monster_options[4].text = "Kill nine or more people, but \ndon't kill the man by the inn";
-    personality_scenario[MONSTER].info.monster_options[4].x = CENTER_TEXT_X(personality_scenario[MONSTER].info.monster_options[4].text, 88);
-    personality_scenario[MONSTER].info.monster_options[4].y = SCREEN_CENTER_Y + 102;
+    test_scenarios.scenario[VILLAGE_INDEX].options[2].text = "Don't steal the coins and return them.";
+    test_scenarios.scenario[VILLAGE_INDEX].options[2].x = CENTER_TEXT_X(test_scenarios.scenario[VILLAGE_INDEX].options[2].text, 0);
+    test_scenarios.scenario[VILLAGE_INDEX].options[2].y = SCREEN_CENTER_Y + 16;
+
+
+    test_scenarios.scenario[MONSTER_INDEX].options[0].text = "Kill fewer than three people.";
+    test_scenarios.scenario[MONSTER_INDEX].options[0].x = CENTER_TEXT_X(test_scenarios.scenario[MONSTER_INDEX].options[0].text, 0);
+    test_scenarios.scenario[MONSTER_INDEX].options[0].y = SCREEN_CENTER_Y - 16;
+
+    test_scenarios.scenario[MONSTER_INDEX].options[1].text = "Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children.";
+    test_scenarios.scenario[MONSTER_INDEX].options[1].x = CENTER_TEXT_X(test_scenarios.scenario[MONSTER_INDEX].options[1].text, 176);
+    test_scenarios.scenario[MONSTER_INDEX].options[1].y = SCREEN_CENTER_Y + 0;
+
+    test_scenarios.scenario[MONSTER_INDEX].options[2].text = "Kill three or more people, \nbut don't kill the women, \nthe elderly, or children.";
+    test_scenarios.scenario[MONSTER_INDEX].options[2].x = CENTER_TEXT_X(test_scenarios.scenario[MONSTER_INDEX].options[2].text, 164);
+    test_scenarios.scenario[MONSTER_INDEX].options[2].y = SCREEN_CENTER_Y + 32;
+
+    test_scenarios.scenario[MONSTER_INDEX].options[3].text = "Kill three or more poeple, \nincluding children.";
+    test_scenarios.scenario[MONSTER_INDEX].options[3].x = CENTER_TEXT_X(test_scenarios.scenario[MONSTER_INDEX].options[3].text, 64);
+    test_scenarios.scenario[MONSTER_INDEX].options[3].y = SCREEN_CENTER_Y + 64;
+
+    test_scenarios.scenario[MONSTER_INDEX].options[4].text = "Kill nine or more people, but \ndon't kill the man by the inn.";
+    test_scenarios.scenario[MONSTER_INDEX].options[4].x = CENTER_TEXT_X(test_scenarios.scenario[MONSTER_INDEX].options[4].text, 88);
+    test_scenarios.scenario[MONSTER_INDEX].options[4].y = SCREEN_CENTER_Y + 88;
+
+    test_scenarios.scenario[CAVE_INDEX].options[0].text = "Save the princess.";
+    test_scenarios.scenario[CAVE_INDEX].options[0].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[0].text, 0);
+    test_scenarios.scenario[CAVE_INDEX].options[0].y = SCREEN_CENTER_Y - 16;
+
+    test_scenarios.scenario[CAVE_INDEX].options[1].text = "Take the door to go deeper";
+    test_scenarios.scenario[CAVE_INDEX].options[1].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[1].text, 176);
+    test_scenarios.scenario[CAVE_INDEX].options[1].y = SCREEN_CENTER_Y + 0;
+
+    test_scenarios.scenario[CAVE_INDEX].options[2].text = "Take the door to the room of treasures then go deeper.";
+    test_scenarios.scenario[CAVE_INDEX].options[2].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[2].text, 164);
+    test_scenarios.scenario[CAVE_INDEX].options[2].y = SCREEN_CENTER_Y + 32;
+
+    test_scenarios.scenario[CAVE_INDEX].options[3].text = "Take the door to the room of treasures then leave.";
+    test_scenarios.scenario[CAVE_INDEX].options[3].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[3].text, 64);
+    test_scenarios.scenario[CAVE_INDEX].options[3].y = SCREEN_CENTER_Y + 64;
    
+    test_scenarios.scenario[CAVE_INDEX].options[4].text = "Ignore everything and leave.";
+    test_scenarios.scenario[CAVE_INDEX].options[4].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[4].text, 88);
+    test_scenarios.scenario[CAVE_INDEX].options[4].y = SCREEN_CENTER_Y + 88;
 
-    test_personality_scenario_t test_personality_scenario = {0};
-
-    Personality_ScenarioInitialize(&test_personality_scenario, &village_options, VILLAGE);
-    //Personality_ScenarioInitialize(&test_personality_scenario, monster_scenario_options, MONSTER_1);
-
-    const char choice[3][100] = {
-        {"Kill fewer than three people"},
-        {"Kill three or more people, \nincluding women and the elderly, \nbut don't kill the children"},
-        {"Kill three or more people, \nbut don't kill the women, \nthe elderly, or children"},
-    };
-
-    printf("choice 1: %s\n", choice[0]);
-
-    personality_scenario[MONSTER].scenario.result |= SCENARIO_VILLAGE;
-    printf("scenario result 1: 0x%02x\n", personality_scenario[MONSTER].scenario.result);
-    if (personality_scenario[MONSTER].scenario.result & SCENARIO_VILLAGE)
-        printf("HIT 1\n");
-    
-    personality_scenario[MONSTER].scenario.result &= ~(SCENARIO_VILLAGE);
-    printf("scenario result 2: 0x%02x\n", personality_scenario[MONSTER].scenario.result);
-    if (personality_scenario[MONSTER].scenario.result & 0x01)
-        printf("HIT 2\n");
 
 
     bool is_village = false;
@@ -1163,6 +1191,11 @@ int main(int argc, char *argv[])
 
     sound_volume_controller_t volume_controller[3] = {0};
     Sound_InitVolumeBar(&sound_settings, volume_controller, VOLUME_CONTROLLER_COUNT); 
+
+    sound_volume_controller_t test_volume_controller = {0};
+    Sound_TestInitVolumeBar(&sound_settings, &test_volume_controller, VOLUME_CONTROLLER_COUNT);
+
+    printf("test_volume_controller: %d\n", test_volume_controller.info[0].blocks[0].x);
 
 
     ////////////// Enter name grid 
@@ -1515,24 +1548,11 @@ int main(int argc, char *argv[])
     } class_status_overview_t;
 
     bool init_name = true;
-    char name_buffer[28];
-    const char *dst_txt = "Name:                      ";
-    const char *src_txt = "Ben";
-
-    size_t total_width = 27;
-    size_t append_len = strlen(src_txt);
-    size_t insert_index = total_width - append_len;
-
-    strncpy(name_buffer, dst_txt, total_width);
-    name_buffer[total_width] = '\0';
-    strncpy(name_buffer + insert_index, src_txt, append_len);
-    name_buffer[total_width] = '\0';
-
-    printf("Results: %s\n", name_buffer);
     
+    const char *dst_txt = "Name:                      ";
     class_status_overview_t class_status_overview[14] = {
         // Box 1 - Info
-        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 96},    "Name:                     " },
+        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 96},    "Name:                      " },
         { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 86},    "Lv:                       1" },
         { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 76},    "Class:               Knight" },
         { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 66},    "Personality:            Wit" },
@@ -1551,56 +1571,11 @@ int main(int argc, char *argv[])
 
 
     };
-   
-/*
-    // SAVE FOR IN-GAME STAT OVERVIEW
-    class_status_overview_t class_status_overview[6] = {
-        // Box 1 - Info
-        { {CENTER_TEXT_X("Name", -64),                  SCREEN_CENTER_Y - 96}, "Name:                " },
-        { {CENTER_TEXT_X("Lv", -64),                    SCREEN_CENTER_Y - 88}, "Lv:                  " },
-        { {CENTER_TEXT_X("Class", -64),                 SCREEN_CENTER_Y - 80}, "Class:               " },
-        { {CENTER_TEXT_X("Personality", -64),           SCREEN_CENTER_Y - 72}, "Personality:         " },
-        { {CENTER_TEXT_X("Experience", -64),            SCREEN_CENTER_Y - 64}, "Experience:          " },
-        { {CENTER_TEXT_X("Exp. to Next Level", -64),    SCREEN_CENTER_Y - 56}, "Exp. to Next Level:  " },
-    
-        // Box 2 - Equipments
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Sword:           " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Shield:          " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Helm:            " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Chestplate:      " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Accessory 1:     " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Accessory 2:     " },
-
-        // Box 3 - Stats
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Strength:        " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Resillience:     " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Agility:         " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Stamina:         " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Wisdom:          " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Luck:            " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Max HP:          " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Max MP:          " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Attack:          " },
-        { {SCREEN_CENTER_X, SCREEN_CENTER_Y}, "Defense:         " },
-    };
-*/
-
-
-
     
 
-    /////////////////////////////////////////////////////////////////////////
-
-
- 
     // Start event
-    bool some_input = true;
     is_title_screen = true;
     Running = true;
-
-    bool sound_settings_touched = false;
-                           
-
 
     while (Running) 
     {
@@ -1627,7 +1602,7 @@ int main(int argc, char *argv[])
                                 option_index--;
                                 if (option_index < 0)
                                     option_index = ArraySize(title_screen_options) - 1;
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
                             
                             if (is_new_game)
@@ -1635,7 +1610,7 @@ int main(int argc, char *argv[])
                                 button_select--;
                                 if (button_select < 0)
                                     button_select = ArraySize(confirmation_buttons) - 1;
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
                             
                             if (confirmation.is_active)
@@ -1643,13 +1618,13 @@ int main(int argc, char *argv[])
                                 confirmation.index--;
                                 if (confirmation.index < 0)
                                     confirmation.index = ArraySize(confirmation.info.buttons) - 1;
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
 
                             if (is_settings)
                             {
                                 Sound_MoveUpSettings(&sound_settings); 
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
                         
                             if (is_name_submission)
@@ -1657,6 +1632,8 @@ int main(int argc, char *argv[])
                                 NameEntry_MoveUp(&name_entry);
                             }
 
+                            Personality_MoveUpScenario(&test_scenarios);
+                            
                             if (personality_scenario[0].is_active)
                             {
                                 personality_scenario[0].index--;
@@ -1674,7 +1651,7 @@ int main(int argc, char *argv[])
                                 option_index++;
                                 if (option_index >= ArraySize(title_screen_options))
                                     option_index = 0;
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
 
                             if (is_new_game)
@@ -1682,7 +1659,7 @@ int main(int argc, char *argv[])
                                 button_select++;
                                 if (button_select >= ArraySize(confirmation_buttons))
                                     button_select = 0;
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
     
                             if (confirmation.is_active)
@@ -1690,19 +1667,21 @@ int main(int argc, char *argv[])
                                 confirmation.index++;
                                 if (confirmation.index >= ArraySize(confirmation.info.buttons))
                                     confirmation.index = 0;
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
 
                             if (is_settings)
                             {
                                 Sound_MoveDownSettings(&sound_settings); 
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
 
                             if (is_name_submission)
                             {
                                 NameEntry_MoveDown(&name_entry);
                             }  
+
+                            Personality_MoveDownScenario(&test_scenarios);
 
                             if (personality_scenario[0].is_active)
                             {
@@ -1719,7 +1698,7 @@ int main(int argc, char *argv[])
                                 character_creation_screen.index--;
                                 if (character_creation_screen.index < 0)
                                     character_creation_screen.index = ArraySize(character_creation_screen.info) - 1;
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
 
                             if (character_allocation_select_screen.is_active && !confirmation.is_active)
@@ -1727,26 +1706,29 @@ int main(int argc, char *argv[])
                                 character_allocation_select_screen.index--;
                                 if (character_allocation_select_screen.index < 0)
                                     character_allocation_select_screen.index = ArraySize(character_allocation_select_screen.info) - 1;
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
                       
                             // switch case below
                             if (is_settings && sound_settings.index == 0)
                             {
-                                Sound_DecreaseVolume(&volume_controller[0]);
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                //Sound_DecreaseVolume(&volume_controller[0]);
+                                Sound_TestDecreaseVolume(&test_volume_controller, MASTER_INDEX);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
 
                             if (is_settings && sound_settings.index == 1)
                             {
-                                Sound_DecreaseVolume(&volume_controller[1]);
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                //Sound_DecreaseVolume(&volume_controller[1]);
+                                Sound_TestDecreaseVolume(&test_volume_controller, MUSIC_INDEX);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
 
                             if (is_settings && sound_settings.index == 2)
                             {
-                                Sound_DecreaseVolume(&volume_controller[2]);
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                //Sound_DecreaseVolume(&volume_controller[2]);
+                                Sound_TestDecreaseVolume(&test_volume_controller, SFX_INDEX);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             } 
 
                             if (is_settings)
@@ -1775,36 +1757,39 @@ int main(int argc, char *argv[])
                                     } break;
                                 }
 
-                                for (int i = 0; i < 3; ++i)
+                                for (int vc = 0; vc < VOLUME_CONTROLLER_COUNT; ++vc) 
                                 {
-                                    switch (volume_controller[i].index)
+                                    switch (test_volume_controller.info[vc].index)
                                     {
                                         case 0:
                                         {
-                                            volume_controller[i].mute = true;
+                                            //test_volume_controller.info[vc].mute = true;
+                                            test_volume_controller.info[vc].mute = true;
                                         } break;
-                                        case 1:                                        
+                                        case 1:
                                         {
-                                            volume_controller[i].one = true;
+                                            test_volume_controller.info[vc].one = true;
                                         } break;
-                                        case 2: 
+                                        case 2:
                                         {
-                                            volume_controller[i].two = true;
+                                            test_volume_controller.info[vc].two = true;
                                         } break;
-                                        case 3:   
+                                        case 3:
                                         {
-                                            volume_controller[i].three = true;
+                                            test_volume_controller.info[vc].three = true;
                                         } break;
                                         case 4:
                                         {
-                                            volume_controller[i].max = true;
+                                            test_volume_controller.info[vc].max = true;
                                         } break;
                                         default:
                                         {
-                                            volume_controller[i].one = true;
+                                            test_volume_controller.info[vc].one = true;
                                         } break;
+
                                     }
                                 }
+
                             }
 
                             if (is_name_submission)
@@ -1820,7 +1805,7 @@ int main(int argc, char *argv[])
                                 character_creation_screen.index++;
                                 if (character_creation_screen.index >= ArraySize(character_creation_screen.info))
                                     character_creation_screen.index = 0;
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
 
                             if (character_allocation_select_screen.is_active && !confirmation.is_active)
@@ -1828,7 +1813,7 @@ int main(int argc, char *argv[])
                                 character_allocation_select_screen.index++;
                                 if (character_allocation_select_screen.index >= ArraySize(character_allocation_select_screen.info))
                                     character_allocation_select_screen.index = 0;
-                                Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
                             }
 
                             if (is_settings)
@@ -1837,8 +1822,9 @@ int main(int argc, char *argv[])
                                 {
                                     case 0:
                                     {
-                                        Sound_IncreaseVolume(&volume_controller[0]);
-                                        Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                        //Sound_IncreaseVolume(&volume_controller[0]);
+                                        Sound_TestIncreaseVolume(&test_volume_controller, 0);
+                                        Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                         
                                         volume_controller[0].touched = true;
                                         printf("master touched\n");
@@ -1847,8 +1833,9 @@ int main(int argc, char *argv[])
                                     } break;
                                     case 1:
                                     {
-                                        Sound_IncreaseVolume(&volume_controller[1]);
-                                        Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                        //Sound_IncreaseVolume(&volume_controller[1]);
+                                        Sound_TestIncreaseVolume(&test_volume_controller, 1);
+                                        Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                        
                                         volume_controller[1].touched = true;
                                         printf("music touched\n");
@@ -1857,8 +1844,9 @@ int main(int argc, char *argv[])
                                     } break;
                                     case 2:
                                     {
-                                        Sound_IncreaseVolume(&volume_controller[2]);
-                                        Sound_PlaySFX(&master_volume.sfx[0].wav);
+                                        //Sound_IncreaseVolume(&volume_controller[2]);
+                                        Sound_TestIncreaseVolume(&test_volume_controller, 2);
+                                        Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                         
                                         volume_controller[2].touched = true;
                                         printf("sfx touched\n");
@@ -1875,32 +1863,38 @@ int main(int argc, char *argv[])
                                     } break;
                                 }
 
-                                for (int i = 0; i < ArraySize(volume_controller); ++i)
+                                for (int vc = 0; vc < VOLUME_CONTROLLER_COUNT; ++vc) 
                                 {
-                                    switch (volume_controller[i].index)
+                                    switch (test_volume_controller.info[vc].index)
                                     {
                                         case 0:
                                         {
-                                            volume_controller[i].mute = true;
+                                            //test_volume_controller.info[vc].mute = true;
+                                            test_volume_controller.info[vc].mute = true;
                                         } break;
-                                        case 1: 
+                                        case 1:
                                         {
-                                            volume_controller[i].one = true;
+                                            test_volume_controller.info[vc].one = true;
                                         } break;
-                                        case 2: 
+                                        case 2:
                                         {
-                                            volume_controller[i].two = true;
+                                            test_volume_controller.info[vc].two = true;
                                         } break;
-                                        case 3: 
+                                        case 3:
                                         {
-                                            volume_controller[i].three = true;
+                                            test_volume_controller.info[vc].three = true;
                                         } break;
-                                        case 4: 
+                                        case 4:
                                         {
-                                            volume_controller[i].max = true;
+                                            test_volume_controller.info[vc].max = true;
+                                        } break;
+                                        default:
+                                        {
+                                            test_volume_controller.info[vc].one = true;
                                         } break;
                                     }
                                 }
+
                             }
                            
                             
@@ -2244,7 +2238,7 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 34:
                                             {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_MONSTER; // final question
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_VILLAGE; // CLASS_PERSONALITY_RESULT_MONSTER; // final question
                                             } break;
                                             case 35:
                                             {
@@ -2521,15 +2515,9 @@ int main(int argc, char *argv[])
                                 {
                                     case 3: // apply
                                     {
-                                        if (volume_controller[0].touched)
-                                            volume_controller[0].apply = true;
-    
-                                        if (volume_controller[1].touched)
-                                            volume_controller[1].apply = true;
-
-                                        if (volume_controller[2].touched)
-                                            volume_controller[2].apply = true;
-
+                                        //if (test_volume_controller.touched)
+                                            
+                                        test_volume_controller.apply = true;
                                         volume_settings_state = VOL_SETTINGS_APPLY;
                                     } break;
                                     case 4:
@@ -2569,48 +2557,96 @@ int main(int argc, char *argv[])
 
                             if (is_personality_test)
                             {
-
-                                switch (personality_scenario[MONSTER].scenario.result)
+                                if (test_scenarios.result & SCENARIO_VILLAGE)
                                 {
-                                    case SCENARIO_MONSTER:
+                                    switch (test_scenarios.scenario[VILLAGE_INDEX].index)
                                     {
-                                        switch (personality_scenario[MONSTER].index)
+                                        // Steal the coins openly with pride. -> Show-off
+                                        // Steal the coins sneakily. -> Slippery Devil
+                                        // Don't steal the coins and return them. -> Shrinking Violet
+                                        case 0:
                                         {
-                                            // Kill fewer than three people -> Paragon
-                                            // Kill three or more people, including women and the elderly, but don't kill the children -> Wimpy
-                                            // Kill three or more people, but don't kill the women, the elderly, or children -> Spoilt Brat
-                                            // Kill three or more poeple, including children -> Egghead
-                                            // Kill nine or more people, but don't kill the man by the inn -> Klutz (did you know? the lore is so they accuse the man of missing people, because they're the only ones at night to see people)
-                                            case 0: 
-                                            {
-                                                printf("Paragon\n");
-                                                //personality_scenario.is_active = false; // set this on to go to the next screen
-                                            } break;
-                                            case 1: 
-                                            {
-                                                printf("Wimpy\n");
-                                            } break;
-                                            case 2: 
-                                            {
-                                                printf("Spoilt Brat\n");
-                                            } break;
-                                            case 3: 
-                                            {
-                                                printf("Egghead\n");
-                                            } break;
-                                            case 4: 
-                                            {
-                                                printf("Klutz\n");
-                                            } break;
-                                            default:
-                                            {
+                                            printf("Show-off\n");
+                                        } break;
+                                        case 1:
+                                        {
+                                            printf("Slippery Devil\n");
+                                        } break;
+                                        case 2:
+                                        {
+                                            printf("Shrinking Violet\n");
+                                        } break;
+                                    }
 
-                                            } break;
-                                        } 
-                                        
-                                    } break;
                                 }
-                                
+
+                                if (test_scenarios.result & SCENARIO_MONSTER)
+                                {
+                                    switch (test_scenarios.scenario[MONSTER_INDEX].index)
+                                    {
+                                        // Kill fewer than three people -> Paragon
+                                        // Kill three or more people, including women and the elderly, but don't kill the children -> Wimpy
+                                        // Kill three or more people, but don't kill the women, the elderly, or children -> Spoilt Brat
+                                        // Kill three or more poeple, including children -> Egghead
+                                        // Kill nine or more people, but don't kill the man by the inn -> Klutz (did you know? the lore is so they accuse the man of missing people, because they're the only ones at night to see people)
+                                        case 0: 
+                                        {
+                                            printf("Paragon\n");
+                                        } break;
+                                        case 1: 
+                                        {
+                                            printf("Wimpy\n");
+                                        } break;
+                                        case 2: 
+                                        {
+                                            printf("Spoilt Brat\n");
+                                        } break;
+                                        case 3: 
+                                        {
+                                            printf("Egghead\n");
+                                        } break;
+                                        case 4: 
+                                        {
+                                            printf("Klutz\n");
+                                        } break;
+                                    } 
+                                }
+
+                                if (test_scenarios.result & SCENARIO_CAVE)
+                                {
+                                    switch (test_scenarios.scenario[CAVE_INDEX].index)
+                                    {
+                                        // Save the princess -> Straight Arrow 
+                                        // Take the door to go deeper -> Mule 
+                                        // Take the door to the room of treasures then go deeper -> Scatterbrain
+                                        // Take the door to the room of treasures then leave -> Narcissist
+                                        // Ignore everything and leave -> Sore Loser
+                                        case 0: 
+                                        {
+                                            printf("Straight Arrow\n");
+                                        } break;
+                                        case 1: 
+                                        {
+                                            printf("Mule\n");
+                                        } break;
+                                        case 2: 
+                                        {
+                                            printf("Scatterbrain\n");
+                                        } break;
+                                        case 3: 
+                                        {
+                                            printf("Narcissist\n");
+                                        } break;
+                                        case 4: 
+                                        {
+                                            printf("Sore Loser\n");
+                                        } break;
+                                    } 
+                                }
+
+
+
+
                             }
                             
 
@@ -2635,7 +2671,7 @@ int main(int argc, char *argv[])
        
         if (is_title_screen)
         {
-            Sound_PlayMusic(&master_volume.music[0].wav);
+            Sound_PlayMusic(&master_volume.music[0]->wav);
 
             switch (title_screen_state)
             {
@@ -2717,26 +2753,45 @@ int main(int argc, char *argv[])
             {
                 case VOL_SETTINGS_NONE:
                 {
-                    Sound_RenderVolumeBars(SDLWindow.Renderer, volume_controller, VOLUME_CONTROLLER_COUNT);
+                    Sound_TestRenderVolumeBars(SDLWindow.Renderer, &test_volume_controller, VOLUME_CONTROLLER_COUNT);
                 } break;
                 case VOL_SETTINGS_MASTER:
                 {
-                    Sound_UpdateVolumeBars(&volume_controller[0]);
-                    Sound_RenderVolumeBars(SDLWindow.Renderer, volume_controller, VOLUME_CONTROLLER_COUNT);
+                    Sound_TestUpdateVolumeBars(&test_volume_controller, MASTER_INDEX);
+                    Sound_TestRenderVolumeBars(SDLWindow.Renderer, &test_volume_controller, VOLUME_CONTROLLER_COUNT);
                 } break;
                 case VOL_SETTINGS_MUSIC:
                 {
-                    Sound_UpdateVolumeBars(&volume_controller[1]);
-                    Sound_RenderVolumeBars(SDLWindow.Renderer, volume_controller, VOLUME_CONTROLLER_COUNT);
+                    Sound_TestUpdateVolumeBars(&test_volume_controller, MUSIC_INDEX);
+                    Sound_TestRenderVolumeBars(SDLWindow.Renderer, &test_volume_controller, VOLUME_CONTROLLER_COUNT);
                 } break;
                 case VOL_SETTINGS_SFX:
                 {
-                    Sound_UpdateVolumeBars(&volume_controller[2]);
-                    Sound_RenderVolumeBars(SDLWindow.Renderer, volume_controller, VOLUME_CONTROLLER_COUNT);
+                    Sound_TestUpdateVolumeBars(&test_volume_controller, SFX_INDEX);
+                    Sound_TestRenderVolumeBars(SDLWindow.Renderer, &test_volume_controller, VOLUME_CONTROLLER_COUNT);
                 } break;
                 case VOL_SETTINGS_APPLY:
                 {
-                    switch (sound_settings.index)
+                    printf("master_volume: %d\n", test_volume_controller.info[MASTER_INDEX].volume);
+                    
+                    if (test_volume_controller.apply)
+                    {
+                        for (int i = 0; i < MUSIC_INDEX; ++i)
+                        {
+                            master_volume.music[MASTER_INDEX]->wav.volume = test_volume_controller.info[MASTER_INDEX].volume;
+                        }
+                          
+                        for (int i = 0; i < SFX_INDEX; ++i)
+                        {
+                            master_volume.sfx[MASTER_INDEX]->wav.volume = test_volume_controller.info[MASTER_INDEX].volume;
+                        }                      
+                        test_volume_controller.apply = false;
+                    }
+                  
+                    // Updates 
+                    //music_volume[MASTER_INDEX].wav.volume = test_volume_controller.info[MASTER_INDEX].volume;
+                    
+                    /*switch (sound_settings.index)
                     {
                         case 3:
                         {           
@@ -2749,103 +2804,36 @@ int main(int argc, char *argv[])
                             // up, but relative to where the volume master's set at. The next attempt is
                             // to average the volume of music or sfx according to the master's.
 
-                            if (volume_controller[0].apply)
+                            if (test_volume_controller.apply)
                             {
                                 // If master volume is touched, set every other volume level as master's
-                                if (volume_controller[0].touched)
+                                for (int i = 0; i < MUSIC_FILE_COUNT; ++i)
                                 {
-                                    int avg = 0;
-                                    for (int i = 0; i < MUSIC_FILE_COUNT; ++i)
+                                    master_volume.music[i].wav.volume = volume_controller[0].volume;
+                                    printf("master_music: %d\n", music_volume[i].wav.volume);
+
+                                    if (music_volume[i].wav.volume > master_volume.music[i].wav.volume)
                                     {
-                                        master_volume.music[i].wav.volume = volume_controller[0].volume;
-                                        printf("master_music: %d\n", music_volume[i].wav.volume);
-
-                                        if (master_volume.music[i].wav.volume == 0)
-                                        {
-                                            master_volume.music[i].wav.volume = 0;
-                                            music_volume[i].wav.volume = 0;
-                                        }
-                                        else if (music_volume[i].wav.volume > master_volume.music[i].wav.volume)
-                                        {
-                                            // Take average, we're working with powers of 2s, so it shouldn't matter we're using an int.
-                                            avg = (music_volume[i].wav.volume + master_volume.music[i].wav.volume) / 2;
-                                            master_volume.music[i].wav.volume = avg;
-                                           
-
-
-                                            printf("avg: %d\n", avg);
-                                        }
-                                    }
-
-                                    for (int i = 0; i < SFX_FILE_COUNT; ++i)
-                                    {
-                                        master_volume.sfx[i].wav.volume = volume_controller[0].volume;
-                                        printf("master_sfx: %d\n", sfx_volume[i].wav.volume);
-
+                                        master_volume.music[i].wav.volume = master_volume.music[i].wav.volume;
                                     }
                                 }
-/*
-                                if (volume_controller[1].touched)
+
+                                for (int i = 0; i < SFX_FILE_COUNT; ++i)
                                 {
-                                    int avg = 0;
-                                    for (int i = 0; i < MUSIC_FILE_COUNT; ++i)
-                                    {
-                                        music_volume[i].wav.volume = volume_controller[0].volume;
+                                    master_volume.sfx[i].wav.volume = volume_controller[0].volume;
+                                    printf("master_sfx: %d\n", sfx_volume[i].wav.volume);
 
-                                        if (music_volume[i].wav.volume > master_volume.music[i].wav.volume)
-                                        {
-                                            // Take average, we're working with powers of 2s, so it shouldn't matter we're using an int.
-                                            avg = (music_volume[i].wav.volume + master_volume.music[i].wav.volume) / 2;
-                                            music_volume[i].wav.volume = avg;
-                                            
-                                            printf("avg: %d\n", avg);
-                                        }
-                                    }
                                 }
-*/
 
-                                if (volume_controller[2].touched)
-                                {
-                                    for (int i = 0; i < SFX_FILE_COUNT; ++i)
-                                    {
-                                       // master_volume.sfx[i].wav.volume = volume_controller[2].volume;
-                                    }
-                                }
-                                
+                                master_volume.music[MASTER_INDEX].wav.volume = test_volume_controller.info[MASTER_INDEX].volume;
 
-                                printf("master volume: %d\n", master_volume.music[0].wav.volume);
-                                printf("music volume: %d\n", music_volume[0].wav.volume);
-    
-
-
-                                volume_controller[0].apply = false;
+                                test_volume_controller.apply = false;
                             }
 
-                            if (volume_controller[1].apply)
-                            {
-                                if (volume_controller[1].touched)
-                                {
-                                    int avg = 0;
-                                    for (int i = 0; i < MUSIC_FILE_COUNT; ++i)
-                                    {
-                                        music_volume[i].wav.volume = volume_controller[1].volume;
-                                        
-                                        if (music_volume[i].wav.volume > master_volume.music[i].wav.volume)
-                                        {
-                                            avg = (music_volume[i].wav.volume + master_volume.music[i].wav.volume) / 2;
-                                            music_volume[i].wav.volume = avg;
-                                        }
-                                    }
-
-                                    //volume_controller[1].touched;
-                                }
-
-                                volume_controller[1].apply = false;
-                            }
                         }
-                    }
+                    }*/
 
-                    Sound_RenderVolumeBars(SDLWindow.Renderer, volume_controller, VOLUME_CONTROLLER_COUNT);
+                    Sound_TestRenderVolumeBars(SDLWindow.Renderer, &test_volume_controller, VOLUME_CONTROLLER_COUNT);
                 } break;
                 case VOL_SETTINGS_BACK:
                 {
@@ -3117,15 +3105,16 @@ int main(int argc, char *argv[])
                         } break;
                         case CLASS_PERSONALITY_RESULT_VILLAGE:
                         {
-                            is_village = true;
-                            personality_test.is_active = false;
+                            scenario_name = "Village Scenario";
+                            test_scenarios.result |= SCENARIO_VILLAGE;
+                            test_scenarios.scenario[VILLAGE_INDEX].is_active = true;
                         } break;
                         case CLASS_PERSONALITY_RESULT_MONSTER:
                         {
-                            is_monster = true;
-                            personality_scenario[MONSTER].scenario.result |= SCENARIO_MONSTER;
-                            personality_scenario[MONSTER].is_active = true;
-                            personality_test.is_active = false;
+                            scenario_name = "Monster Scenario";
+                            test_scenarios.result |= SCENARIO_MONSTER;
+                            test_scenarios.scenario[MONSTER_INDEX].is_active = true;
+
                         } break;
                         case CLASS_PERSONALITY_RESULT_FOREST:
                         {
@@ -3134,8 +3123,9 @@ int main(int argc, char *argv[])
                         } break;
                         case CLASS_PERSONALITY_RESULT_CAVE:
                         {
-                            is_cave = true;
-                            personality_test.is_active = false;
+                            scenario_name = "Cave Scenario";
+                            test_scenarios.result |= SCENARIO_CAVE;
+                            test_scenarios.scenario[CAVE_INDEX].is_active = true;
                         } break;
                         case CLASS_PERSONALITY_RESULT_DESERT:
                         {
@@ -3179,65 +3169,159 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                if (is_village)
-                {
-                    printf("is_village!\n");
-                    SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-
-                }
-
-                //if (is_monster)
-                if (personality_scenario[MONSTER].scenario.result & SCENARIO_MONSTER)
+                if (test_scenarios.scenario[VILLAGE_INDEX].is_active)
                 {
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                     RenderText(SDLWindow.Renderer, font_atlas,
-                                   CENTER_TEXT_X("Scenario", 0), 
+                                   CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
-                                   "Scenario", 
+                                   scenario_name, 
                                    white);
 
-                    // TODO: Render box and text together 
-                    RenderWrappedTextCentered(SDLWindow.Renderer, font_atlas, 
-                                              monster_scenario[0], white, 
-                                              8, -64,        // containerX, containerY
-                                              224, 240,    // containerW, containerH
-                                              2);          // lineSpacing
-                   
-                    personality_scenario[MONSTER].scenario_box.x = SCREEN_CENTER_X - 124; 
-                    personality_scenario[MONSTER].scenario_box.y = SCREEN_CENTER_Y - 96; 
-                    personality_scenario[MONSTER].scenario_box.w = 240; 
-                    personality_scenario[MONSTER].scenario_box.h = 64; 
+/*
+const char *village_scenario[1] = {
+    "Silver coins drop from the hanging bag of an elderly man's pocket as he walks through the market. What do you do?"
+    // Steal the coins openly with pride. -> Show-off
+    // Steal the coins sneakily. -> Slippery Devil
+    // Don't steal the coins and return them. -> Shrinking Violet
+};
+
+const char *desert_scenario[1] = {
+    "You carry with yourself a canteen of water with only a few sips worth left. In the harsh and unforgiving desert terrain, you come across two men stranded, where one is near death from thirst. What do you do?"
+    // Finish the canteen and leave -> Thug
+    // Give the man the canteen and head to town -> Daredevil
+    // Carry the man to town -> Idealist
+};
+*/
+
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X("Silver coins drop from the hanging bag", 0), 
+                               SCREEN_CENTER_Y - 88,
+                               "Silver coins drop from the hanging bag", 
+                               white); 
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X(" of an elderly man's pocket as he walks", 0), 
+                               SCREEN_CENTER_Y - 80,
+                               " of an elderly man's pocket as he walks", 
+                               white);
+
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X(" through the market. What do you do?", 0), 
+                               SCREEN_CENTER_Y - 72,
+                               " through the market. What do you do?", 
+                               white);
+
+                    CursorForItems(&test_scenarios.scenario[VILLAGE_INDEX].options[test_scenarios.scenario[VILLAGE_INDEX].index], &right_cursor_asset, 4, 1);
+                    RenderAndUpdateAsset(&right_cursor_asset);
+
+                    for (int i = 0; i < VILLAGE_OPTION_COUNT; ++i)
+                    {
+                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                                               test_scenarios.scenario[VILLAGE_INDEX].options[i].x,
+                                               test_scenarios.scenario[VILLAGE_INDEX].options[i].y,
+                                               test_scenarios.scenario[VILLAGE_INDEX].options[i].text,
+                                               white,
+                                               2);
+                    }
+                     
+
+                }
+
+                if (test_scenarios.scenario[MONSTER_INDEX].is_active)
+                {
+                    SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X(scenario_name, 0), 
+                                   SCREEN_CENTER_Y - 108,
+                                   scenario_name, 
+                                   white);
+/*
+const char *monster_scenario[1] = {
+    "You are a man by day and a beast by night. You prey off human flesh and blood to survive. You come across a small and quiet village. What do you do?"
+    // Kill fewer than three people -> Paragon
+    // Kill three or more people, including women and the elderly, but don't kill the children -> Wimpy
+    // Kill three or more people, but don't kill the women, the elderly, or children -> Spoilt Brat
+    // Kill three or more poeple, including children -> Egghead
+    // Kill nine or more people, but don't kill the man by the inn -> Klutz (did you know? the lore is so they accuse the man of missing people, because they're the only ones at night to see people)
+};*/
+   
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X("You are a man by day and a beast by", 0), 
+                                   SCREEN_CENTER_Y - 88,
+                                   "You are a man by day and a beast by", 
+                                   white);                   
+
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X("night. You prey off human flesh and blood", 0), 
+                                   SCREEN_CENTER_Y - 80,
+                                   "night. You prey off human flesh and blood", 
+                                   white);  
+
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X(" to survive. You come across a small and", 0), 
+                                   SCREEN_CENTER_Y - 72,
+                                   " to survive. You come across a small and", 
+                                   white);
+
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X(" quiet village. What do you do?", 0), 
+                                   SCREEN_CENTER_Y - 64,
+                                   " quiet village. What do you do?", 
+                                   white);
+
+                    personality_scenario[MONSTER_INDEX].scenario_box.x = SCREEN_CENTER_X - 124; 
+                    personality_scenario[MONSTER_INDEX].scenario_box.y = SCREEN_CENTER_Y - 96; 
+                    personality_scenario[MONSTER_INDEX].scenario_box.w = 240; 
+                    personality_scenario[MONSTER_INDEX].scenario_box.h = 64; 
 
                     SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
-                    SDL_RenderDrawRect(SDLWindow.Renderer, &personality_scenario[MONSTER].scenario_box);
+                    SDL_RenderDrawRect(SDLWindow.Renderer, &personality_scenario[MONSTER_INDEX].scenario_box);
+                    
+                    CursorForItems(&test_scenarios.scenario[MONSTER_INDEX].options[test_scenarios.scenario[MONSTER_INDEX].index], &right_cursor_asset, 4, 1);
+                    RenderAndUpdateAsset(&right_cursor_asset);
 
-                    if (personality_scenario[MONSTER].is_active)
+                    for (int i = 0; i < MONSTER_OPTION_COUNT; ++i)
                     {
-                        CursorForItems(&personality_scenario[MONSTER].info.monster_options[personality_scenario[MONSTER].index], &right_cursor_asset, 4, 1);
-                        RenderAndUpdateAsset(&right_cursor_asset);
-
-                        for (int i = 0; i < ArraySize(personality_scenario[MONSTER].info.monster_options); ++i)
-                        {
-                            RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
-                                                   personality_scenario[MONSTER].info.monster_options[i].x,
-                                                   personality_scenario[MONSTER].info.monster_options[i].y,
-                                                   personality_scenario[MONSTER].info.monster_options[i].text,
-                                                   white,
-                                                   2);
-                        }
+                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                                               test_scenarios.scenario[MONSTER_INDEX].options[i].x,
+                                               test_scenarios.scenario[MONSTER_INDEX].options[i].y,
+                                               test_scenarios.scenario[MONSTER_INDEX].options[i].text,
+                                               white,
+                                               2);
                     }
 
 
-                    is_monster = false;
-                    is_name_submission = true;
+
+
+                   //is_monster = false;
+                   //is_name_submission = true;
                 }
                 if (is_forest)
                 {
                     printf("is_forest!\n");
                 }
-                if (is_cave)
+                if (test_scenarios.scenario[MONSTER_INDEX].is_active)
                 {
-                    printf("is_cave!\n");
+                    SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X(scenario_name, 0), 
+                                   SCREEN_CENTER_Y - 108,
+                                   scenario_name, 
+                                   white);
+/*
+ const char *cave_scenario[1] = {
+    "You are near the end of your quest in saving the princess, where the entrance to her prison is in front of you. But two doors fork to the left and right, a door to take you deeper in and a door to a room of treasures. What do you do?"
+    // Save the princess. -> Straight Arrow 
+    // Take the door to go deeper -> Mule 
+    // Take the door to the room of treasures then go deeper. -> Scatterbrain
+    // Take the door to the room of treasures then leave. -> Narcissist
+    // Ignore everything and leave. -> Sore Loser
+};
+   */
+
+                    
+
+
                 }
                 if (is_desert)
                 {
