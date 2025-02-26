@@ -573,8 +573,6 @@ typedef enum
 } scenario_type;
 
 
-
-                
 test_personality_test_results_t results = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
@@ -629,9 +627,9 @@ void PersonalityTest_InitResults(test_personality_scenario_t *personality, test_
 void PersonalityTest_RenderResults(test_personality_scenario_t *personality, SDL_Texture *font_atlas, int SCENARIO, int description_size)
 {
     RenderText(SDLWindow.Renderer, font_atlas,
-               CENTER_TEXT_X(personality->scenario[SCENARIO].results.scenario, 0),
+               CENTER_TEXT_X(personality->scenario[SCENARIO].results.name, 0),
                SCREEN_CENTER_Y - 80,
-               personality->scenario[SCENARIO].results.scenario,
+               personality->scenario[SCENARIO].results.name,
                white);
 
     for (int i = 0; i < description_size; ++i)
@@ -3602,7 +3600,8 @@ int main(int argc, char *argv[])
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
                                             
-                            PersonalityTest_InitResults(&test_scenarios, &results, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            //PersonalityTest_InitResults(&test_scenarios, &results, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            PersonalityTest_InitResults(&test_scenarios, &egghead, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         default:
