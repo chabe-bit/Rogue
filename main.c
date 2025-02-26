@@ -559,7 +559,9 @@ typedef struct
 typedef struct
 {
     int index; 
-    bool is_active; 
+    bool is_active;
+    char personality[32];
+    SDL_Rect box;
     menu_item_t options[5];
 } scenario_t;
 
@@ -593,6 +595,110 @@ typedef enum
 
 #define VILLAGE_OPTION_COUNT 3
 #define MONSTER_OPTION_COUNT 5
+#define CAVE_OPTION_COUNT    5
+#define DESERT_OPTION_COUNT  3
+
+typedef struct
+{
+
+    int x_positions[13];
+    char scenario[50];
+    char name[50]; // personality name
+    char description[][100]; // personality description
+} personality_test_results_t;
+
+#define THUG_DESCRIPTION_COUNT 13
+
+personality_test_results_t test_results = {0};
+
+
+char test_name[50] = "Thug";
+char test_scenario[50] = "Desert Scenario";
+
+char test_description[][100] = {
+    {"You appear to be a thug..."},
+    {"and though you may not realize it,"},
+    {"your thuggishness is a worry and an"},
+    {"inconvenience to all around you."},
+
+    // Remove
+    {"Even you had done so, your"},
+    {"lack of empathy would"},
+    {"probably lead you to assume"},
+    {"that they think as you do..."},
+
+    // Stat growth
+    {"+ STR"},
+    {"- AGL"},
+    {"- VIT"},
+    {"- WIS"},
+    {"- LCK"},
+}; 
+
+int test_positions[THUG_DESCRIPTION_COUNT] = {
+    1,2,3,4,5,6,7,8,9,10,11,12,13 
+};
+
+void PersonalityTest_Results()
+{
+    /*
+    RenderText(SDLWindow.Renderer, font_atlas,
+               CENTER_TEXT_X(test_scenarios.scenario[DESERT_INDEX].personality, 0),
+               SCREEN_CENTER_Y - 80,
+               test_scenarios.scenario[DESERT_INDEX].personality,
+               white);
+
+    int DESCRIPTION_COUNT = 13;
+
+    char thug_personality_description[][100] = {
+        {"You appear to be a thug..."},
+        {"and though you may not realize it,"},
+        {"your thuggishness is a worry and an"},
+        {"inconvenience to all around you."},
+
+        // Remove
+        {"Even you had done so, your"},
+        {"lack of empathy would"},
+        {"probably lead you to assume"},
+        {"that they think as you do..."},
+
+        // Stat growth
+        {"+ STR"},
+        {"- AGL"},
+        {"- VIT"},
+        {"- WIS"},
+        {"- LCK"},
+    
+    }; 
+
+    int p_position[DESCRIPTION_COUNT];
+    p_position[0] = -64;
+    p_position[1] = -56;
+    p_position[2] = -48;
+    p_position[3] = -40;
+    p_position[4] = -32;
+    p_position[5] = -24;
+    p_position[6] = -16;
+    p_position[7] = -8;
+    
+    p_position[8] = 16;
+    p_position[9] = 24;
+    p_position[10] = 32;
+    p_position[11] = 40;
+    p_position[12] = 48;
+  
+
+
+    for (int i = 0; i < DESCRIPTION_COUNT; ++i)
+    {
+        RenderText(SDLWindow.Renderer, font_atlas,
+                   CENTER_TEXT_X(thug_personality_description[i], 0),
+                   SCREEN_CENTER_Y + p_position[i],
+                   thug_personality_description[i],
+                   white);
+    }
+*/
+}
 
 int Personality_GetScenarioOptionCount(test_personality_scenario_t *scenario)
 {
@@ -608,10 +714,10 @@ int Personality_GetScenarioOptionCount(test_personality_scenario_t *scenario)
         option_count = FOREST_INDEX;
 
     if (scenario->result & SCENARIO_CAVE)
-        option_count = CAVE_INDEX;
+        option_count = CAVE_OPTION_COUNT;
    
     if (scenario->result & SCENARIO_DESERT)
-        option_count = DESERT_INDEX;
+        option_count = DESERT_OPTION_COUNT;
 
     if (scenario->result & SCENARIO_TOWER)
         option_count = TOWER_INDEX;
@@ -691,6 +797,18 @@ void Personality_MoveDownScenario(test_personality_scenario_t *personality)
 int main(int argc, char *argv[])
 {
     srand(time(NULL));
+
+    for (int i = 0; i < THUG_DESCRIPTION_COUNT; ++i)
+    {
+        test_results.x_positions[i] = test_positions[i];
+        PushString(test_results.description[i], test_description[i]);
+        //printf("test_results: %d\n", test_results.x_positions[i]);
+        //printf("test_results: %s\n", test_results.description[i]);
+    }
+
+    PushString(test_results.name, test_name);
+    PushString(test_results.scenario, test_scenario);
+
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
         fprintf(stderr, "Failed to init sdl: %s\n", SDL_GetError());
@@ -1087,7 +1205,6 @@ int main(int argc, char *argv[])
     */
 
     personality_scenario_t personality_scenario[1] = {0};
-/    
     const char *scenario_name = '\0';
 
     test_personality_scenario_t test_scenarios = {0};
@@ -1129,22 +1246,32 @@ int main(int argc, char *argv[])
     test_scenarios.scenario[CAVE_INDEX].options[0].y = SCREEN_CENTER_Y - 16;
 
     test_scenarios.scenario[CAVE_INDEX].options[1].text = "Take the door to go deeper";
-    test_scenarios.scenario[CAVE_INDEX].options[1].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[1].text, 176);
+    test_scenarios.scenario[CAVE_INDEX].options[1].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[1].text, 0);
     test_scenarios.scenario[CAVE_INDEX].options[1].y = SCREEN_CENTER_Y + 0;
 
-    test_scenarios.scenario[CAVE_INDEX].options[2].text = "Take the door to the room of treasures then go deeper.";
-    test_scenarios.scenario[CAVE_INDEX].options[2].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[2].text, 164);
-    test_scenarios.scenario[CAVE_INDEX].options[2].y = SCREEN_CENTER_Y + 32;
+    test_scenarios.scenario[CAVE_INDEX].options[2].text = "Take the door to the room\nof treasures then go deeper.";
+    test_scenarios.scenario[CAVE_INDEX].options[2].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[2].text, 80);
+    test_scenarios.scenario[CAVE_INDEX].options[2].y = SCREEN_CENTER_Y + 18;
 
-    test_scenarios.scenario[CAVE_INDEX].options[3].text = "Take the door to the room of treasures then leave.";
-    test_scenarios.scenario[CAVE_INDEX].options[3].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[3].text, 64);
-    test_scenarios.scenario[CAVE_INDEX].options[3].y = SCREEN_CENTER_Y + 64;
+    test_scenarios.scenario[CAVE_INDEX].options[3].text = "Take the door to the room\nof treasures then leave.";
+    test_scenarios.scenario[CAVE_INDEX].options[3].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[3].text, 72);
+    test_scenarios.scenario[CAVE_INDEX].options[3].y = SCREEN_CENTER_Y + 42;
    
     test_scenarios.scenario[CAVE_INDEX].options[4].text = "Ignore everything and leave.";
-    test_scenarios.scenario[CAVE_INDEX].options[4].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[4].text, 88);
-    test_scenarios.scenario[CAVE_INDEX].options[4].y = SCREEN_CENTER_Y + 88;
+    test_scenarios.scenario[CAVE_INDEX].options[4].x = CENTER_TEXT_X(test_scenarios.scenario[CAVE_INDEX].options[4].text, 0);
+    test_scenarios.scenario[CAVE_INDEX].options[4].y = SCREEN_CENTER_Y + 64;
 
+    test_scenarios.scenario[DESERT_INDEX].options[0].text = "Finish the canteen and leave.";
+    test_scenarios.scenario[DESERT_INDEX].options[0].x = CENTER_TEXT_X(test_scenarios.scenario[DESERT_INDEX].options[0].text, 0);
+    test_scenarios.scenario[DESERT_INDEX].options[0].y = SCREEN_CENTER_Y - 16;
+    
+    test_scenarios.scenario[DESERT_INDEX].options[1].text = "Give the man the canteen\n   and head to town.";
+    test_scenarios.scenario[DESERT_INDEX].options[1].x = CENTER_TEXT_X(test_scenarios.scenario[DESERT_INDEX].options[1].text, 56);
+    test_scenarios.scenario[DESERT_INDEX].options[1].y = SCREEN_CENTER_Y + 0;
 
+    test_scenarios.scenario[DESERT_INDEX].options[2].text = "Carry the man to town.";
+    test_scenarios.scenario[DESERT_INDEX].options[2].x = CENTER_TEXT_X(test_scenarios.scenario[DESERT_INDEX].options[2].text, 0);
+    test_scenarios.scenario[DESERT_INDEX].options[2].y = SCREEN_CENTER_Y + 24;
 
     bool is_village = false;
     bool is_monster = false;
@@ -1573,10 +1700,28 @@ int main(int argc, char *argv[])
     };
     
 
+    typedef struct
+    {
+        int index;
+        bool is_active;
+        menu_item_t button[2];
+    } next_and_back_button_t;
+
+    next_and_back_button_t next_and_back_button = {0};
+    next_and_back_button.button[0].text = "Next";
+    next_and_back_button.button[0].x = CENTER_TEXT_X(next_and_back_button.button[0].text, 96);
+    next_and_back_button.button[0].y = SCREEN_CENTER_Y + 96;
+
+    next_and_back_button.button[1].text = "Back";
+    next_and_back_button.button[1].x = CENTER_TEXT_X(next_and_back_button.button[1].text, -96);
+    next_and_back_button.button[1].y = SCREEN_CENTER_Y + 96;
+
+
     // Start event
     is_title_screen = true;
     Running = true;
 
+    bool personality_results_screen = false;
     while (Running) 
     {
         // Poll events
@@ -1796,6 +1941,13 @@ int main(int argc, char *argv[])
                             {
                                 NameEntry_MoveLeft(&name_entry);
                             }
+
+                            if (personality_results_screen)
+                            {
+                                next_and_back_button.index--;
+                                if (next_and_back_button.index < 0)
+                                    next_and_back_button.index = ArraySize(next_and_back_button.button) - 1;
+                            }
                         } break;
                         case SDLK_d:
                         {
@@ -1901,6 +2053,13 @@ int main(int argc, char *argv[])
                             if (is_name_submission)
                             {
                                 NameEntry_MoveRight(&name_entry);
+                            }
+
+                            if (personality_results_screen)
+                            {
+                                next_and_back_button.index++;
+                                if (next_and_back_button.index >= ArraySize(next_and_back_button.button))
+                                    next_and_back_button.index = 0;
                             }
                         } break;
                         case SDLK_q:
@@ -2013,10 +2172,6 @@ int main(int argc, char *argv[])
                                     {
                                         character_class_selection_state = CLASS_ARCHER;
                                     } break;
-                                    default:
-                                    {
-                                        character_class_selection_state = CLASS_NONE;
-                                    } break;
                                 }
                             }
                            
@@ -2036,10 +2191,6 @@ int main(int argc, char *argv[])
                                     {
                                         character_class_point_allocation_method_state = CLASS_POINTS_MANUAL; 
                                     } break;
-                                    default:
-                                    {
-                                        character_class_point_allocation_method_state = CLASS_POINTS_PERSONALITY; 
-                                    } break;
                                 }
                             }
 
@@ -2058,10 +2209,6 @@ int main(int argc, char *argv[])
                                             confirmation.is_active = false; 
                                             confirmation.index = 0;
                                             character_class_selection_state = CLASS_NONE;
-                                        } break;
-                                        default:
-                                        {
-                                            yes_or_no_buttons_state = CONFIRMATION_NONE;
                                         } break;
                                     }
                                  
@@ -2087,10 +2234,6 @@ int main(int argc, char *argv[])
                                         confirmation.is_active = false;
                                         confirmation.index = 0;
                                         character_class_point_allocation_method_state = CLASS_POINTS_NONE;
-                                    } break;
-                                    default:
-                                    {
-                                        yes_or_no_buttons_state = CONFIRMATION_NONE;
                                     } break;
                                 }
                             }
@@ -2238,7 +2381,7 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 34:
                                             {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_VILLAGE; // CLASS_PERSONALITY_RESULT_MONSTER; // final question
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_DESERT; // CLASS_PERSONALITY_RESULT_VILLAGE; // CLASS_PERSONALITY_RESULT_MONSTER; // final question
                                             } break;
                                             case 35:
                                             {
@@ -2553,8 +2696,6 @@ int main(int argc, char *argv[])
 
                             }
 
-                            
-
                             if (is_personality_test)
                             {
                                 if (test_scenarios.result & SCENARIO_VILLAGE)
@@ -2624,31 +2765,108 @@ int main(int argc, char *argv[])
                                         case 0: 
                                         {
                                             printf("Straight Arrow\n");
+                                            PushString(test_scenarios.scenario[CAVE_INDEX].personality, "Straight Arrow");
+                                            test_scenarios.scenario[CAVE_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
                                         } break;
                                         case 1: 
                                         {
                                             printf("Mule\n");
+                                            PushString(test_scenarios.scenario[CAVE_INDEX].personality, "Mule");
+                                            test_scenarios.scenario[CAVE_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
                                         } break;
                                         case 2: 
                                         {
                                             printf("Scatterbrain\n");
+                                            PushString(test_scenarios.scenario[CAVE_INDEX].personality, "Scatterbrain");
+                                            test_scenarios.scenario[CAVE_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
                                         } break;
                                         case 3: 
                                         {
                                             printf("Narcissist\n");
+                                            PushString(test_scenarios.scenario[CAVE_INDEX].personality, "Narcissist");
+                                            test_scenarios.scenario[CAVE_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
                                         } break;
                                         case 4: 
                                         {
                                             printf("Sore Loser\n");
+                                            PushString(test_scenarios.scenario[CAVE_INDEX].personality, "Sore Loser");
+                                            test_scenarios.scenario[CAVE_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
                                         } break;
                                     } 
                                 }
 
+                                if (test_scenarios.result & SCENARIO_DESERT)
+                                {
+                                    switch (test_scenarios.scenario[DESERT_INDEX].index)
+                                    {
+                                        // Finish the canteen and leave. -> Thug
+                                        // Give the man the canteen and head to town. -> Daredevil
+                                        // Carry the man to town. -> Idealist
+                                        case 0: 
+                                        {
+                                            printf("Thug\n");
+                                            PushString(test_scenarios.scenario[DESERT_INDEX].personality, "Thug");
+                                            test_scenarios.scenario[DESERT_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            test_scenarios.result &= ~SCENARIO_DESERT;
+                                            personality_results_screen = true;
+                                        } break;
+                                        case 1: 
+                                        {
+                                            printf("Daredevil\n");
+                                            PushString(test_scenarios.scenario[DESERT_INDEX].personality, "Daredevil");
+                                            test_scenarios.scenario[DESERT_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            test_scenarios.result &= ~SCENARIO_DESERT;
+                                            personality_results_screen = true;
+                                        } break;
+                                        case 2: 
+                                        {
+                                            printf("Idealist\n");
+                                            PushString(test_scenarios.scenario[DESERT_INDEX].personality, "Idealist");
+                                            test_scenarios.scenario[DESERT_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            test_scenarios.result &= ~SCENARIO_DESERT;
+                                            personality_results_screen = true;
+                                        } break;
+                                    } 
+                                }
+                            }
 
+                           
+                            if (personality_results_screen)
+                            {
+                                if (next_and_back_button.is_active)
+                                {
+                                    switch (next_and_back_button.index)
+                                    {
+                                        case 0: // next
+                                        {
+                                            printf("next\n");
+                                            personality_results_screen = false;
+                                            is_class_overview_screen = true;
+                                            next_and_back_button.is_active = false;
+                                        } break;
+                                        case 1: // back
+                                        {
+                                            printf("back\n");
+                                            next_and_back_button.is_active = false;
+                                        } break;
+                                    }
+                                }
 
 
                             }
-                            
 
 
                         } break;
@@ -3059,6 +3277,7 @@ int main(int argc, char *argv[])
             {
                 static int rand_index = 0;
 
+    
                 if (question_confirmation)
                 {
                     question_confirmation = false;
@@ -3094,7 +3313,6 @@ int main(int argc, char *argv[])
                                       2);          // lineSpacing
 
 
-
                 if (personality_test.is_active)
                 {
                     switch (character_class_personality_test_result_state)
@@ -3108,12 +3326,14 @@ int main(int argc, char *argv[])
                             scenario_name = "Village Scenario";
                             test_scenarios.result |= SCENARIO_VILLAGE;
                             test_scenarios.scenario[VILLAGE_INDEX].is_active = true;
+                            personality_test.is_active = false;
                         } break;
                         case CLASS_PERSONALITY_RESULT_MONSTER:
                         {
                             scenario_name = "Monster Scenario";
                             test_scenarios.result |= SCENARIO_MONSTER;
                             test_scenarios.scenario[MONSTER_INDEX].is_active = true;
+                            personality_test.is_active = false;
 
                         } break;
                         case CLASS_PERSONALITY_RESULT_FOREST:
@@ -3126,10 +3346,13 @@ int main(int argc, char *argv[])
                             scenario_name = "Cave Scenario";
                             test_scenarios.result |= SCENARIO_CAVE;
                             test_scenarios.scenario[CAVE_INDEX].is_active = true;
+                            personality_test.is_active = false;
                         } break;
                         case CLASS_PERSONALITY_RESULT_DESERT:
                         {
-                            is_desert = true;
+                            scenario_name = "Desert Scenario";
+                            test_scenarios.result |= SCENARIO_DESERT;
+                            test_scenarios.scenario[DESERT_INDEX].is_active = true;
                             personality_test.is_active = false;
                         } break;
                         case CLASS_PERSONALITY_RESULT_TOWER:
@@ -3178,22 +3401,6 @@ int main(int argc, char *argv[])
                                    scenario_name, 
                                    white);
 
-/*
-const char *village_scenario[1] = {
-    "Silver coins drop from the hanging bag of an elderly man's pocket as he walks through the market. What do you do?"
-    // Steal the coins openly with pride. -> Show-off
-    // Steal the coins sneakily. -> Slippery Devil
-    // Don't steal the coins and return them. -> Shrinking Violet
-};
-
-const char *desert_scenario[1] = {
-    "You carry with yourself a canteen of water with only a few sips worth left. In the harsh and unforgiving desert terrain, you come across two men stranded, where one is near death from thirst. What do you do?"
-    // Finish the canteen and leave -> Thug
-    // Give the man the canteen and head to town -> Daredevil
-    // Carry the man to town -> Idealist
-};
-*/
-
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("Silver coins drop from the hanging bag", 0), 
                                SCREEN_CENTER_Y - 88,
@@ -3235,16 +3442,7 @@ const char *desert_scenario[1] = {
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    white);
-/*
-const char *monster_scenario[1] = {
-    "You are a man by day and a beast by night. You prey off human flesh and blood to survive. You come across a small and quiet village. What do you do?"
-    // Kill fewer than three people -> Paragon
-    // Kill three or more people, including women and the elderly, but don't kill the children -> Wimpy
-    // Kill three or more people, but don't kill the women, the elderly, or children -> Spoilt Brat
-    // Kill three or more poeple, including children -> Egghead
-    // Kill nine or more people, but don't kill the man by the inn -> Klutz (did you know? the lore is so they accuse the man of missing people, because they're the only ones at night to see people)
-};*/
-   
+
                     RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X("You are a man by day and a beast by", 0), 
                                    SCREEN_CENTER_Y - 88,
@@ -3300,7 +3498,7 @@ const char *monster_scenario[1] = {
                 {
                     printf("is_forest!\n");
                 }
-                if (test_scenarios.scenario[MONSTER_INDEX].is_active)
+                if (test_scenarios.scenario[CAVE_INDEX].is_active)
                 {
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                     RenderText(SDLWindow.Renderer, font_atlas,
@@ -3308,24 +3506,124 @@ const char *monster_scenario[1] = {
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    white);
-/*
- const char *cave_scenario[1] = {
-    "You are near the end of your quest in saving the princess, where the entrance to her prison is in front of you. But two doors fork to the left and right, a door to take you deeper in and a door to a room of treasures. What do you do?"
-    // Save the princess. -> Straight Arrow 
-    // Take the door to go deeper -> Mule 
-    // Take the door to the room of treasures then go deeper. -> Scatterbrain
-    // Take the door to the room of treasures then leave. -> Narcissist
-    // Ignore everything and leave. -> Sore Loser
-};
-   */
 
-                    
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X("You are near the end of your quest in", 0), 
+                                   SCREEN_CENTER_Y - 88,
+                                   "You are near the end of your quest in ", 
+                                   white); 
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X("saving the princess, where the entrance", 0), 
+                                   SCREEN_CENTER_Y - 80,
+                                   "saving the princess, where the entrance ", 
+                                   white); 
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X("to her prison is in front of you. But two", 0), 
+                                   SCREEN_CENTER_Y - 72,
+                                   "to her prison is in front of you. But two doors", 
+                                   white); 
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X("doors fork to the left and right, a", 0), 
+                                   SCREEN_CENTER_Y - 64,
+                                   "doors fork to the left and right, a", 
+                                   white); 
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X("door to take you deeper in and a door to", 0), 
+                                   SCREEN_CENTER_Y - 56,
+                                   "door to take you deeper in and a door to", 
+                                   white); 
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X("a room of treasures. What do you do?", 0), 
+                                   SCREEN_CENTER_Y - 48,
+                                   "a room of treasures. What do you do?", 
+                                   white);
+
+   
+                    test_scenarios.scenario[CAVE_INDEX].box.x = SCREEN_CENTER_X - 126;
+                    test_scenarios.scenario[CAVE_INDEX].box.y = SCREEN_CENTER_Y - 98;
+                    test_scenarios.scenario[CAVE_INDEX].box.w = 250;
+                    test_scenarios.scenario[CAVE_INDEX].box.h = 64;
+
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
+                    SDL_RenderDrawRect(SDLWindow.Renderer, &test_scenarios.scenario[CAVE_INDEX].box);
+
+
+                    CursorForItems(&test_scenarios.scenario[CAVE_INDEX].options[test_scenarios.scenario[CAVE_INDEX].index], &right_cursor_asset, 4, 1);
+                    RenderAndUpdateAsset(&right_cursor_asset);
+
+                    for (int i = 0; i < CAVE_OPTION_COUNT; ++i)
+                    {
+                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                                               test_scenarios.scenario[CAVE_INDEX].options[i].x,
+                                               test_scenarios.scenario[CAVE_INDEX].options[i].y,
+                                               test_scenarios.scenario[CAVE_INDEX].options[i].text,
+                                               white,
+                                               2);
+                    }
+
 
 
                 }
-                if (is_desert)
+                if (test_scenarios.scenario[DESERT_INDEX].is_active)
                 {
-                    printf("is_desert!\n");
+                    SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X(scenario_name, 0), 
+                                   SCREEN_CENTER_Y - 108,
+                                   scenario_name, 
+                                   white);
+
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X("You carry with yourself a canteen of", 0), 
+                               SCREEN_CENTER_Y - 88,
+                               "You carry with yourself a canteen of", 
+                               white);           
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X("water with only a few sips worth left.", 0), 
+                               SCREEN_CENTER_Y - 80,
+                               "water with only a few sips worth left.", 
+                               white);
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X("In the harsh and unforgiving desert,", 0), 
+                               SCREEN_CENTER_Y - 72,
+                               "In the harsh and unforgiving desert", 
+                               white);           
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X("you come across two men stranded, where", 0), 
+                               SCREEN_CENTER_Y - 64,
+                               "you come across two men stranded, where", 
+                               white);
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X("one is near death from thirst.", 0), 
+                               SCREEN_CENTER_Y - 56,
+                               "one is near death from thirst.", 
+                               white);
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X("What do you do?", 0), 
+                               SCREEN_CENTER_Y - 48,
+                               "What do you do?", 
+                               white);
+
+                    test_scenarios.scenario[DESERT_INDEX].box.x = SCREEN_CENTER_X - 126;
+                    test_scenarios.scenario[DESERT_INDEX].box.y = SCREEN_CENTER_Y - 98;
+                    test_scenarios.scenario[DESERT_INDEX].box.w = 250;
+                    test_scenarios.scenario[DESERT_INDEX].box.h = 64;
+                    
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
+                    SDL_RenderDrawRect(SDLWindow.Renderer, &test_scenarios.scenario[DESERT_INDEX].box);
+
+                    CursorForItems(&test_scenarios.scenario[DESERT_INDEX].options[test_scenarios.scenario[DESERT_INDEX].index], &right_cursor_asset, 4, 1);
+                    RenderAndUpdateAsset(&right_cursor_asset);
+
+                    for (int i = 0; i < DESERT_OPTION_COUNT; ++i)
+                    {
+                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                                               test_scenarios.scenario[DESERT_INDEX].options[i].x,
+                                               test_scenarios.scenario[DESERT_INDEX].options[i].y,
+                                               test_scenarios.scenario[DESERT_INDEX].options[i].text,
+                                               white,
+                                               2);
+                    }
                 }
                 if (is_tower)
                 {
@@ -3340,6 +3638,106 @@ const char *monster_scenario[1] = {
                     printf("is_castle!\n");
                 }  
             }
+    
+            if (personality_results_screen)
+            {
+                SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X("Personality:", 0), 
+                               SCREEN_CENTER_Y - 88,
+                               "Personality:", 
+                               white);
+  
+                RenderText(SDLWindow.Renderer, font_atlas,
+                           CENTER_TEXT_X(test_scenarios.scenario[DESERT_INDEX].personality, 0),
+                           SCREEN_CENTER_Y - 80,
+                           test_scenarios.scenario[DESERT_INDEX].personality,
+                           white);
+
+                int DESCRIPTION_COUNT = 13;
+
+                char thug_personality_description[][100] = {
+                    {"You appear to be a thug..."},
+                    {"and though you may not realize it,"},
+                    {"your thuggishness is a worry and an"},
+                    {"inconvenience to all around you."},
+
+                    // Remove
+                    {"Even you had done so, your"},
+                    {"lack of empathy would"},
+                    {"probably lead you to assume"},
+                    {"that they think as you do..."},
+
+                    // Stat growth
+                    {"+ STR"},
+                    {"- AGL"},
+                    {"- VIT"},
+                    {"- WIS"},
+                    {"- LCK"},
+                
+                }; 
+    
+                int p_position[DESCRIPTION_COUNT];
+                p_position[0] = -64;
+                p_position[1] = -56;
+                p_position[2] = -48;
+                p_position[3] = -40;
+                p_position[4] = -32;
+                p_position[5] = -24;
+                p_position[6] = -16;
+                p_position[7] = -8;
+                
+                p_position[8] = 16;
+                p_position[9] = 24;
+                p_position[10] = 32;
+                p_position[11] = 40;
+                p_position[12] = 48;
+              
+
+
+                for (int i = 0; i < DESCRIPTION_COUNT; ++i)
+                {
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X(thug_personality_description[i], 0),
+                               SCREEN_CENTER_Y + p_position[i],
+                               thug_personality_description[i],
+                               white);
+                }
+
+
+                CursorForItems(&next_and_back_button.button[next_and_back_button.index], &right_cursor_asset, 4, 1);
+                RenderAndUpdateAsset(&right_cursor_asset);
+                for (int i = 0; i < ArraySize(next_and_back_button.button); ++i)
+                {
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               next_and_back_button.button[i].x,
+                               next_and_back_button.button[i].y,
+                               next_and_back_button.button[i].text,
+                               white);
+        
+
+                }
+
+                    
+                if (!next_and_back_button.is_active)
+                {
+                    switch (next_and_back_button.index)
+                    {
+                        case 0:
+                        {
+                            next_and_back_button.is_active = true;
+                        } break;
+                        case 1:
+                        {
+                            next_and_back_button.is_active = true;
+                        } break;
+
+                    }
+                }
+
+
+            }
+
 
             if (is_name_submission) //enter name screen
             {
