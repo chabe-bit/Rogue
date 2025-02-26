@@ -1,6 +1,7 @@
 #include "personality.h"
 
 // https://dragon-quest.org/wiki/List_of_personality_types_in_Dragon_Quest_III#Personalities_and_stat_effects
+// https://gamefaqs.gamespot.com/boards/450388-dragon-warrior-iii/54986793
 
 personality_types personality_types_state = PERSONALITY_UNUSED;
 
@@ -24,6 +25,28 @@ test_personality_test_results_t clown  = {
          "LCK (+)"
     }
 };
+
+test_personality_test_results_t crybaby = {
+    .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
+    .scenario = "Desert Scenario",
+    .name = "Crybaby",
+    .description = {
+         "You are quite the crybaby...You may",
+         "consider yourself as emotionally",
+         "cool, but you have a surprising",
+         "streak of sentimentality...While you",
+         "want your relations to be cut and",
+         "dry, you can never be that way when",
+         "the chips are down...You may also have a",
+         "little bit of a temper, keep it in check.",
+         "STR (-)",
+         "AGL (-)",
+         "VIT ( )",
+         "WIS (+)",
+         "LCK (+)"
+    }
+};
+
 
 test_personality_test_results_t daredevil  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
@@ -109,6 +132,26 @@ test_personality_test_results_t egghead  = {
     }
 };
 
+test_personality_test_results_t free_spirit = {
+    .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
+    .scenario = "Desert Scenario",
+    .name = "Free Spirit",
+    .description = {
+         "You appear as carefree...You do",
+         "everything at your own sweet pace,",
+         "and you like to think about things",
+         "thoroughly before taking action...",
+         "However, you are easily rattled by",
+         "people who want you to hurry up...",
+         "Try not to be easily flustered, and",
+         "you won't make any mistakes.",
+         "STR ( )",
+         "AGL (-)",
+         "VIT (+)",
+         "WIS (+)",
+         "LCK (+)"
+    }
+};
 test_personality_test_results_t good_egg  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
@@ -193,6 +236,28 @@ test_personality_test_results_t klutz  = {
     }
 };
 
+test_personality_test_results_t lazybones  = {
+    .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
+    .scenario = "Desert Scenario",
+    .name = "Lazybones",
+    .description = {
+         "You appear to be fatigued...Do you",
+         "complain that nothing ever goes right,",
+         "or blame bad luck...? Do you perhaps",
+         "blame those around you for your own lack",
+         "of motivation...? You are simply lazy...",
+         "You should develop a more positive",
+         "outlook in thought and deed.",
+         "",
+         "STR (+)",
+         "AGL (-)",
+         "VIT (+)",
+         "WIS (-)",
+         "LCK (+)"
+    }
+};
+
+
 // Male -> Lothario
 // Female -> Vamp
 test_personality_test_results_t lothario  = {
@@ -216,22 +281,64 @@ test_personality_test_results_t lothario  = {
     }
 };
 
-test_personality_test_results_t paragon  = {
+test_personality_test_results_t lout  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
-    .name = "Paragon",
+    .name = "Lout",
     .description = {
-         "It is rare for one so powerful to be so",
-         "kind...You are the paragon of virue",
-         "itself. Yours is a dominant and forceful",
-         "personality, but you are able to keep it",
-         "masterfully in check...You are also highly",
-         "compassionate, and you always place more",
-         "importance of others than yourself. You are",
-         "someone those can trust and depend on.",
-         "STR (+)",
-         "AGL (-)",
-         "VIT ( )",
+         "You are naive...You may not agree, but",
+         "that is precisely why you are naive...",
+         "You may think you are getting on well with",
+         "people, but you could be hurting them",
+         "without realizing it...You also judge",
+         "others harshly, but never yourself...That",
+         "said, you should try to be more",
+         "considerate about those around you.",
+         "STR ( )",
+         "AGL (-) ",
+         "VIT (-)",
+         "WIS (-)",
+         "LCK (+)"
+    }
+};
+
+test_personality_test_results_t mule  = {
+    .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
+    .scenario = "Desert Scenario",
+    .name = "Mule",
+    .description = {
+         "You are quite stubborn...You may appear",
+         "sociable, but you tend to ignore the",
+         "opinion of others and impose your own",
+         "views...Even though you appear to like",
+         "new things, you are conservative...You",
+         "are socially adept, so it is easy to fool",
+         "others at a superficial level, but as you",
+         "age, your stubborness will be recognized.",
+         "STR ( )",
+         "AGL (-) ",
+         "VIT (+)",
+         "WIS (-)",
+         "LCK (-)"
+    }
+};
+
+test_personality_test_results_t narcissist  = {
+    .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
+    .scenario = "Desert Scenario",
+    .name = "Narcissist",
+    .description = {
+         "You are vain...You aren't just vain, you",
+         "consider yourself unique, a chosen one...",
+         "For that reason, you love doing things",
+         "people don't do, if someone tells you",
+         "that you are different, you are delighted",
+         "...That will cause yuo to do things",
+         "even further off the beaten path, and",
+         "if you overdo it, you could hurt yourself.",
+         "STR (-)",
+         "AGL (+)",
+         "VIT (-)",
          "WIS (-)",
          "LCK (-)"
     }
@@ -253,6 +360,27 @@ test_personality_test_results_t plugger  = {
          "STR (+)",
          "AGL (-)",
          "VIT ( )",
+         "WIS (-)",
+         "LCK (-)"
+    }
+};
+
+test_personality_test_results_t scatterbrain  = {
+    .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
+    .scenario = "Desert Scenario",
+    .name = "Scatterbrain",
+    .description = {
+         "You are quite foolish...You show",
+         "interest in all sorts of topics, and",
+         "spring into action with little thought",
+         "...You often lose sight of yourself",
+         "and the situtation...As a result, you",
+         "frequently make mistakes that causes",
+         "you anguish...It is important for you",
+         "to slow down and take a look at yourself.",
+         "STR (-)",
+         "AGL (+)",
+         "VIT (-)",
          "WIS (-)",
          "LCK (-)"
     }
@@ -318,6 +446,27 @@ test_personality_test_results_t socialite  = {
          "VIT (-)",
          "WIS (+)",
          "LCK (+)"
+    }
+};
+
+test_personality_test_results_t sore_loser  = {
+    .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
+    .scenario = "Desert Scenario",
+    .name = "Sore Loser",
+    .description = {
+         "You are quite defiant...You are highly",
+         "competitive and take losing very",
+         "poorly...You have to be at the center",
+         "of attention when you are with others",
+         "...You realize that about yourself and",
+         "try to hide that aspect, but you often",
+         "catch yourself bragging...However, your",
+         "competitive streaks makes you determined.",
+         "STR (-)",
+         "AGL (+)",
+         "VIT (+)",
+         "WIS (-)",
+         "LCK (-)"
     }
 };
 

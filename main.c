@@ -2692,11 +2692,6 @@ int main(int argc, char *argv[])
                                 {
                                     switch (test_scenarios.scenario[CAVE_INDEX].index)
                                     {
-                                        // Save the princess -> Straight Arrow 
-                                        // Take the door to go deeper -> Mule 
-                                        // Take the door to the room of treasures then go deeper -> Scatterbrain
-                                        // Take the door to the room of treasures then leave -> Narcissist
-                                        // Ignore everything and leave -> Sore Loser
                                         case 0: 
                                         {
                                             printf("Straight Arrow\n");
@@ -2744,36 +2739,36 @@ int main(int argc, char *argv[])
                                 {
                                     switch (test_scenarios.scenario[DESERT_INDEX].index)
                                     {
-                                        // Finish the canteen and leave. -> Thug
-                                        // Give the man the canteen and head to town. -> Daredevil
-                                        // Carry the man to town. -> Idealist
                                         case 0: 
                                         {
-                                            printf("Thug\n");
                                             personality_types_state = PERSONALITY_THUG;
                                             PushString(test_scenarios.scenario[DESERT_INDEX].personality, "Thug");
                                             loading_results = true;
+                                            
                                             test_scenarios.scenario[DESERT_INDEX].is_active = false;
                                             is_personality_test = false;
-                                            test_scenarios.result &= ~SCENARIO_DESERT;
                                             personality_results_screen = true;
                                         } break;
                                         case 1: 
                                         {
                                             printf("Daredevil\n");
+                                            personality_types_state = PERSONALITY_DAREDEVIL;
                                             PushString(test_scenarios.scenario[DESERT_INDEX].personality, "Daredevil");
+                                            loading_results = true;
+                                            
                                             test_scenarios.scenario[DESERT_INDEX].is_active = false;
                                             is_personality_test = false;
-                                            test_scenarios.result &= ~SCENARIO_DESERT;
                                             personality_results_screen = true;
                                         } break;
                                         case 2: 
                                         {
                                             printf("Idealist\n");
+                                            personality_types_state = PERSONALITY_IDEALIST;
                                             PushString(test_scenarios.scenario[DESERT_INDEX].personality, "Idealist");
+                                            loading_results = true;
+                                            
                                             test_scenarios.scenario[DESERT_INDEX].is_active = false;
                                             is_personality_test = false;
-                                            test_scenarios.result &= ~SCENARIO_DESERT;
                                             personality_results_screen = true;
                                         } break;
                                     } 
@@ -3581,21 +3576,50 @@ int main(int argc, char *argv[])
                                white);
 
 
+                static test_personality_test_results_t PERSONALITY_RESULT = {0};
                 static int SCENARIO_INDEX = -1;
                 static int SCENARIO_DIALOGUE_SIZE = -1;
 
-
+    
+                // TODO: Use this as an example to polish the rest of opening and closing a pipeline to actiave/deactivate something
                 if (loading_results)
                 {
                     switch (personality_types_state)
                     {
-                        case PERSONALITY_THUG:
+                        case PERSONALITY_CLOWN:
                         {
+                            PERSONALITY_RESULT = clown;
                             SCENARIO_INDEX = DESERT_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
-                                            
-                            PersonalityTest_InitResults(&test_scenarios, &wit, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            loading_results = false;
+                        } break;
+                        case PERSONALITY_DAREDEVIL:
+                        {
+                            PERSONALITY_RESULT = daredevil;
+                            SCENARIO_INDEX = DESERT_INDEX;
+                            SCENARIO_DIALOGUE_SIZE = 13;
+                            
+                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            loading_results = false;
+                        } break;
+                        case PERSONALITY_IDEALIST:
+                        {
+                            PERSONALITY_RESULT = idealist;
+                            SCENARIO_INDEX = DESERT_INDEX;
+                            SCENARIO_DIALOGUE_SIZE = 13;
+                            
+                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            loading_results = false;
+                        } break; 
+                        case PERSONALITY_THUG:
+                        {
+                            PERSONALITY_RESULT = narcissist; // thug;
+                            SCENARIO_INDEX = DESERT_INDEX;
+                            SCENARIO_DIALOGUE_SIZE = 13;
+                            
+                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         default:
