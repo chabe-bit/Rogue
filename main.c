@@ -3425,11 +3425,6 @@ int main(int argc, char *argv[])
                                                2);
                     }
 
-
-
-
-                   //is_monster = false;
-                   //is_name_submission = true;
                 }
                 if (is_forest)
                 {
@@ -3600,8 +3595,7 @@ int main(int argc, char *argv[])
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
                                             
-                            //PersonalityTest_InitResults(&test_scenarios, &results, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
-                            PersonalityTest_InitResults(&test_scenarios, &egghead, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            PersonalityTest_InitResults(&test_scenarios, &wit, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         default:
