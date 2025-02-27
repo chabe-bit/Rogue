@@ -439,17 +439,6 @@ void UpdateAsset(asset_t *asset, asset_t *player)
     }
 }
 
-
-
-void SetPlayerPosition(asset_t *player, int x, int y)
-{
-    player->body.x = x;
-    player->body.y = y;
-
-    player->x = player->body.x; 
-    player->y = player->body.y;
-}
-
 void SetAssetPosition(asset_t *asset, int x, int y)
 {
     asset->body.x = x;
@@ -960,6 +949,11 @@ int main(int argc, char *argv[])
     LoadAsset(&forest_scenario_map, "assets/forest_scenario.png");
     InitializeAssetToRender(&forest_scenario_map, CameraX, CameraY, forest_scenario_map.w, forest_scenario_map.h);
     
+    asset_t oldman_asset = {0};
+    LoadAsset(&oldman_asset, "assets/oldman.png");
+    InitializeAssetToRender(&oldman_asset, CameraX, CameraY, oldman_asset.w, oldman_asset.h);
+    oldman_asset.conditions.is_collidable = true;
+
     asset_t boulder_asset = {0};
     LoadAsset(&boulder_asset, "assets/boulder.png");
     InitializeAssetToRender(&boulder_asset, CameraX, CameraY, boulder_asset.w, boulder_asset.h);
@@ -973,11 +967,18 @@ int main(int argc, char *argv[])
     forest_scenario_walls[0].conditions.is_collidable = true;
 
     forest_scenario_walls[1].body.x = 0;
-    forest_scenario_walls[1].body.y = 240 - (48 - 24 - 24 - 24 - 12);
+    forest_scenario_walls[1].body.y = 240 - (48 - 24 - 24 - 24);
     forest_scenario_walls[1].body.w = forest_scenario_map.w;
     forest_scenario_walls[1].body.h = 24;
     forest_scenario_walls[1].conditions.is_collidable = true;
    
+    asset_t forest_scenario_finish_line = {0};
+    forest_scenario_finish_line.body.x = 256 + (16 * 8);
+    forest_scenario_finish_line.body.y = 240 - (48);
+    forest_scenario_finish_line.body.w = 16;
+    forest_scenario_finish_line.body.h = 24 * 3;
+    forest_scenario_finish_line.conditions.is_collidable = true;
+
     stats_t enemy_stats = {0};
     enemy_stats.hp = 10;
     enemy_stats.atk = 9;
@@ -1740,6 +1741,7 @@ int main(int argc, char *argv[])
 
 
     
+    bool boulder_has_reached_end = false;
 
     // Start event
     is_title_screen = true;
@@ -3518,6 +3520,7 @@ int main(int argc, char *argv[])
                         {
                             scenario_name = "Forest Scenario";
                             SetAssetPosition(&player_asset, 128, 240 - 24);
+                            SetAssetPosition(&oldman_asset, 128 + (16 * 5), 240 - 24);
                             SetAssetPosition(&boulder_asset, 128 + 16, 240 - 24);
 
                             //test_scenarios.result |= SCENARIO_FOREST;
@@ -3683,30 +3686,59 @@ int main(int argc, char *argv[])
                 {
                     UpdatePlayer(&player_asset, &sfx_move);
                     UpdateAsset(&boulder_asset, &player_asset); 
+                    
+                    
                     CollisionXCheck(&player_asset, &boulder_asset);
                     CollisionYCheck(&player_asset, &boulder_asset);
+                   
+                    CollisionXCheck(&player_asset, &oldman_asset);
+                    CollisionYCheck(&player_asset, &oldman_asset);
+                    
+                    CollisionXCheck(&boulder_asset, &oldman_asset);
+                    CollisionYCheck(&boulder_asset, &oldman_asset);
+                   
+                    for (int i = 0; i < ArraySize(forest_scenario_walls); ++i)
+                    {
+                        CollisionXCheck(&player_asset, &forest_scenario_walls[i]);
+                        CollisionYCheck(&player_asset, &forest_scenario_walls[i]);
+                        
+                        CollisionXCheck(&boulder_asset, &forest_scenario_walls[i]);
+                        CollisionYCheck(&boulder_asset, &forest_scenario_walls[i]);
+                    }
 
-                   
+
+                    if (!boulder_has_reached_end)
+                    {
+                        if (AABB(&boulder_asset.body, &forest_scenario_finish_line.body))
+                        {
+                            printf("test\n");
+                            boulder_asset.conditions.is_collidable = false;
+
+                            SDL_DestroyTexture(boulder_asset.texture);
+                            boulder_asset.texture = NULL;
+                            boulder_has_reached_end = true;
+                        }
+                    }
+                  
+
+                    
                     AttachCameraToPlayer(&player_asset, &forest_scenario_map);
-                   
                     RenderAndUpdateAsset(&forest_scenario_map); 
                     for (int i = 0; i < ArraySize(forest_scenario_walls); ++i)
                     {
                         RenderAndUpdateAsset(&forest_scenario_walls[i]);
                     }
-
+                    
+                    RenderAndUpdateAsset(&forest_scenario_finish_line);
                     RenderAndUpdateAsset(&player_asset);
+                    RenderAndUpdateAsset(&oldman_asset);
                     RenderAndUpdateAsset(&boulder_asset);
            
 
+
                     SDL_SetRenderTarget(SDLWindow.Renderer, NULL);
                     SDL_RenderCopy(SDLWindow.Renderer, SDLCamera.TargetTexture, NULL, NULL);
-                    //SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                    /*RenderText(SDLWindow.Renderer, font_atlas,
-                                   CENTER_TEXT_X(scenario_name, 0), 
-                                   SCREEN_CENTER_Y - 108,
-                                   scenario_name, 
-                                   white);*/
+                    
                 }
 
                 if (test_scenarios.scenario[CAVE_INDEX].is_active)
