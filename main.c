@@ -1771,6 +1771,9 @@ int main(int argc, char *argv[])
                         case SDLK_w:
                         {
                             Orientation.up = true;
+                            if (boulder_has_reached_end)
+                                boulder_has_reached_end = false;
+
                             if (is_title_screen)
                             {
                                 option_index--;
@@ -1819,6 +1822,8 @@ int main(int argc, char *argv[])
                         case SDLK_s:
                         {
                             Orientation.down = true;
+                            if (boulder_has_reached_end)
+                                boulder_has_reached_end = false;
 
                             if (is_title_screen)
                             {
@@ -1867,6 +1872,9 @@ int main(int argc, char *argv[])
                         case SDLK_a:
                         {
                             Orientation.left = true;
+                            if (boulder_has_reached_end)
+                                boulder_has_reached_end = false;
+
                             if (character_creation_screen.is_active && !confirmation.is_active)
                             {
                                 character_creation_screen.index--;
@@ -1981,6 +1989,9 @@ int main(int argc, char *argv[])
                         case SDLK_d:
                         {
                             Orientation.right = true;
+                            if (boulder_has_reached_end)
+                                boulder_has_reached_end = false;
+
                             if (character_creation_screen.is_active && !confirmation.is_active)
                             {
                                 character_creation_screen.index++;
@@ -3712,10 +3723,8 @@ int main(int argc, char *argv[])
                         if (AABB(&boulder_asset.body, &forest_scenario_finish_line.body))
                         {
                             printf("test\n");
-                            boulder_asset.conditions.is_collidable = false;
+                            SetAssetPosition(&boulder_asset, 128 + 16, 240 - 24);
 
-                            SDL_DestroyTexture(boulder_asset.texture);
-                            boulder_asset.texture = NULL;
                             boulder_has_reached_end = true;
                         }
                     }
