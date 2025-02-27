@@ -361,7 +361,7 @@ CombatUpdate(asset_t *player, asset_t *asset, sound_wav_t *sound)
     }
 }
 
-void UpdatePlayer(asset_t *player, asset_t *enemy, sound_wav_t *sound)
+void UpdatePlayer(asset_t *player, sound_wav_t *sound)
 {
     player->x = player->body.x; 
     player->y = player->body.y; 
@@ -370,27 +370,95 @@ void UpdatePlayer(asset_t *player, asset_t *enemy, sound_wav_t *sound)
     {       
         player->body.y -= player->body.h;
         Sound_PlaySFX(sound);
-        Orientation.up = false;
+        //Orientation.up = false;
     }
     if (Orientation.left)
     {
         player->body.x -= player->body.w; 
         Sound_PlaySFX(sound);
-        Orientation.left = false;
+        //Orientation.left = false;
     }
     if (Orientation.down)
     {
         player->body.y += player->body.h; 
         Sound_PlaySFX(sound);
-        Orientation.down = false;
+        //Orientation.down = false;
     }
     if (Orientation.right)
     {
         player->body.x += player->body.w; 
         Sound_PlaySFX(sound);
+        //Orientation.right = false;
+    }
+}
+
+void UpdateAsset(asset_t *asset, asset_t *player)
+{
+    asset->x = asset->body.x; 
+    asset->y = asset->body.y; 
+
+    if (Orientation.up)
+    {      
+        if (AABB(&player->body, &asset->body) && 
+            asset->conditions.is_collidable)
+        {
+            asset->body.y -= asset->body.h;
+        }
+       
+        Orientation.up = false;
+    }
+    if (Orientation.left)
+    {
+        if (AABB(&player->body, &asset->body) && 
+            asset->conditions.is_collidable)
+        {
+            asset->body.x -= asset->body.w; 
+        }
+       
+        Orientation.left = false;
+    }
+    if (Orientation.down)
+    {
+        if (AABB(&player->body, &asset->body) && 
+            asset->conditions.is_collidable)
+        {
+            asset->body.y += asset->body.h; 
+        }
+       
+        Orientation.down = false;
+    }
+    if (Orientation.right)
+    {
+        if (AABB(&player->body, &asset->body) && 
+            asset->conditions.is_collidable)
+        {
+            asset->body.x += asset->body.w; 
+        }
+       
         Orientation.right = false;
     }
 }
+
+
+
+void SetPlayerPosition(asset_t *player, int x, int y)
+{
+    player->body.x = x;
+    player->body.y = y;
+
+    player->x = player->body.x; 
+    player->y = player->body.y;
+}
+
+void SetAssetPosition(asset_t *asset, int x, int y)
+{
+    asset->body.x = x;
+    asset->body.y = y;
+
+    asset->x = asset->body.x; 
+    asset->y = asset->body.y;
+}
+
 
 void InitializeAssetStats(asset_t *assets, stats_t *stats)
 {
@@ -431,8 +499,8 @@ void RenderAndUpdateAsset(asset_t *asset)
     asset->y = asset->body.y;
     asset->body.x -= SDLCamera.X;
     asset->body.y -= SDLCamera.Y;
-    //SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
-    //SDL_RenderDrawRect(SDLWindow.Renderer, &asset->body);
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
+    SDL_RenderDrawRect(SDLWindow.Renderer, &asset->body);
 
     if (asset->texture)
     {
@@ -887,6 +955,29 @@ int main(int argc, char *argv[])
     InitializeAssetToRender(&enemy_arr2[1], 8 * 16, 18 * 24, enemy_arr2[1].w, enemy_arr2[1].h);
     InitializeAssetToRender(&enemy_arr2[2], 9 * 16, 17 * 24, enemy_arr2[2].w, enemy_arr2[2].h);
 
+
+    asset_t forest_scenario_map = {0};
+    LoadAsset(&forest_scenario_map, "assets/forest_scenario.png");
+    InitializeAssetToRender(&forest_scenario_map, CameraX, CameraY, forest_scenario_map.w, forest_scenario_map.h);
+    
+    asset_t boulder_asset = {0};
+    LoadAsset(&boulder_asset, "assets/boulder.png");
+    InitializeAssetToRender(&boulder_asset, CameraX, CameraY, boulder_asset.w, boulder_asset.h);
+    boulder_asset.conditions.is_collidable = true;
+  
+    asset_t forest_scenario_walls[2] = {0};
+    forest_scenario_walls[0].body.x = 0;
+    forest_scenario_walls[0].body.y = 240 - (48 + 24);
+    forest_scenario_walls[0].body.w = forest_scenario_map.w;
+    forest_scenario_walls[0].body.h = 24;
+    forest_scenario_walls[0].conditions.is_collidable = true;
+
+    forest_scenario_walls[1].body.x = 0;
+    forest_scenario_walls[1].body.y = 240 - (48 - 24 - 24 - 24 - 12);
+    forest_scenario_walls[1].body.w = forest_scenario_map.w;
+    forest_scenario_walls[1].body.h = 24;
+    forest_scenario_walls[1].conditions.is_collidable = true;
+   
     stats_t enemy_stats = {0};
     enemy_stats.hp = 10;
     enemy_stats.atk = 9;
@@ -2317,7 +2408,7 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 34:
                                             {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_MONSTER; // final question
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST; //CLASS_PERSONALITY_RESULT_MONSTER; // final question
                                             } break;
                                             case 35:
                                             {
@@ -2798,6 +2889,24 @@ int main(int argc, char *argv[])
                                     } 
                                 }
 
+                                if (test_scenarios.result & SCENARIO_FOREST)
+                                {
+                                    switch (test_scenarios.scenario[FOREST_INDEX].index)
+                                    {
+                                        case 0: 
+                                        {
+                                            personality_types_state = PERSONALITY_LAZYBONES;
+                                            PushString(test_scenarios.scenario[FOREST_INDEX].personality, "Lazybones");
+                                            loading_results = true;
+                                            
+                                            test_scenarios.scenario[FOREST_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
+                                        } break;
+
+                                    } 
+                                }
+                            
                                 if (test_scenarios.result & SCENARIO_DESERT)
                                 {
                                     switch (test_scenarios.scenario[DESERT_INDEX].index)
@@ -3408,7 +3517,10 @@ int main(int argc, char *argv[])
                         case CLASS_PERSONALITY_RESULT_FOREST:
                         {
                             scenario_name = "Forest Scenario";
-                            test_scenarios.result |= SCENARIO_FOREST;
+                            SetAssetPosition(&player_asset, 128, 240 - 24);
+                            SetAssetPosition(&boulder_asset, 128 + 16, 240 - 24);
+
+                            //test_scenarios.result |= SCENARIO_FOREST;
                             test_scenarios.scenario[FOREST_INDEX].is_active = true;
                             personality_test.is_active = false;
                         } break;
@@ -3569,12 +3681,32 @@ int main(int argc, char *argv[])
 
                 if (test_scenarios.scenario[FOREST_INDEX].is_active)
                 {
-                    SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    UpdatePlayer(&player_asset, &sfx_move);
+                    UpdateAsset(&boulder_asset, &player_asset); 
+                    CollisionXCheck(&player_asset, &boulder_asset);
+                    CollisionYCheck(&player_asset, &boulder_asset);
+
+                   
+                    AttachCameraToPlayer(&player_asset, &forest_scenario_map);
+                   
+                    RenderAndUpdateAsset(&forest_scenario_map); 
+                    for (int i = 0; i < ArraySize(forest_scenario_walls); ++i)
+                    {
+                        RenderAndUpdateAsset(&forest_scenario_walls[i]);
+                    }
+
+                    RenderAndUpdateAsset(&player_asset);
+                    RenderAndUpdateAsset(&boulder_asset);
+           
+
+                    SDL_SetRenderTarget(SDLWindow.Renderer, NULL);
+                    SDL_RenderCopy(SDLWindow.Renderer, SDLCamera.TargetTexture, NULL, NULL);
+                    //SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                    /*RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
-                                   white);
+                                   white);*/
                 }
 
                 if (test_scenarios.scenario[CAVE_INDEX].is_active)
@@ -3639,9 +3771,6 @@ int main(int argc, char *argv[])
                                                white,
                                                2);
                     }
-
-
-
                 }
 
                 if (test_scenarios.scenario[DESERT_INDEX].is_active)
@@ -4247,7 +4376,7 @@ int main(int argc, char *argv[])
         if (is_game_running)
         {
             //Sound_PlayMusic(&ambience);
-            UpdatePlayer(&player_asset, enemy_arr, &sfx_move);
+            UpdatePlayer(&player_asset, &sfx_move);
             for (int i = 0; i < ArraySize(enemy_arr); ++i)
             {
                 if (AABB(&player_asset.body, &enemy_arr[i].body))

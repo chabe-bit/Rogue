@@ -544,7 +544,7 @@ test_personality_test_results_t spoilt_brat  = {
          "to hide this weakness, you overstretch",
          "yourself...But that isn't necessarily",
          "bad, doing so is an effort, and effort",
-         "is the resolve for betterment.",
+         "is the resolve of betterment.",
          "STR (-)",
          "AGL ( )",
          "VIT (-)",
