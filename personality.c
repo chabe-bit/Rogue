@@ -113,7 +113,7 @@ test_personality_test_results_t drudge  = {
 
 test_personality_test_results_t egghead  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
-    .scenario = "Desert Scenario",
+    .scenario = "Monster Scenario",
     .name = "Egghead",
     .description = {
          "You are what some would describe as an",
@@ -202,10 +202,10 @@ test_personality_test_results_t idealist  = {
          "You are something of an idealist...",
          "You are gifted with a strong sense of",
          "justice, and an even stronger sense of",
-         "purpose...You are also kinds to others...",
+         "purpose...You are also kind to others...",
          "You would like to believe those around you",
          "endear these qualities, but that is not",
-         "the case, and is quite the other hand.",
+         "the case, and is quite the opposite.",
          "It is not you, but others at fault.",
          "STR (+)",
          "AGL ( )",
@@ -217,7 +217,7 @@ test_personality_test_results_t idealist  = {
 
 test_personality_test_results_t klutz  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
-    .scenario = "Desert Scenario",
+    .scenario = "Klutz Scenario",
     .name = "Klutz",
     .description = {
          "You are careless...Something of a klutz,",
@@ -257,6 +257,26 @@ test_personality_test_results_t lazybones  = {
     }
 };
 
+test_personality_test_results_t lone_wolf  = {
+    .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
+    .scenario = "Desert Scenario",
+    .name = "Lone Wolf",
+    .description = {
+         "You are a solitary soul with a strong",
+         "sense of individuality...You are very",
+         "clear that you consider yourself",
+         "seperate from other people...You give",
+         "others the impression of being cool",
+         "and aloof, and you always keep your",
+         "distance from people...You may view",
+         "yourself as lonely, but so are others.",
+         "STR ( )",
+         "AGL (+) ",
+         "VIT (+)",
+         "WIS (+)",
+         "LCK (-)"
+    }
+};
 
 // Male -> Lothario
 // Female -> Vamp
@@ -295,16 +315,17 @@ test_personality_test_results_t lout  = {
          "said, you should try to be more",
          "considerate about those around you.",
          "STR ( )",
-         "AGL (-) ",
+         "AGL (-)",
          "VIT (-)",
          "WIS (-)",
          "LCK (+)"
     }
 };
 
+
 test_personality_test_results_t mule  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
-    .scenario = "Desert Scenario",
+    .scenario = "Cave Scenario",
     .name = "Mule",
     .description = {
          "You are quite stubborn...You may appear",
@@ -316,7 +337,7 @@ test_personality_test_results_t mule  = {
          "others at a superficial level, but as you",
          "age, your stubborness will be recognized.",
          "STR ( )",
-         "AGL (-) ",
+         "AGL (-)",
          "VIT (+)",
          "WIS (-)",
          "LCK (-)"
@@ -325,7 +346,7 @@ test_personality_test_results_t mule  = {
 
 test_personality_test_results_t narcissist  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
-    .scenario = "Desert Scenario",
+    .scenario = "Cave Scenario",
     .name = "Narcissist",
     .description = {
          "You are vain...You aren't just vain, you",
@@ -333,12 +354,33 @@ test_personality_test_results_t narcissist  = {
          "For that reason, you love doing things",
          "people don't do, if someone tells you",
          "that you are different, you are delighted",
-         "...That will cause yuo to do things",
+         "...That will cause you to do things",
          "even further off the beaten path, and",
          "if you overdo it, you could hurt yourself.",
          "STR (-)",
          "AGL (+)",
          "VIT (-)",
+         "WIS (-)",
+         "LCK (-)"
+    }
+};
+
+test_personality_test_results_t paragon  = {
+    .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
+    .scenario = "Monster Scenario",
+    .name = "Paragon",
+    .description = {
+         "It is rare for one so powerful to be so",
+         "kind...You are the paragon of virue",
+         "itself. Yours is a dominant and forceful",
+         "personality, but you are able to keep it",
+         "masterfully in check...You are also highly",
+         "compassionate, and you always place more",
+         "importance of others than yourself. You are",
+         "someone those can trust and depend on.",
+         "STR (+)",
+         "AGL (-)",
+         "VIT ( )",
          "WIS (-)",
          "LCK (-)"
     }
@@ -388,7 +430,7 @@ test_personality_test_results_t scatterbrain  = {
 
 test_personality_test_results_t show_off  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
-    .scenario = "Desert Scenario",
+    .scenario = "Village Scenario",
     .name = "Show-Off",
     .description = {
          "You are something of a show-off, are you",
@@ -409,7 +451,7 @@ test_personality_test_results_t show_off  = {
 
 test_personality_test_results_t shrinking_violet  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
-    .scenario = "Desert Scenario",
+    .scenario = "Village Scenario",
     .name = "Shrinking Violet",
     .description = {
          "You are shy and retiring...A shrinking",
@@ -428,9 +470,29 @@ test_personality_test_results_t shrinking_violet  = {
     }
 };
 
+test_personality_test_results_t slippery_devil  = {
+    .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
+    .scenario = "Village Scenario",
+    .name = "Slippery Devil",
+    .description = {
+         "You are a scheming person...You always",
+         "base your decisions on what you expect",
+         "to get in return...You try to deal only",
+         "with those whom you consider meaningful",
+         "...You therefore love rich and famous",
+         "people in hope that they will favor",
+         "you...It is not the famous person who",
+         "will help you, but your plain friends.",
+         "STR (-)",
+         "AGL (+)",
+         "VIT (-)",
+         "WIS (+)",
+         "LCK ( )"
+    }
+};
 test_personality_test_results_t socialite  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
-    .scenario = "Desert Scenario",
+    .scenario = "Tower Scenario",
     .name = "Socialite",
     .description = {
          "Others see you as relaxed...As calm",
@@ -451,7 +513,7 @@ test_personality_test_results_t socialite  = {
 
 test_personality_test_results_t sore_loser  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
-    .scenario = "Desert Scenario",
+    .scenario = "Cave Scenario",
     .name = "Sore Loser",
     .description = {
          "You are quite defiant...You are highly",
@@ -472,7 +534,7 @@ test_personality_test_results_t sore_loser  = {
 
 test_personality_test_results_t spoilt_brat  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
-    .scenario = "Desert Scenario",
+    .scenario = "Monster Scenario",
     .name = "Spoilt Brat",
     .description = {
          "You are a spoilt brat...You wish",
@@ -494,7 +556,7 @@ test_personality_test_results_t spoilt_brat  = {
 
 test_personality_test_results_t straight_arrow  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
-    .scenario = "Desert Scenario",
+    .scenario = "Cave Scenario",
     .name = "Straight Arrow",
     .description = {
          "You are as the expression says, a",
@@ -581,7 +643,7 @@ test_personality_test_results_t vamp  = {
 
 test_personality_test_results_t wimp = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
-    .scenario = "Desert Scenario",
+    .scenario = "Monster Scenario",
     .name = "Wimp",
     .description = {
          "You are a wimp...You may not think so,",
