@@ -768,6 +768,13 @@ void Personality_MoveDownScenario(test_personality_scenario_t *personality)
 }
 
 
+void ScreenTransition_FadeInAndOut(SDL_Renderer *renderer)
+{
+    
+    
+
+}
+
 
 // ------------------------------------------------------------------------------
 
@@ -954,6 +961,7 @@ int main(int argc, char *argv[])
     InitializeAssetToRender(&oldman_asset, CameraX, CameraY, oldman_asset.w, oldman_asset.h);
     oldman_asset.conditions.is_collidable = true;
 
+    int boulder_count = 0;
     asset_t boulder_asset = {0};
     LoadAsset(&boulder_asset, "assets/boulder.png");
     InitializeAssetToRender(&boulder_asset, CameraX, CameraY, boulder_asset.w, boulder_asset.h);
@@ -964,7 +972,7 @@ int main(int argc, char *argv[])
     forest_scenario_walls[0].body.y = 240 - (48 + 24);
     forest_scenario_walls[0].body.w = forest_scenario_map.w;
     forest_scenario_walls[0].body.h = 24;
-    //forest_scenario_walls[0].conditions.is_collidable = true;
+    forest_scenario_walls[0].conditions.is_collidable = true;
 
     forest_scenario_walls[1].body.x = 0;
     forest_scenario_walls[1].body.y = 240 - (48 - 24 - 24 - 24);
@@ -1763,8 +1771,24 @@ int main(int argc, char *argv[])
 
     bool personality_results_screen = false;
     bool loading_results = false;
+
+
+    u32 frame_start = 0;
+    u32 frame_time;
+    u32 frame_counter = 0;
+    int alpha = 0;
+    char b = 0;
+
+    SDL_Rect fill_rect;
+    fill_rect.x = 0;
+    fill_rect.y = 0;
+    fill_rect.w = ASPECT_WIDTH;
+    fill_rect.h = ASPECT_HEIGHT;
+
     while (Running) 
     {
+        frame_start = SDL_GetTicks();
+
         // Poll events
         while (SDL_PollEvent(&SDLWindow.e))
         {
@@ -2003,6 +2027,12 @@ int main(int argc, char *argv[])
                             Orientation.right = true;
                             if (boulder_has_reached_end)
                                 boulder_has_reached_end = false;
+                            if (player_is_out_of_bounds)
+                            {
+                                //test_scenarios.result |= SCENARIO_FOREST;
+                                //test_scenarios.scenario[FOREST_INDEX].is_active = false;
+                                
+                            }
 
                             if (character_creation_screen.is_active && !confirmation.is_active)
                             {
@@ -2916,20 +2946,21 @@ int main(int argc, char *argv[])
 
                                 if (test_scenarios.result & SCENARIO_FOREST)
                                 {
-                                    switch (test_scenarios.scenario[FOREST_INDEX].index)
-                                    {
-                                        case 0: 
-                                        {
-                                            personality_types_state = PERSONALITY_LAZYBONES;
+                                    //switch (test_scenarios.scenario[FOREST_INDEX].index)
+                                    //{
+                                    //    case 0: 
+                                    //    {
+                                            printf("huh?\n");
+                                            personality_types_state =  PERSONALITY_THUG; //PERSONALITY_LAZYBONES;
                                             PushString(test_scenarios.scenario[FOREST_INDEX].personality, "Lazybones");
                                             loading_results = true;
                                             
                                             test_scenarios.scenario[FOREST_INDEX].is_active = false;
                                             is_personality_test = false;
                                             personality_results_screen = true;
-                                        } break;
+                                    //    } break;
 
-                                    } 
+                                    //} 
                                 }
                             
                                 if (test_scenarios.result & SCENARIO_DESERT)
@@ -3734,20 +3765,78 @@ int main(int argc, char *argv[])
                     {
                         if (AABB(&boulder_asset.body, &forest_scenario_finish_line.body))
                         {
-                            printf("test\n");
+                            boulder_count++;
+                            printf("boulder count: %d\n", boulder_count);
                             SetAssetPosition(&boulder_asset, 128 + 16, 240 - 24);
 
                             boulder_has_reached_end = true;
                         }
                     }
                   
+                    // Boulder going out of bounds counts as ending the scene too
                     if (!player_is_out_of_bounds)
                     {
                         for (int i = 0; i < ArraySize(forest_out_of_bounds); ++i)
                         {
-                            if (AABB(&player_asset.body, &forest_out_of_bounds[i].body))
+                            if (AABB(&player_asset.body, &forest_out_of_bounds[i].body) ||
+                                AABB(&boulder_asset.body, &forest_out_of_bounds[i].body))
                             {
                                 printf("out of bounds!\n");
+                                
+                                if (boulder_count <= 1)
+                                {
+                                    personality_types_state = PERSONALITY_LAZYBONES;
+                                    PushString(test_scenarios.scenario[FOREST_INDEX].personality, "Lazybones");
+                                    loading_results = true;
+                                    
+                                    test_scenarios.scenario[FOREST_INDEX].is_active = false;
+                                    is_personality_test = false;
+                                    personality_results_screen = true;
+                                }
+
+                                if (boulder_count <= 5 && boulder_count >= 2)
+                                {
+                                    personality_types_state = PERSONALITY_SHOW_OFF;
+                                    PushString(test_scenarios.scenario[FOREST_INDEX].personality, "Show-Off");
+                                    loading_results = true;
+                                    
+                                    test_scenarios.scenario[FOREST_INDEX].is_active = false;
+                                    is_personality_test = false;
+                                    personality_results_screen = true;
+                                }
+                                
+                                if (boulder_count <= 19 && boulder_count >= 6)
+                                {
+                                    personality_types_state = PERSONALITY_PLUGGER;
+                                    PushString(test_scenarios.scenario[FOREST_INDEX].personality, "Plugger");
+                                    loading_results = true;
+                                    
+                                    test_scenarios.scenario[FOREST_INDEX].is_active = false;
+                                    is_personality_test = false;
+                                    personality_results_screen = true;
+                                }
+
+                                if (boulder_count <= 39 && boulder_count >= 20)
+                                {
+                                    personality_types_state = PERSONALITY_DRUDGE;
+                                    PushString(test_scenarios.scenario[FOREST_INDEX].personality, "Drudge");
+                                    loading_results = true;
+                                    
+                                    test_scenarios.scenario[FOREST_INDEX].is_active = false;
+                                    is_personality_test = false;
+                                    personality_results_screen = true;
+                                }
+
+                                if (boulder_count >= 40)
+                                {
+                                    personality_types_state = PERSONALITY_TOUGH_COOKIE;
+                                    PushString(test_scenarios.scenario[FOREST_INDEX].personality, "Tough-Cookie");
+                                    loading_results = true;
+                                    
+                                    test_scenarios.scenario[FOREST_INDEX].is_active = false;
+                                    is_personality_test = false;
+                                    personality_results_screen = true;
+                                }
                                 player_is_out_of_bounds = true;
                             }
                         }
@@ -4218,6 +4307,45 @@ int main(int argc, char *argv[])
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
+
+                        // FOREST 
+                        case PERSONALITY_LAZYBONES:
+                        {
+                            PERSONALITY_RESULT = lazybones;
+                            SCENARIO_INDEX = FOREST_INDEX;
+                            SCENARIO_DIALOGUE_SIZE = 13;
+                            
+                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            loading_results = false;
+                        } break;
+                        case PERSONALITY_PLUGGER:
+                        {
+                            PERSONALITY_RESULT = plugger;
+                            SCENARIO_INDEX = FOREST_INDEX;
+                            SCENARIO_DIALOGUE_SIZE = 13;
+                            
+                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            loading_results = false;
+                        } break;
+                        case PERSONALITY_DRUDGE:
+                        {
+                            PERSONALITY_RESULT = drudge;
+                            SCENARIO_INDEX = FOREST_INDEX;
+                            SCENARIO_DIALOGUE_SIZE = 13;
+                            
+                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            loading_results = false;
+                        } break;
+                        case PERSONALITY_TOUGH_COOKIE:
+                        {
+                            PERSONALITY_RESULT = tough_cookie;
+                            SCENARIO_INDEX = FOREST_INDEX;
+                            SCENARIO_DIALOGUE_SIZE = 13;
+                            
+                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            loading_results = false;
+                        } break;
+
 
                         // THEATER
                         case PERSONALITY_FREE_SPIRIT:
