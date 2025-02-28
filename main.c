@@ -964,14 +964,26 @@ int main(int argc, char *argv[])
     forest_scenario_walls[0].body.y = 240 - (48 + 24);
     forest_scenario_walls[0].body.w = forest_scenario_map.w;
     forest_scenario_walls[0].body.h = 24;
-    forest_scenario_walls[0].conditions.is_collidable = true;
+    //forest_scenario_walls[0].conditions.is_collidable = true;
 
     forest_scenario_walls[1].body.x = 0;
     forest_scenario_walls[1].body.y = 240 - (48 - 24 - 24 - 24);
     forest_scenario_walls[1].body.w = forest_scenario_map.w;
     forest_scenario_walls[1].body.h = 24;
     forest_scenario_walls[1].conditions.is_collidable = true;
-   
+  
+    bool player_is_out_of_bounds = false;
+    asset_t forest_out_of_bounds[2] = {0};
+    forest_out_of_bounds[0].body.x = -16;
+    forest_out_of_bounds[0].body.y = 0;
+    forest_out_of_bounds[0].body.w = 16;
+    forest_out_of_bounds[0].body.h = forest_scenario_map.h;
+
+    forest_out_of_bounds[1].body.x = 400 + (16 * 4);
+    forest_out_of_bounds[1].body.y = 0;
+    forest_out_of_bounds[1].body.w = 16;
+    forest_out_of_bounds[1].body.h = forest_scenario_map.h;
+
     asset_t forest_scenario_finish_line = {0};
     forest_scenario_finish_line.body.x = 256 + (16 * 8);
     forest_scenario_finish_line.body.y = 240 - (48);
@@ -3729,6 +3741,18 @@ int main(int argc, char *argv[])
                         }
                     }
                   
+                    if (!player_is_out_of_bounds)
+                    {
+                        for (int i = 0; i < ArraySize(forest_out_of_bounds); ++i)
+                        {
+                            if (AABB(&player_asset.body, &forest_out_of_bounds[i].body))
+                            {
+                                printf("out of bounds!\n");
+                                player_is_out_of_bounds = true;
+                            }
+                        }
+                    
+                    }
 
                     
                     AttachCameraToPlayer(&player_asset, &forest_scenario_map);
@@ -3738,6 +3762,11 @@ int main(int argc, char *argv[])
                         RenderAndUpdateAsset(&forest_scenario_walls[i]);
                     }
                     
+                    for (int i = 0; i < ArraySize(forest_out_of_bounds); ++i)
+                    {
+                        RenderAndUpdateAsset(&forest_out_of_bounds[i]);
+                    }
+
                     RenderAndUpdateAsset(&forest_scenario_finish_line);
                     RenderAndUpdateAsset(&player_asset);
                     RenderAndUpdateAsset(&oldman_asset);
