@@ -1032,12 +1032,24 @@ int main(int argc, char *argv[])
     forest_scenario_finish_line.body.h = 24 * 3;
     forest_scenario_finish_line.conditions.is_collidable = true;
 
+    const char *forest_scenario_dialogue_intro[32] = {
+        {"Whoa-whoa-whoa! I see you're lost. Go"},
+        {"west. That's to your left. Keep walking"},
+        {"in that direction and you'll be clear of"},
+        {"this forest. If you happen to see a boulder,"},
+        {"could you push it back to me? I will be sure"},
+        {"to repay you."}
+    };
+    const char *forest_scenario_dialogue_return_the_boulder[32] = {
+        {"Oh! You brought the rock to me. Thank you!"},
+        {"Here's 10 gold coins for your troubles."}
+    };
+
     asset_t dialogue_box = {0};
-    dialogue_box.body.x = 256 + (16 * 8);
-    dialogue_box.body.y = 240 - (48);
+    dialogue_box.body.x = 32; //256 + (16 * 8);
+    dialogue_box.body.y = 32; //240 - (48);
     dialogue_box.body.w = 128;
     dialogue_box.body.h = 128;
-
 
     stats_t enemy_stats = {0};
     enemy_stats.hp = 10;
@@ -3777,6 +3789,10 @@ int main(int argc, char *argv[])
 
                 if (test_scenarios.scenario[FOREST_INDEX].is_active)
                 {
+                    SDL_SetRenderTarget(SDLWindow.Renderer, SDLCamera.TargetTexture);
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
+                    SDL_RenderClear(SDLWindow.Renderer);
+
                     UpdatePlayer(&player_asset, &sfx_move);
                     UpdateAsset(&boulder_asset, &player_asset); 
                     
@@ -3905,7 +3921,7 @@ int main(int argc, char *argv[])
                     RenderAndUpdateAsset(&forest_scenario_finish_line);
                     RenderAndUpdateAsset(&player_asset);
                     RenderAndUpdateAsset(&oldman_asset);
-                    //RenderAndUpdateAsset(&boulder_asset);
+                    RenderAndUpdateAsset(&boulder_asset);
                     
 
                     if (!player_talking_to_oldman)
@@ -3919,9 +3935,21 @@ int main(int argc, char *argv[])
                         }
                     }
 
+/*
+    const char *forest_scenario_dialogue_intro[32] = {
+        {"Whoa-whoa-whoa! I see you're lost. Go"},
+        {"west. That's to your left. Keep walking"},
+        {"in that direction and you'll be clear of"},
+        {"this forest. If you happen to see a boulder,"},
+        {"could you push it back to me? I will be sure"},
+        {"to repay you."}
+    };
+    const char *forest_scenario_dialogue_return_the_boulder[32] = {
+        {"Oh! You brought the rock to me. Thank you!"},
+        {"Here's 10 gold coins for your troubles."}
+    };
 
-
-
+*/
                     // WE FUCKING DID IT, we found out how to 'hold' a dialogue box or in future cases a menu.
                     // What we were trying to do before, was literally stall the program to keep something up, 
                     // but literally what is happening is it's simply being rendered. Just render it from a 
@@ -3929,9 +3957,8 @@ int main(int argc, char *argv[])
                     // is open and the player presses enter, close it by turning it off.
                     if (hold_dialogue_box)
                     {
-                        printf("oldman\n");
-                        SetAssetPosition(&boulder_asset, 128 + (16 * 8), 240 - 24);
-                        RenderAndUpdateAsset(&boulder_asset);
+                        RenderAndUpdateAsset(&dialogue_box);
+
                         for (int i = 0; i < ArraySize(oldman_asset.adjacent_hitboxes); ++i)
                         {
                             if (AABB(&player_asset.body, &oldman_asset.adjacent_hitboxes[i]))
@@ -3942,9 +3969,14 @@ int main(int argc, char *argv[])
                     }
 
                     
+                    // Set render target to camera
                     SDL_SetRenderTarget(SDLWindow.Renderer, NULL);
+                                        // Render to camera
                     SDL_RenderCopy(SDLWindow.Renderer, SDLCamera.TargetTexture, NULL, NULL);
-                    
+                
+                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
+                    SDL_RenderDrawRect(SDLWindow.Renderer, &dialogue_box.body);
+
                 }
 
 
