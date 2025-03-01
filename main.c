@@ -71,6 +71,8 @@ typedef struct
         bool is_collidable;
     } conditions;
     SDL_Rect body;
+    SDL_Rect hitbox;
+    SDL_Rect adjacent_hitboxes[4];
     SDL_Texture *texture;
 } asset_t;
 
@@ -488,7 +490,7 @@ void RenderAndUpdateAsset(asset_t *asset)
     asset->y = asset->body.y;
     asset->body.x -= SDLCamera.X;
     asset->body.y -= SDLCamera.Y;
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
     SDL_RenderDrawRect(SDLWindow.Renderer, &asset->body);
 
     if (asset->texture)
@@ -506,7 +508,7 @@ void RenderAndUpdateAsset(asset_t *asset)
 
     if (asset->stats.hp)
     {
-        RenderAssetHealthBar(asset);
+        //RenderAssetHealthBar(asset);
     }
 }
 
@@ -541,6 +543,46 @@ void RenderAssetT(asset_t *asset, int x, int y, int w, int h)
             fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
             return;
         }
+    }
+}
+
+void Render_InitAssetAdjacentHitboxes(asset_t *asset)
+{
+    int TOP =   0;
+    int DOWN =  1;
+    int LEFT =  2;
+    int RIGHT = 3;
+
+    asset->adjacent_hitboxes[TOP].x = asset->body.x - SDLCamera.X; 
+    asset->adjacent_hitboxes[TOP].y = (asset->body.y - 24 - 1) - SDLCamera.Y;
+    asset->adjacent_hitboxes[TOP].w = 16 - 1;
+    asset->adjacent_hitboxes[TOP].h = 24 - 1;
+
+    asset->adjacent_hitboxes[DOWN].x = asset->body.x - SDLCamera.X; 
+    asset->adjacent_hitboxes[DOWN].y = (asset->body.y + 24 - 1) - SDLCamera.Y;
+    asset->adjacent_hitboxes[DOWN].w = 16 - 1;
+    asset->adjacent_hitboxes[DOWN].h = 24 - 1;
+
+    asset->adjacent_hitboxes[LEFT].x = (asset->body.x - 16 - 1) - SDLCamera.X; 
+    asset->adjacent_hitboxes[LEFT].y = asset->body.y - SDLCamera.Y;
+    asset->adjacent_hitboxes[LEFT].w = 16 - 1;
+    asset->adjacent_hitboxes[LEFT].h = 24 - 1;
+
+    asset->adjacent_hitboxes[RIGHT].x = (asset->body.x + 16 - 1) - SDLCamera.X; 
+    asset->adjacent_hitboxes[RIGHT].y = asset->body.y - SDLCamera.Y;
+    asset->adjacent_hitboxes[RIGHT].w = 16 - 1;
+    asset->adjacent_hitboxes[RIGHT].h = 24 - 1;
+    
+
+}
+
+void Render_AssetAdjacentHitboxes(asset_t *asset)
+{
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+    
+    for (int i = 0; i < ArraySize(asset->adjacent_hitboxes); ++i)
+    {
+        SDL_RenderDrawRect(SDLWindow.Renderer, &asset->adjacent_hitboxes[i]);
     }
 }
 
@@ -767,15 +809,6 @@ void Personality_MoveDownScenario(test_personality_scenario_t *personality)
     }
 }
 
-
-void ScreenTransition_FadeInAndOut(SDL_Renderer *renderer)
-{
-    
-    
-
-}
-
-
 // ------------------------------------------------------------------------------
 
 int main(int argc, char *argv[])
@@ -998,6 +1031,13 @@ int main(int argc, char *argv[])
     forest_scenario_finish_line.body.w = 16;
     forest_scenario_finish_line.body.h = 24 * 3;
     forest_scenario_finish_line.conditions.is_collidable = true;
+
+    asset_t dialogue_box = {0};
+    dialogue_box.body.x = 256 + (16 * 8);
+    dialogue_box.body.y = 240 - (48);
+    dialogue_box.body.w = 128;
+    dialogue_box.body.h = 128;
+
 
     stats_t enemy_stats = {0};
     enemy_stats.hp = 10;
@@ -1771,23 +1811,13 @@ int main(int argc, char *argv[])
 
     bool personality_results_screen = false;
     bool loading_results = false;
+    bool player_talking_to_oldman = false;
+    bool oldman_dialogue_sequence = false;
+    bool hold_dialogue_box = false;
 
-
-    u32 frame_start = 0;
-    u32 frame_time;
-    u32 frame_counter = 0;
-    int alpha = 0;
-    char b = 0;
-
-    SDL_Rect fill_rect;
-    fill_rect.x = 0;
-    fill_rect.y = 0;
-    fill_rect.w = ASPECT_WIDTH;
-    fill_rect.h = ASPECT_HEIGHT;
 
     while (Running) 
     {
-        frame_start = SDL_GetTicks();
 
         // Poll events
         while (SDL_PollEvent(&SDLWindow.e))
@@ -1860,6 +1890,8 @@ int main(int argc, char *argv[])
                             Orientation.down = true;
                             if (boulder_has_reached_end)
                                 boulder_has_reached_end = false;
+                            if (player_talking_to_oldman)
+                                player_talking_to_oldman = false;
 
                             if (is_title_screen)
                             {
@@ -2031,7 +2063,6 @@ int main(int argc, char *argv[])
                             {
                                 //test_scenarios.result |= SCENARIO_FOREST;
                                 //test_scenarios.scenario[FOREST_INDEX].is_active = false;
-                                
                             }
 
                             if (character_creation_screen.is_active && !confirmation.is_active)
@@ -3099,11 +3130,18 @@ int main(int argc, char *argv[])
                                         } break;
                                     }
                                 }
-
-
+                            }
+   
+                            if (player_talking_to_oldman)
+                            {
+                                hold_dialogue_box = true;
                             }
 
-
+                            if (!player_talking_to_oldman)
+                            {
+                                hold_dialogue_box = false;
+                            }
+                           
                         } break;
                         default:
                         {
@@ -3574,9 +3612,10 @@ int main(int argc, char *argv[])
                         {
                             scenario_name = "Forest Scenario";
                             SetAssetPosition(&player_asset, 128, 240 - 24);
-                            SetAssetPosition(&oldman_asset, 128 + (16 * 5), 240 - 24);
+                            SetAssetPosition(&oldman_asset, 128 + (16 * 18), 240 - 24);
                             SetAssetPosition(&boulder_asset, 128 + 16, 240 - 24);
 
+                            Render_InitAssetAdjacentHitboxes(&oldman_asset);
                             //test_scenarios.result |= SCENARIO_FOREST;
                             test_scenarios.scenario[FOREST_INDEX].is_active = true;
                             personality_test.is_active = false;
@@ -3760,17 +3799,23 @@ int main(int argc, char *argv[])
                         CollisionYCheck(&boulder_asset, &forest_scenario_walls[i]);
                     }
 
-
+                    
+  
                     if (!boulder_has_reached_end)
                     {
                         if (AABB(&boulder_asset.body, &forest_scenario_finish_line.body))
                         {
                             boulder_count++;
+                            Sound_PlaySFX(&sfx_attack);
+                            
                             printf("boulder count: %d\n", boulder_count);
+                    
+                            // "respawn" the boulder
                             SetAssetPosition(&boulder_asset, 128 + 16, 240 - 24);
 
                             boulder_has_reached_end = true;
                         }
+                            
                     }
                   
                     // Boulder going out of bounds counts as ending the scene too
@@ -3843,7 +3888,7 @@ int main(int argc, char *argv[])
                     
                     }
 
-                    
+     
                     AttachCameraToPlayer(&player_asset, &forest_scenario_map);
                     RenderAndUpdateAsset(&forest_scenario_map); 
                     for (int i = 0; i < ArraySize(forest_scenario_walls); ++i)
@@ -3856,17 +3901,52 @@ int main(int argc, char *argv[])
                         RenderAndUpdateAsset(&forest_out_of_bounds[i]);
                     }
 
+
                     RenderAndUpdateAsset(&forest_scenario_finish_line);
                     RenderAndUpdateAsset(&player_asset);
                     RenderAndUpdateAsset(&oldman_asset);
-                    RenderAndUpdateAsset(&boulder_asset);
-           
+                    //RenderAndUpdateAsset(&boulder_asset);
+                    
+
+                    if (!player_talking_to_oldman)
+                    {
+                        for (int i = 0; i < ArraySize(oldman_asset.adjacent_hitboxes); ++i)
+                        {
+                            if (AABB(&player_asset.body, &oldman_asset.adjacent_hitboxes[i]))
+                            {
+                                player_talking_to_oldman = true;
+                            }
+                        }
+                    }
 
 
+
+
+                    // WE FUCKING DID IT, we found out how to 'hold' a dialogue box or in future cases a menu.
+                    // What we were trying to do before, was literally stall the program to keep something up, 
+                    // but literally what is happening is it's simply being rendered. Just render it from a 
+                    // condition that's been met, in this case talking to the old man, and if the dialogue
+                    // is open and the player presses enter, close it by turning it off.
+                    if (hold_dialogue_box)
+                    {
+                        printf("oldman\n");
+                        SetAssetPosition(&boulder_asset, 128 + (16 * 8), 240 - 24);
+                        RenderAndUpdateAsset(&boulder_asset);
+                        for (int i = 0; i < ArraySize(oldman_asset.adjacent_hitboxes); ++i)
+                        {
+                            if (AABB(&player_asset.body, &oldman_asset.adjacent_hitboxes[i]))
+                            {
+                                player_talking_to_oldman = false;
+                            }
+                        }
+                    }
+
+                    
                     SDL_SetRenderTarget(SDLWindow.Renderer, NULL);
                     SDL_RenderCopy(SDLWindow.Renderer, SDLCamera.TargetTexture, NULL, NULL);
                     
                 }
+
 
                 if (test_scenarios.scenario[CAVE_INDEX].is_active)
                 {
