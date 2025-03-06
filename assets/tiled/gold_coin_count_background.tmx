@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="2" height="1" tilewidth="16" tileheight="24" infinite="0" nextlayerid="2" nextobjectid="1">
+ <tileset firstgid="1" name="oryx_roguelike_16x24" tilewidth="16" tileheight="24" tilecount="931" columns="19">
+  <image source="../../oryx_roguelike_2.0/V1/oryx_roguelike_16x24.png" width="304" height="1184"/>
+ </tileset>
+ <layer id="1" name="Tile Layer 1" width="2" height="1">
+  <data encoding="csv">
+675,675
+</data>
+ </layer>
+</map>

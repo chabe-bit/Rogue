@@ -61,7 +61,7 @@ typedef struct
     stats_t stats;
     union 
     {
-        bool is_moving;
+        bool is_movable;
         bool is_under_attack;
         bool is_attacking;
         bool is_defending;
@@ -366,30 +366,34 @@ void UpdatePlayer(asset_t *player, sound_wav_t *sound)
     player->x = player->body.x; 
     player->y = player->body.y; 
 
-    if (Orientation.up)
-    {       
-        player->body.y -= player->body.h;
-        Sound_PlaySFX(sound);
-        Orientation.up = false;
-    }
-    if (Orientation.left)
+    if (player->conditions.is_movable)
     {
-        player->body.x -= player->body.w; 
-        Sound_PlaySFX(sound);
-        Orientation.left = false;
+        if (Orientation.up)
+        {       
+            player->body.y -= player->body.h;
+            Sound_PlaySFX(sound);
+            //Orientation.up = false;
+        }
+        if (Orientation.left)
+        {
+            player->body.x -= player->body.w; 
+            Sound_PlaySFX(sound);
+            //Orientation.left = false;
+        }
+        if (Orientation.down)
+        {
+            player->body.y += player->body.h; 
+            Sound_PlaySFX(sound);
+            //Orientation.down = false;
+        }
+        if (Orientation.right)
+        {
+            player->body.x += player->body.w; 
+            Sound_PlaySFX(sound);
+            //Orientation.right = false;
+        }
     }
-    if (Orientation.down)
-    {
-        player->body.y += player->body.h; 
-        Sound_PlaySFX(sound);
-        Orientation.down = false;
-    }
-    if (Orientation.right)
-    {
-        player->body.x += player->body.w; 
-        Sound_PlaySFX(sound);
-        Orientation.right = false;
-    }
+
 }
 
 void UpdateAsset(asset_t *asset, asset_t *player)
@@ -443,9 +447,6 @@ void SetAssetPosition(asset_t *asset, int x, int y)
 {
     asset->body.x = x;
     asset->body.y = y;
-
-    asset->x = asset->body.x; 
-    asset->y = asset->body.y;
 }
 
 
@@ -549,45 +550,41 @@ void RenderAssetInCameraSpace(asset_t *asset, int x, int y, int w, int h)
     }
 }
 
-void InitAdjacentHitBoxes(asset_t *asset)
+void InitAssetAdjacentHitBoxes(asset_t *asset)
 {
     int TOP =   0;
     int DOWN =  1;
     int LEFT =  2;
     int RIGHT = 3;
 
+    // We create an offset of 1px for the adj hitboxes, so the corners of the asset do not
+    // touch with incoming assets. 
+    // Visual:
+    // [][] -> This is what it looks like when two collide, they're overlapping just by a pixel
+    // even though it doesn't like it.
+    // [] [] -> This is what we're achieving here, a 1px offset for adjacent assets so they aren't
+    // touching, and only will touch if you're on that adj hitbox. 
+
     asset->adjacent_hitboxes[TOP].x = asset->body.x - SDLCamera.X; 
-    asset->adjacent_hitboxes[TOP].y = (asset->body.y - 24 - 1) - SDLCamera.Y;
+    asset->adjacent_hitboxes[TOP].y = (asset->body.y - 24) - SDLCamera.Y;
     asset->adjacent_hitboxes[TOP].w = 16 - 1;
     asset->adjacent_hitboxes[TOP].h = 24 - 1;
 
     asset->adjacent_hitboxes[DOWN].x = asset->body.x - SDLCamera.X; 
-    asset->adjacent_hitboxes[DOWN].y = (asset->body.y + 24 - 1) - SDLCamera.Y;
+    asset->adjacent_hitboxes[DOWN].y = (asset->body.y + 24) - SDLCamera.Y;
     asset->adjacent_hitboxes[DOWN].w = 16 - 1;
     asset->adjacent_hitboxes[DOWN].h = 24 - 1;
 
-    asset->adjacent_hitboxes[LEFT].x = (asset->body.x - 16 - 1) - SDLCamera.X; 
+    asset->adjacent_hitboxes[LEFT].x = (asset->body.x - 16) - SDLCamera.X; 
     asset->adjacent_hitboxes[LEFT].y = asset->body.y - SDLCamera.Y;
     asset->adjacent_hitboxes[LEFT].w = 16 - 1;
     asset->adjacent_hitboxes[LEFT].h = 24 - 1;
 
-    asset->adjacent_hitboxes[RIGHT].x = (asset->body.x + 16 - 1) - SDLCamera.X; 
+    asset->adjacent_hitboxes[RIGHT].x = (asset->body.x + 16) - SDLCamera.X; 
     asset->adjacent_hitboxes[RIGHT].y = asset->body.y - SDLCamera.Y;
     asset->adjacent_hitboxes[RIGHT].w = 16 - 1;
     asset->adjacent_hitboxes[RIGHT].h = 24 - 1;
-
 }
-
-void Render_AssetAdjacentHitboxes(asset_t *asset)
-{
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-    
-    for (int i = 0; i < ArraySize(asset->adjacent_hitboxes); ++i)
-    {
-        SDL_RenderDrawRect(SDLWindow.Renderer, &asset->adjacent_hitboxes[i]);
-    }
-}
-
 
 void InitializeCamera()
 {
@@ -990,6 +987,10 @@ int main(int argc, char *argv[])
     LoadAsset(&player_asset, "assets/knight.png");
     InitializeAssetToRender(&player_asset, 10 * 16, 16 * 24, player_asset.w, player_asset.h);
     InitializeAssetStats(&player_asset, &player_stats);
+    
+    player_asset.conditions.is_collidable = true;
+    player_asset.conditions.is_movable = true;
+
 
     const char *enemy_filenames[2] = {
         "assets/enemy1.png",
@@ -1118,7 +1119,11 @@ int main(int argc, char *argv[])
     asset_t dialogue_box_asset = {0};
     LoadAsset(&dialogue_box_asset, "assets/dialogue_box.png");
     InitializeAssetToRender(&dialogue_box_asset, 0, 0, dialogue_box_asset.w, dialogue_box_asset.h);
-    
+   
+    asset_t gold_coin_count_bg_asset = {0};
+    LoadAsset(&gold_coin_count_bg_asset, "assets/gold_coin_count_background.png");
+    InitializeAssetToRender(&gold_coin_count_bg_asset, 0, 0, gold_coin_count_bg_asset.w, gold_coin_count_bg_asset.h);
+
     typedef struct class_select_t
     {       
         asset_t asset;
@@ -1171,6 +1176,8 @@ int main(int argc, char *argv[])
         LoadAsset(&character_creation_screen.info[i].asset, class_files[i]);
         character_creation_screen.info[i].name = class_names[i];
         character_creation_screen.info[i].description = class_description[i];
+        character_creation_screen.info[i].asset.conditions.is_collidable = true;
+        character_creation_screen.info[i].asset.conditions.is_movable = true;
     }
     
     InitializeAssetToRender(&character_creation_screen.info[0].asset, SCREEN_CENTER_X - 96, SCREEN_CENTER_Y, 
@@ -1599,7 +1606,6 @@ int main(int argc, char *argv[])
     class_base_stats[ARCHER_ID].max_mp = class_base_stats[ARCHER_ID].wisdom; // MP == Wisdom
     class_base_stats[ARCHER_ID].hp = class_base_stats[ARCHER_ID].max_mp; // 
 
-
     printf("Max HP: %d\n", class_base_stats[KNIGHT_ID].max_hp);
 
        
@@ -1815,6 +1821,10 @@ int main(int argc, char *argv[])
     character_data_t character_data = {0};
     character_data.level = 1;
     character_data.experience = 0;
+    character_data.model.conditions.is_collidable = true;
+    character_data.model.conditions.is_movable = true;
+
+    printf("player is movable: %d\n", character_data.model.conditions.is_movable);
 /*
     typedef struct
     {
@@ -1873,13 +1883,13 @@ int main(int argc, char *argv[])
     bool personality_results_screen = false;
     bool loading_results = false;
     bool player_talking_to_oldman = false;
-    bool oldman_dialogue_sequence = false;
+    bool first_forest_entrance = false;
     bool hold_dialogue_box = false;
-    bool dialogue_enter = false;
-    bool dialogue_exit = false;
+    bool hold_dialogue_box_return_boulder = false;
+    bool next_text = false;
+    bool display_player_gold_count = false;
 
-    int dialogue_index = -1;
-    bool dialogue_is_active = false;
+    int dialogue_index = 0;
     const char *forest_scenario_dialogue_intro[32] = {
         {"Whoa-whoa-whoa!\nI see you're lost. Go"},
         {"west. That's to your left.\nKeep walking"},
@@ -1889,8 +1899,16 @@ int main(int argc, char *argv[])
         {"to repay you."}
     };
 
+    int dialogue_index_2 = 0;
+    const char *forest_scenario_dialogue_return_the_boulder[32] = {
+        {"Oh! You brought the\nrock to me. Thank you!"},
+        {"Here's 10 gold coins\nfor your troubles."}
+    };
+
+    int gold_count_from_old_man = 0;
 
     printf("%s\n", forest_scenario_dialogue_intro[dialogue_index]);
+    printf("%s\n", forest_scenario_dialogue_return_the_boulder[dialogue_index_2]);
     
 
 
@@ -4346,21 +4364,15 @@ int main(int argc, char *argv[])
 
                                 if (test_scenarios.result & SCENARIO_FOREST)
                                 {
-                                    //switch (test_scenarios.scenario[FOREST_INDEX].index)
-                                    //{
-                                    //    case 0: 
-                                    //    {
-                                            printf("huh?\n");
-                                            personality_types_state =  PERSONALITY_THUG; //PERSONALITY_LAZYBONES;
-                                            PushString(test_scenarios.personality, "Lazybones");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[FOREST_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                    //    } break;
-
-                                    //} 
+                                    SetAssetPosition(&character_data.model, 128 + (16 * 17), 240 - 24);
+                                    SetAssetPosition(&oldman_asset, 128 + (16 * 18), 240 - 24);
+                                    SetAssetPosition(&boulder_asset, 128 - (16 * 4), 240 - 24);
+                                    SetAssetPosition(&dialogue_box_asset, SCREEN_CENTER_X, SCREEN_CENTER_Y);
+                                   
+                                    printf("before off: %d\n", test_scenarios.result);
+                                    test_scenarios.result &= (~SCENARIO_FOREST);
+                                    printf("after off: %d\n", test_scenarios.result);
+                                   
                                 }
                             
                                 if (test_scenarios.result & SCENARIO_DESERT)
@@ -4507,24 +4519,39 @@ int main(int argc, char *argv[])
                             {
 
                                 if (player_talking_to_oldman)
-                                {
                                     hold_dialogue_box = true;
-                                }
 
                                 if (hold_dialogue_box)
                                 {
-                                    //if (dialogue_index != 0)
+                                    if (next_text && dialogue_index < 6)
+                                    {
                                         dialogue_index++;
-
+                                        next_text = false;
+                                    }
+  
                                     if (dialogue_index > 5)
                                     {
-                                        dialogue_index = -1;
+                                        dialogue_index = 0;
+                                        character_data.model.conditions.is_movable = true;
+                                        player_talking_to_oldman = false;
                                         hold_dialogue_box = false;
                                     }
                                     printf("dialogue_index: %d\n", dialogue_index);
                                 }
+
+                                if (hold_dialogue_box_return_boulder)
+                                {
+                                    dialogue_index_2++;
+                                    if (dialogue_index_2 > 1)
+                                    {
+                                        dialogue_index_2 = -1;
+                                        character_data.model.conditions.is_movable = true; 
+                                        hold_dialogue_box_return_boulder = false;
+                                    }
+                                    printf("dialogue_index_2: %d\n", dialogue_index_2);
+                                }
                             }
-                           
+                          
                         } break;
                         default:
                         {
@@ -5014,12 +5041,14 @@ int main(int argc, char *argv[])
                         case CLASS_PERSONALITY_RESULT_FOREST:
                         {
                             scenario_name = "Forest Scenario";
-                            SetAssetPosition(&character_data.model, 128 + (16 * 14), 240 - 24);
+                           
+                            SetAssetPosition(&character_data.model, 128 + (16 * 16), 240 - 24);
                             SetAssetPosition(&oldman_asset, 128 + (16 * 18), 240 - 24);
                             SetAssetPosition(&boulder_asset, 128 - (16 * 4), 240 - 24);
                             SetAssetPosition(&dialogue_box_asset, SCREEN_CENTER_X, SCREEN_CENTER_Y);
-
-                            InitAdjacentHitBoxes(&oldman_asset);
+                          
+                            InitAssetAdjacentHitBoxes(&oldman_asset);
+                            
                             //test_scenarios.result |= SCENARIO_FOREST;
                             test_scenarios.scenario[FOREST_INDEX].is_active = true;
                             personality_test.is_active = false;
@@ -5184,7 +5213,6 @@ int main(int argc, char *argv[])
                     UpdatePlayer(&character_data.model, &sfx_move);
                     UpdateAsset(&boulder_asset, &character_data.model); 
                     
-                    
                     CollisionXCheck(&character_data.model, &boulder_asset);
                     CollisionYCheck(&character_data.model, &boulder_asset);
                    
@@ -5203,23 +5231,6 @@ int main(int argc, char *argv[])
                         CollisionYCheck(&boulder_asset, &forest_scenario_walls[i]);
                     }
 
-                    
-  
-                    if (!boulder_has_reached_end)
-                    {
-                        if (AABB(&boulder_asset.body, &forest_scenario_finish_line.body))
-                        {
-                            boulder_count++;
-                            Sound_PlaySFX(&sfx_attack);
-                            printf("boulder count: %d\n", boulder_count);
-                    
-                            // "respawn" the boulder
-                            SetAssetPosition(&boulder_asset, 128 - (16 * 4), 240 - 24);
-                            boulder_has_reached_end = true;
-                        }
-                            
-                    }
-                  
                     // Boulder going out of bounds counts as ending the scene too
                     if (!player_is_out_of_bounds)
                     {
@@ -5284,6 +5295,7 @@ int main(int argc, char *argv[])
                                     is_personality_test = false;
                                     personality_results_screen = true;
                                 }
+
                                 player_is_out_of_bounds = true;
                             }
                         }
@@ -5296,11 +5308,24 @@ int main(int argc, char *argv[])
                         {
                             if (AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[i]))
                             {
+                                printf("touching\n");
                                 player_talking_to_oldman = true;
                             }
                         }
+
+                            
+
                     }
-     
+
+                    if (!AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[0]) &&
+                        !AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[1]) &&
+                        !AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[2]) &&
+                        !AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[3]) )
+                    {
+                        printf("not touching\n");
+                        player_talking_to_oldman = false;
+                    }
+
                     AttachCameraToPlayer(&character_data.model, &forest_scenario_map);
                     
                     for (int i = 0; i < ArraySize(forest_scenario_walls); ++i)
@@ -5312,14 +5337,45 @@ int main(int argc, char *argv[])
 
                     RenderAndUpdateAsset(&forest_scenario_map); 
                     RenderAndUpdateAsset(&forest_scenario_finish_line);
-                    RenderAndUpdateAsset(&character_data.model);
-                    RenderAndUpdateAsset(&oldman_asset);
-                    RenderAndUpdateAsset(&boulder_asset);
-                   
+
+  
+                    static char gold_coins[3];
+                    if (!boulder_has_reached_end)
+                    {
+                        if (AABB(&boulder_asset.body, &forest_scenario_finish_line.body))
+                        {
+                            boulder_count++;
+                            gold_count_from_old_man += 10;
+                            sprintf(gold_coins, "%d", gold_count_from_old_man);
+                            display_player_gold_count = true; 
+    
+                            Sound_PlaySFX(&sfx_attack);
+                            printf("boulder count: %d\n", boulder_count);
                     
+                            // "respawn" the boulder
+                            SetAssetPosition(&boulder_asset, 128 - (16 * 4), 240 - 24);
+                            hold_dialogue_box_return_boulder = true;
+                            boulder_has_reached_end = true;
+                        }
+                    }
+                 
+                    if (display_player_gold_count)
+                    {
+                        RenderAssetInCameraSpace(&gold_coin_count_bg_asset, 
+                                             SCREEN_CENTER_X + 88, SCREEN_CENTER_Y - 105, 
+                                             gold_coin_count_bg_asset.w, gold_coin_count_bg_asset.h); 
+
+                        RenderText(SDLWindow.Renderer, font_atlas, 
+                               CENTER_TEXT_X(gold_coins, 104), SCREEN_CENTER_Y - 95,
+                               gold_coins,
+                               green);
+                    }
+                    
+                   
 
                     if (hold_dialogue_box)
                     {
+                        character_data.model.conditions.is_movable = false; 
                         RenderAssetInCameraSpace(&dialogue_box_asset, 
                                              SCREEN_CENTER_X - (128 - 32), SCREEN_CENTER_Y + 32, 
                                              dialogue_box_asset.w, dialogue_box_asset.h); 
@@ -5329,17 +5385,31 @@ int main(int argc, char *argv[])
                                    forest_scenario_dialogue_intro[dialogue_index], 
                                    green, 
                                    2);
+                        
+                        if (!next_text)
+                            next_text = true;
 
-
-                        for (int i = 0; i < ArraySize(oldman_asset.adjacent_hitboxes); ++i)
-                        {
-                            if (AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[i]))
-                            {
-                                player_talking_to_oldman = false;
-                            }
-                        }
 
                     }
+
+                    if (hold_dialogue_box_return_boulder)
+                    {
+                        character_data.model.conditions.is_movable = false; 
+                        RenderAssetInCameraSpace(&dialogue_box_asset, 
+                                             SCREEN_CENTER_X - (128 - 32), SCREEN_CENTER_Y + 32, 
+                                             dialogue_box_asset.w, dialogue_box_asset.h); 
+                            
+                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                                   SCREEN_CENTER_X - (128 - 56), 
+                                   SCREEN_CENTER_Y + 56,
+                                   forest_scenario_dialogue_return_the_boulder[dialogue_index_2], 
+                                   green, 
+                                   2);
+                    }
+
+                    RenderAndUpdateAsset(&character_data.model);
+                    RenderAndUpdateAsset(&oldman_asset);
+                    RenderAndUpdateAsset(&boulder_asset);
                 }
 
 
