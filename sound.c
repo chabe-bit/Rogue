@@ -10,6 +10,8 @@ const char *music_files[MUSIC_FILE_COUNT] = {
 };
 
 const char *sfx_files[SFX_FILE_COUNT] = {
+    {"assets/sfx/select.wav"},
+    {"assets/sfx/confirm.wav"},
     {"assets/sfx/fire_a.wav"},
     {"assets/sfx/fire_b.wav"}
 };

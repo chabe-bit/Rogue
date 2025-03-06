@@ -5,7 +5,7 @@
 
 #define MASTER_INDEX    0
 #define MUSIC_INDEX     1
-#define SFX_INDEX       2
+#define SFX_INDEX       4
 
 #define MUSIC_FILE_COUNT 2
 #define SFX_FILE_COUNT 2

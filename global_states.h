@@ -1,26 +1,6 @@
 #ifndef GLOBAL_STATES_H
 #define GLOBAL_STATES_H
 
-typedef enum
-{
-    GAME_STATE_TITLE_SCREEN,
-    GAME_STATE_NEW_GAME,
-    GAME_STATE_LOAD_GAME,
-    GAME_STATE_SETTINGS,
-    GAME_STATE_EXIT,
-    GAME_STATE_GAMEPLAY,
-    GAME_STATE_UNKNOWN
-} game_state_e;
-game_state_e game_state = GAME_STATE_TITLE_SCREEN;
-
-
-typedef enum
-{
-    NEW_GAME_CHARACTER_SELECT,
-    NEW_GAME_UNKNOWN
-} new_game_state_e;
-new_game_state_e new_game_state = NEW_GAME_CHARACTER_SELECT;
-
 typedef enum 
 {
     TITLE_NONE,
@@ -33,22 +13,24 @@ title_screen title_screen_state = TITLE_NONE;
 
 typedef enum 
 {
-    CLASS_NONE,
-    CLASS_KNIGHT,
-    CLASS_PALADIN,
-    CLASS_MAGE,
-    CLASS_ARCHER
-} character_class_selection;
-character_class_selection character_class_selection_state = CLASS_NONE;
+    CLASS_SELECT_NONE,
+    CLASS_SELECT_KNIGHT,
+    CLASS_SELECT_PALADIN,
+    CLASS_SELECT_WIZARD,
+    CLASS_SELECT_ARCHER,
+    CLASS_SELECT_BACK
+} class_select_type;
+class_select_type class_select_state = CLASS_SELECT_NONE;
 
 typedef enum 
 {
-    CLASS_POINTS_NONE,
-    CLASS_POINTS_PERSONALITY,
-    CLASS_POINTS_PRESET,
-    CLASS_POINTS_MANUAL,
-} character_class_point_allocation_method;
-character_class_point_allocation_method character_class_point_allocation_method_state = CLASS_POINTS_NONE;
+    CLASS_ALLOCATION_NONE,
+    CLASS_ALLOCATION_PERSONALITY,
+    CLASS_ALLOCATION_PRESET,
+    CLASS_ALLOCATION_MANUAL,
+    CLASS_ALLOCATION_BACK
+} class_allocation_type;
+class_allocation_type class_allocation_state = CLASS_ALLOCATION_NONE;
 
 // ENTIRELY BASED on DQ3 remaster
 // https://game8.co/games/Dragon-Quest-3/archives/464271
@@ -74,17 +56,5 @@ typedef enum
     CLASS_NAME_CONFIRM
 } character_class_name_submission;
 character_class_name_submission character_class_name_submission_state = CLASS_NAME_NONE;
-
-typedef enum
-{
-    CONFIRMATION_YES,
-    CONFIRMATION_NO,
-    CONFIRMATION_NONE,
-} yes_or_no_buttons;
-yes_or_no_buttons yes_or_no_buttons_state =  CONFIRMATION_NONE;
-
-
-
-
 
 #endif
