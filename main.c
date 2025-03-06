@@ -450,22 +450,26 @@ void SetAssetPosition(asset_t *asset, int x, int y)
 }
 
 
-void InitializeAssetStats(asset_t *assets, stats_t *stats)
+void InitializeAssetStats(asset_t *asset, stats_t *stats)
 {
-    assets->stats.hp = stats->hp;
-    assets->stats.atk = stats->atk;
-    assets->stats.def = stats->def;
-    assets->stats.exp = stats->exp;
-
-    assets->conditions.is_collidable = true;
+    asset->stats.hp = stats->hp;
+    asset->stats.atk = stats->atk;
+    asset->stats.def = stats->def;
+    asset->stats.exp = stats->exp;
 }
 
-void InitializeAssetToRender(asset_t *assets, int x, int y, int w, int h)
+void InitializeAssetToRender(asset_t *asset, int x, int y, int w, int h)
 {
-    assets->body.x = x;
-    assets->body.y = y;
-    assets->body.w = w;
-    assets->body.h = h;
+    asset->body.x = x;
+    asset->body.y = y;
+    asset->body.w = w;
+    asset->body.h = h;
+}
+
+void InitializeAssetConditions(asset_t *asset)
+{
+    asset->conditions.is_collidable = true;
+    asset->conditions.is_movable = true;
 }
 
 void RenderAssetHealthBar(asset_t *assets)
@@ -1028,7 +1032,16 @@ int main(int argc, char *argv[])
     LoadAsset(&boulder_asset, "assets/boulder.png");
     InitializeAssetToRender(&boulder_asset, CameraX, CameraY, boulder_asset.w, boulder_asset.h);
     boulder_asset.conditions.is_collidable = true;
-  
+ 
+    asset_t boulder_wall_asset[5] = {0};
+    for (int i = 0; i < ArraySize(boulder_wall_asset); ++i)
+    {
+        LoadAsset(&boulder_wall_asset[i], "assets/boulder.png");
+        InitializeAssetToRender(&boulder_wall_asset[i], CameraX, CameraY, boulder_wall_asset[i].w, boulder_wall_asset[i].h);
+        boulder_wall_asset[i].conditions.is_collidable = true;
+
+    }
+
     asset_t forest_scenario_walls[2] = {0};
     forest_scenario_walls[0].body.x = 0;
     forest_scenario_walls[0].body.y = 240 - (48 + 24);
@@ -4364,14 +4377,7 @@ int main(int argc, char *argv[])
 
                                 if (test_scenarios.result & SCENARIO_FOREST)
                                 {
-                                    SetAssetPosition(&character_data.model, 128 + (16 * 17), 240 - 24);
-                                    SetAssetPosition(&oldman_asset, 128 + (16 * 18), 240 - 24);
-                                    SetAssetPosition(&boulder_asset, 128 - (16 * 4), 240 - 24);
-                                    SetAssetPosition(&dialogue_box_asset, SCREEN_CENTER_X, SCREEN_CENTER_Y);
-                                   
-                                    printf("before off: %d\n", test_scenarios.result);
-                                    test_scenarios.result &= (~SCENARIO_FOREST);
-                                    printf("after off: %d\n", test_scenarios.result);
+
                                    
                                 }
                             
@@ -4536,7 +4542,6 @@ int main(int argc, char *argv[])
                                         player_talking_to_oldman = false;
                                         hold_dialogue_box = false;
                                     }
-                                    printf("dialogue_index: %d\n", dialogue_index);
                                 }
 
                                 if (hold_dialogue_box_return_boulder)
@@ -4544,11 +4549,10 @@ int main(int argc, char *argv[])
                                     dialogue_index_2++;
                                     if (dialogue_index_2 > 1)
                                     {
-                                        dialogue_index_2 = -1;
+                                        dialogue_index_2 = 0;
                                         character_data.model.conditions.is_movable = true; 
                                         hold_dialogue_box_return_boulder = false;
                                     }
-                                    printf("dialogue_index_2: %d\n", dialogue_index_2);
                                 }
                             }
                           
@@ -5046,10 +5050,16 @@ int main(int argc, char *argv[])
                             SetAssetPosition(&oldman_asset, 128 + (16 * 18), 240 - 24);
                             SetAssetPosition(&boulder_asset, 128 - (16 * 4), 240 - 24);
                             SetAssetPosition(&dialogue_box_asset, SCREEN_CENTER_X, SCREEN_CENTER_Y);
-                          
+                         
+                            SetAssetPosition(&boulder_wall_asset[0], 128 + (16 * 20), 240);
+                            SetAssetPosition(&boulder_wall_asset[1], 128 + (16 * 20), 240 - 24);
+                            SetAssetPosition(&boulder_wall_asset[2], 128 + (16 * 20), 240 - 48);
+
+                            SetAssetPosition(&boulder_wall_asset[3], 128 + (16 * 19), 240 - 12);
+                            SetAssetPosition(&boulder_wall_asset[4], 128 + (16 * 19), 240 - 36);
+
                             InitAssetAdjacentHitBoxes(&oldman_asset);
                             
-                            //test_scenarios.result |= SCENARIO_FOREST;
                             test_scenarios.scenario[FOREST_INDEX].is_active = true;
                             personality_test.is_active = false;
                         } break;
@@ -5231,6 +5241,12 @@ int main(int argc, char *argv[])
                         CollisionYCheck(&boulder_asset, &forest_scenario_walls[i]);
                     }
 
+                    for (int i = 0; i < ArraySize(boulder_wall_asset); ++i)
+                    {
+                        CollisionXCheck(&character_data.model, &boulder_wall_asset[i]);
+                        CollisionYCheck(&character_data.model, &boulder_wall_asset[i]);
+                    }
+
                     // Boulder going out of bounds counts as ending the scene too
                     if (!player_is_out_of_bounds)
                     {
@@ -5312,9 +5328,6 @@ int main(int argc, char *argv[])
                                 player_talking_to_oldman = true;
                             }
                         }
-
-                            
-
                     }
 
                     if (!AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[0]) &&
@@ -5410,6 +5423,10 @@ int main(int argc, char *argv[])
                     RenderAndUpdateAsset(&character_data.model);
                     RenderAndUpdateAsset(&oldman_asset);
                     RenderAndUpdateAsset(&boulder_asset);
+
+                    for (int i = 0; i < ArraySize(boulder_wall_asset); ++i)
+                        RenderAndUpdateAsset(&boulder_wall_asset[i]);
+
                 }
 
 
