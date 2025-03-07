@@ -247,8 +247,6 @@ const char *castle_scenario[] = {
                     // (1) if no
     // (1) if no
     "...So you think even the orders of a king, if mistaken, need not to be followed?",
-        
-
 };
 
 void CursorForItems(menu_item_t *title_screen_options, asset_t *cursor, int x_offset, int y_offset)
@@ -804,7 +802,6 @@ typedef struct
 
 void StatOverview_Init(char *buffer, class_status_overview_t *dst, char *src)
 {
-    //char buffer[28];
     size_t total_width = 27;
     size_t append_len = strlen(src);
     size_t insert_index = total_width - append_len;
@@ -1918,8 +1915,8 @@ int main(int argc, char *argv[])
         }
     }
 
-
-
+    SDL_Color stat_overview_color[10] = {0};
+   
     while (Running) 
     {
 
@@ -2656,11 +2653,11 @@ int main(int argc, char *argv[])
                                             } break;
                                             case 48:
                                             {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CASTLE;
+                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST;//CLASS_PERSONALITY_RESULT_CASTLE;
                                             } break;
                                             case 49:
                                             {
-                                               character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CASTLE; 
+                                               character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST;//CLASS_PERSONALITY_RESULT_CASTLE; 
                                             } break;
                                         }
                                     } break;
@@ -4323,8 +4320,6 @@ int main(int argc, char *argv[])
                                                white,
                                                2);
                     }
- 
-
                 }
 
                 if (test_scenarios.scenario[THEATER_INDEX].is_active)
@@ -4439,6 +4434,10 @@ int main(int argc, char *argv[])
                             PERSONALITY_RESULT = show_off;
                             SCENARIO_INDEX = VILLAGE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
+
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = show_off.colors[i];
+
                             
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
@@ -4449,6 +4448,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = VILLAGE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = slippery_devil.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4458,6 +4461,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = VILLAGE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = shrinking_violet.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4469,6 +4476,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = MONSTER_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = paragon.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4478,6 +4489,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = MONSTER_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = wimp.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4487,6 +4502,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = MONSTER_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = spoilt_brat.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4496,6 +4515,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = MONSTER_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = egghead.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4504,7 +4527,11 @@ int main(int argc, char *argv[])
                             PERSONALITY_RESULT = klutz;
                             SCENARIO_INDEX = MONSTER_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
-                            
+                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = klutz.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4516,6 +4543,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = DESERT_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = daredevil.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4524,16 +4555,24 @@ int main(int argc, char *argv[])
                             PERSONALITY_RESULT = idealist;
                             SCENARIO_INDEX = DESERT_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
-                            
+                              
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = idealist.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break; 
                         case PERSONALITY_THUG:
                         {
-                            PERSONALITY_RESULT = narcissist; // thug;
+                            PERSONALITY_RESULT = thug;
                             SCENARIO_INDEX = DESERT_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = thug.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4544,7 +4583,11 @@ int main(int argc, char *argv[])
                             PERSONALITY_RESULT = straight_arrow;
                             SCENARIO_INDEX = CAVE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
-                            
+                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = straight_arrow.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4554,6 +4597,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = CAVE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = mule.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4562,7 +4609,11 @@ int main(int argc, char *argv[])
                             PERSONALITY_RESULT = narcissist;
                             SCENARIO_INDEX = CAVE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
-                            
+                                                        
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = narcissist.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4572,6 +4623,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = CAVE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = sore_loser.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4582,7 +4637,10 @@ int main(int argc, char *argv[])
                             PERSONALITY_RESULT = lazybones;
                             SCENARIO_INDEX = FOREST_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
-                            
+                                                
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = lazybones.colors[i];
+        
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4592,6 +4650,9 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = FOREST_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = plugger.colors[i];
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4600,7 +4661,11 @@ int main(int argc, char *argv[])
                             PERSONALITY_RESULT = drudge;
                             SCENARIO_INDEX = FOREST_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
-                            
+                                                    
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = drudge.colors[i];
+
+    
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4610,6 +4675,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = FOREST_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = tough_cookie.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4620,7 +4689,11 @@ int main(int argc, char *argv[])
                             PERSONALITY_RESULT = daydreamer;
                             SCENARIO_INDEX = TOWER_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
-                            
+                                                        
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = daydreamer.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4630,6 +4703,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = TOWER_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = socialite.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4640,7 +4717,11 @@ int main(int argc, char *argv[])
                             PERSONALITY_RESULT = free_spirit;
                             SCENARIO_INDEX = THEATER_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
-                            
+                                                      
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = free_spirit.colors[i];
+
+  
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4650,6 +4731,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = THEATER_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = crybaby.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4659,6 +4744,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = THEATER_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = lone_wolf.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4668,6 +4757,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = THEATER_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = lout.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4678,7 +4771,11 @@ int main(int argc, char *argv[])
                             PERSONALITY_RESULT = vamp;
                             SCENARIO_INDEX = CASTLE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
-                            
+                                                   
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = vamp.colors[i];
+
+     
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4688,6 +4785,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = CASTLE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = wit.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4697,6 +4798,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = CASTLE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = clown.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4706,6 +4811,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = CASTLE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = good_egg.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4715,6 +4824,10 @@ int main(int argc, char *argv[])
                             SCENARIO_INDEX = CASTLE_INDEX;
                             SCENARIO_DIALOGUE_SIZE = 13;
                             
+                            for (int i = 0; i < 10; ++i)
+                                stat_overview_color[i] = happy_camper.colors[i];
+
+
                             PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
@@ -4827,10 +4940,21 @@ int main(int argc, char *argv[])
         if (is_class_overview_screen)
         {
             SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-           
+          
+            static char full_text[10][28];
+            static int full_len;
+            static int color_count;
+            static int non_colored_len;
+            static int base_x_arr[10];
+            static int base_y_arr[10];
+            static int base_x;
+            static int base_y;
+            static int offset_x;
+            static int offset_x_arr[10];
+
+            static char intBuffer[10][28]; // Enough to hold any 32-bit integer string representation.
             if (init_name)
             {
-
                 char buffer[28];
                 char *name = NameEntry_GetName(&name_entry);
                 char *class_name = character_data.class.name;
@@ -4839,7 +4963,6 @@ int main(int argc, char *argv[])
                 StatOverview_Init(buffer, &class_status_overview[2], class_name);
                 StatOverview_Init(buffer, &class_status_overview[3], class_personality);
 
-                char intBuffer[10][28]; // Enough to hold any 32-bit integer string representation.
                 sprintf(intBuffer[0], "%d", character_data.base_stats.strength);
                 sprintf(intBuffer[1], "%d", character_data.base_stats.resilience);
                 sprintf(intBuffer[2], "%d", character_data.base_stats.agility);
@@ -4853,7 +4976,6 @@ int main(int argc, char *argv[])
                 
                 StatOverview_Init(buffer, &class_status_overview[4], intBuffer[0]);
                 StatOverview_Init(buffer, &class_status_overview[5], intBuffer[1]);
-                
                 StatOverview_Init(buffer, &class_status_overview[6], intBuffer[2]);
                 StatOverview_Init(buffer, &class_status_overview[7], intBuffer[3]);
                 StatOverview_Init(buffer, &class_status_overview[8], intBuffer[4]);
@@ -4862,8 +4984,23 @@ int main(int argc, char *argv[])
                 StatOverview_Init(buffer, &class_status_overview[11], intBuffer[7]);
                 StatOverview_Init(buffer, &class_status_overview[12], intBuffer[8]);
                 StatOverview_Init(buffer, &class_status_overview[13], intBuffer[9]);
-             
-             
+     
+                full_len = strlen(class_status_overview[4].text);
+                color_count = 3;
+                non_colored_len = full_len - color_count;
+                if (non_colored_len < 0)
+                    non_colored_len = 0;     
+
+                for (int i = 0, j = 4; i < 10 && j < 14; ++i, ++j)
+                {
+
+                    PushString(full_text[i], class_status_overview[j].text);
+
+                    base_x_arr[i] = class_status_overview[j].pos.x;
+                    base_y_arr[i] = class_status_overview[j].pos.y;
+
+                    offset_x_arr[i] = base_x_arr[i] + non_colored_len * GLYPH_WIDTH;
+                }
 
                 init_name = false;
             }
@@ -4871,16 +5008,22 @@ int main(int argc, char *argv[])
 
             for (int i = 0; i < ArraySize(class_status_overview); ++i)
             {
-                // TODO: Color code stat attributes to what's a boon, bane or neutral
                 RenderText(SDLWindow.Renderer, font_atlas,
                            class_status_overview[i].pos.x,
                            class_status_overview[i].pos.y,
                            class_status_overview[i].text,
                            white);
+            }
 
+            for (int i = 0; i < 10; ++i)
+            {
+                RenderText(SDLWindow.Renderer, font_atlas,
+                       offset_x_arr[i],
+                       base_y_arr[i],
+                       full_text[i] + non_colored_len,
+                       stat_overview_color[i]);
             }
             
-
 
             RenderAsset(&character_creation_screen.info[character_creation_screen.index].asset, 
                          (SCREEN_CENTER_X - (32/2)) + 32, SCREEN_CENTER_Y, 
@@ -4888,39 +5031,8 @@ int main(int argc, char *argv[])
 
         }
         
-        // Final screen from new_game is the character overview into the game
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (is_game_running)
         {
-            //Sound_PlayMusic(&ambience);
             UpdatePlayer(&player_asset, &sfx_move);
             for (int i = 0; i < ArraySize(enemy_arr); ++i)
             {

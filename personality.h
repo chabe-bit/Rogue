@@ -81,6 +81,7 @@ typedef struct
     int x_coords[DESCRIPTION_COUNT];
     char *scenario;
     char *name;
+    SDL_Color colors[10];
     char *description[DESCRIPTION_COUNT];
 } test_personality_test_results_t;
 
