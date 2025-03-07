@@ -304,7 +304,7 @@ static void LoadAsset(asset_t *asset, const char *filename)
     stbi_image_free(data);  
 }
 
-static bool AABB(SDL_Rect *a, SDL_Rect *b)
+bool AABB(SDL_Rect *a, SDL_Rect *b)
 {
     if(a->y + a->h <= b->y) return false;
 
@@ -317,21 +317,19 @@ static bool AABB(SDL_Rect *a, SDL_Rect *b)
     return true;
 }
 
-static inline void 
-CollisionXCheck(asset_t *player, asset_t *assets)
+void CollisionXCheck(asset_t *a, asset_t *b)
 {
-    if (AABB(&player->body, &assets->body) && assets->conditions.is_collidable)
+    if (AABB(&a->body, &b->body) && b->conditions.is_collidable)
     {
-        player->body.x = player->x;
+        a->body.x = a->x;
     }
 }  
 
-static inline void 
-CollisionYCheck(asset_t *player, asset_t *assets)
+void CollisionYCheck(asset_t *a, asset_t *b)
 {
-    if (AABB(&player->body, &assets->body) && assets->conditions.is_collidable)
+    if (AABB(&a->body, &b->body) && b->conditions.is_collidable)
     {
-        player->body.y = player->y;
+        a->body.y = a->y;
     }
 }
 
@@ -409,49 +407,51 @@ void UpdateAsset(asset_t *asset, asset_t *player)
     asset->x = asset->body.x; 
     asset->y = asset->body.y; 
 
-    if (asset->direction.up)
-    {      
-        if (AABB(&asset->body, &player->body) && 
-            asset->conditions.is_collidable)
-        {
-            asset->body.y -= asset->body.h;
+    if (asset->conditions.is_movable)
+    {
+        if (asset->direction.up)
+        {      
+            if (AABB(&asset->body, &player->body) && 
+                asset->conditions.is_collidable)
+            {
+                asset->body.y -= asset->body.h;
+            }
+
             asset->direction.up = false;
         }
 
-       
-    }
-
-    if (asset->direction.down)
-    {
-        if (AABB(&asset->body, &player->body) && 
-            asset->conditions.is_collidable)
+        if (asset->direction.down)
         {
-            asset->body.y += asset->body.h; 
-            asset->direction.down= false;
+            if (AABB(&asset->body, &player->body) && 
+                asset->conditions.is_collidable)
+            {
+                asset->body.y += asset->body.h; 
+            }
+                
+            asset->direction.down = false;
         }
-       
-    }
 
-    if (asset->direction.left)
-    {
-        if (AABB(&asset->body, &player->body) && 
-            asset->conditions.is_collidable)
+        if (asset->direction.left)
         {
-            asset->body.x -= asset->body.w; 
+            if (AABB(&asset->body, &player->body) && 
+                asset->conditions.is_collidable)
+            {
+                asset->body.x -= asset->body.w; 
+            }
+           
             asset->direction.left = false;
         }
-       
-    }
 
-    if (asset->direction.right)
-    {
-        if (AABB(&asset->body, &player->body) && 
-            asset->conditions.is_collidable)
+        if (asset->direction.right)
         {
-            asset->body.x += asset->body.w; 
+            if (AABB(&asset->body, &player->body) && 
+                asset->conditions.is_collidable)
+            {
+                asset->body.x += asset->body.w; 
+            }
+           
             asset->direction.right = false;
         }
-       
     }
 }
 
@@ -1014,6 +1014,7 @@ int main(int argc, char *argv[])
     LoadAsset(&boulder_asset, "assets/boulder.png");
     InitializeAssetToRender(&boulder_asset, CameraX, CameraY, boulder_asset.w, boulder_asset.h);
     boulder_asset.conditions.is_collidable = true;
+    boulder_asset.conditions.is_movable = true;
  
     asset_t boulder_wall_asset[5] = {0};
     for (int i = 0; i < ArraySize(boulder_wall_asset); ++i)
@@ -3929,16 +3930,7 @@ int main(int argc, char *argv[])
                 {
                     UpdatePlayer(&character_data.model, &sfx_move);
                     UpdateAsset(&boulder_asset, &character_data.model); 
-                    
-                    CollisionXCheck(&character_data.model, &boulder_asset);
-                    CollisionYCheck(&character_data.model, &boulder_asset);
-                   
-                    CollisionXCheck(&character_data.model, &oldman_asset);
-                    CollisionYCheck(&character_data.model, &oldman_asset);
-                    
-                    CollisionXCheck(&boulder_asset, &oldman_asset);
-                    CollisionYCheck(&boulder_asset, &oldman_asset);
-                   
+
                     for (int i = 0; i < ArraySize(forest_scenario_walls); ++i)
                     {
                         CollisionXCheck(&character_data.model, &forest_scenario_walls[i]);
@@ -3947,12 +3939,21 @@ int main(int argc, char *argv[])
                         CollisionXCheck(&boulder_asset, &forest_scenario_walls[i]);
                         CollisionYCheck(&boulder_asset, &forest_scenario_walls[i]);
                     }
-
+                    
                     for (int i = 0; i < ArraySize(boulder_wall_asset); ++i)
                     {
                         CollisionXCheck(&character_data.model, &boulder_wall_asset[i]);
                         CollisionYCheck(&character_data.model, &boulder_wall_asset[i]);
+
+                        CollisionXCheck(&boulder_asset, &boulder_wall_asset[i]);
+                        CollisionYCheck(&boulder_asset, &boulder_wall_asset[i]);
                     }
+
+                    CollisionXCheck(&character_data.model, &boulder_asset);
+                    CollisionYCheck(&character_data.model, &boulder_asset);
+                   
+                    CollisionXCheck(&character_data.model, &oldman_asset);
+                    CollisionYCheck(&character_data.model, &oldman_asset);
 
                     // Boulder going out of bounds counts as ending the scene too
                     if (!player_is_out_of_bounds)
