@@ -3928,6 +3928,12 @@ int main(int argc, char *argv[])
 
                 if (test_scenarios.scenario[FOREST_INDEX].is_active)
                 {
+                    if (!first_forest_entrance)
+                    {
+                        hold_dialogue_box = true;
+                        first_forest_entrance = true;
+                    }
+
                     UpdatePlayer(&character_data.model, &sfx_move);
                     UpdateAsset(&boulder_asset, &character_data.model); 
 
