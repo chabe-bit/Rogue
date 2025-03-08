@@ -837,12 +837,30 @@ void StatOverview_Init(char *buffer, class_status_overview_t *dst, char *src)
     printf("hey: %s\n", dst->text);
 }
 
-char *Game_RarityRoller()
+typedef struct
 {
-    // Proof of concept for rolling a rarity
+    char *name;
+    asset_t slot;
+    asset_t type[5];
+} game_rarity_roller_t;
+
+// Macro to center an asset within another asset 
+// TODO: Revisit
+#define CENTER_ASSET_X(x, offset) (x + offset)
+#define CENTER_ASSET_Y(y, offset) (y + offset)
+
+game_rarity_roller_t Game_RarityRoller(asset_t rarity_types[])
+{
+    int arr_size = ArraySize(rarity_types);
+    printf("rarity types: %d\n", arr_size);
+ 
+    // The color of the slots will change upon the rarity of the
+    // item; weapons, armor and items such as potions.
+    // Default color is common -> white (maybe)
+
     u32 rarity_roller = rand() % 99;
-    char *rarity_name = NULL; 
-    
+    game_rarity_roller_t rarity_agent = {0}; // Agent because why not
+
     // Out of 100 values, there are 5 different regions, each of which will have own threshold/percentage-rate
     int rarity_common_threshold     = 60; // 60% 
     int rarity_rare_threshold       = 85; // 25% 
@@ -852,40 +870,45 @@ char *Game_RarityRoller()
     
     if (rarity_roller < rarity_common_threshold)
     {
-        rarity_name = "Common";
-        printf("Rarity: %s | Rolled: %d\n", rarity_name, rarity_roller);
+        rarity_agent.name = "Common";
+        rarity_agent.type[0] = rarity_types[0];
+        printf("Rarity: %s | Rolled: %d\n", rarity_agent.name, rarity_roller);
     }
     else if (rarity_roller < rarity_rare_threshold && 
              rarity_roller > rarity_common_threshold)
     {
-        rarity_name = "Rare";
-        printf("Rarity: %s | Rolled: %d\n", rarity_name, rarity_roller);
+        rarity_agent.name = "Rare";
+        rarity_agent.type[1] = rarity_types[1];
+        printf("Rarity: %s | Rolled: %d\n", rarity_agent.name, rarity_roller);
     }
     else if (rarity_roller < rarity_epic_threshold && 
              rarity_roller > rarity_rare_threshold)
     {
-        rarity_name = "Epic";
-        printf("Rarity: %s | Rolled: %d\n", rarity_name, rarity_roller);
+        rarity_agent.name = "Epic";
+        rarity_agent.type[2] = rarity_types[2];
+        printf("Rarity: %s | Rolled: %d\n", rarity_agent.name, rarity_roller);
     }
     else if (rarity_roller < rarity_legenary_threshold && 
              rarity_roller > rarity_epic_threshold)
     {
-        rarity_name = "Legendary";
-        printf("Rarity: %s | Rolled: %d\n", rarity_name, rarity_roller);
+        rarity_agent.name = "Legendary";
+        rarity_agent.type[3] = rarity_types[3];
+        printf("Rarity: %s | Rolled: %d\n", rarity_agent.name, rarity_roller);
     }
     else if (rarity_roller < rarity_mythical_threshold && 
              rarity_roller > rarity_legenary_threshold)
     {
-        rarity_name = "Mythical";
-        printf("Rarity: %s | Rolled: %d\n", rarity_name, rarity_roller);
+        rarity_agent.name = "Mythical";
+        rarity_agent.type[4] = rarity_types[4];
+        printf("Rarity: %s | Rolled: %d\n", rarity_agent.name, rarity_roller);
     }
     else
     {
-        rarity_name = "Invalid";
+        rarity_agent.name = "Invalid";
         fprintf(stderr, "Invalid rarity rolled: %d\n", rarity_roller);
     }    
 
-    return rarity_name;
+    return rarity_agent;
 }
 
 // ------------------------------------------------------------------------------
@@ -2028,11 +2051,26 @@ int main(int argc, char *argv[])
         // purple -> epic -> 8%
         // yellow -> legendary -> 5%
         // red -> mythical -> 1%
-        char *rarity; 
+        //char *rarity; 
        
         asset_t model;
+        game_rarity_roller_t rarity;
     } game_equipment_t;
-   
+ 
+    asset_t slot_default    = IdealLoadAsset("assets/ui/default_slot.png");
+    asset_t slot_common     = IdealLoadAsset("assets/ui/common_slot.png");
+    asset_t slot_rare       = IdealLoadAsset("assets/ui/rare_slot.png");
+    asset_t slot_epic       = IdealLoadAsset("assets/ui/epic_slot.png");
+    asset_t slot_legendary  = IdealLoadAsset("assets/ui/legendary_slot.png");
+    asset_t slot_mythical     = IdealLoadAsset("assets/ui/mythical_slot.png");
+
+    asset_t rarity_types[5] = {0};
+    rarity_types[0] = slot_common;
+    rarity_types[2] = slot_rare;
+    rarity_types[3] = slot_epic;
+    rarity_types[4] = slot_legendary;
+    rarity_types[5] = slot_mythical;
+
     // long sword example
     game_equipment_t equipment[1] = {0};
     equipment[0].id = 0;
@@ -2042,7 +2080,7 @@ int main(int argc, char *argv[])
     equipment[0].range = 2; // 2 tiles
      
     equipment[0].name = "Long Sword";
-    equipment[0].rarity = Game_RarityRoller(); // randomly roll through the rarities and apply name, common default, we may even have it roll as well when the player spawns and not only through chests, just for that extra spice. 
+    equipment[0].rarity = Game_RarityRoller(rarity_types); // randomly roll through the rarities and apply name, common default, we may even have it roll as well when the player spawns and not only through chests, just for that extra spice. 
     equipment[0].model = IdealLoadAsset("assets/weapons/long_sword.png");
 
 
@@ -2053,20 +2091,38 @@ int main(int argc, char *argv[])
         //  you're picking it then it can be stacked.
 
         bool occupied;
+        u32 quantity; // only items that share the same ID can stack
         asset_t asset;
     } game_command_menu_slots_t;
 
+    #define COMMAND_MENU_SLOT_COUNT 24 // Must be in multiples of 6
     typedef struct
     {
         int index;
         bool is_active;
 
-        game_command_menu_slots_t slots[12]; // 12 inventory slots
+        game_command_menu_slots_t slots[COMMAND_MENU_SLOT_COUNT]; // 12 inventory slots
     } game_command_menu_items_t;
 
-    game_command_menu_items_t gcm_items = {0};
-    for (int i = 0; i < 18; ++i)
-        gcm_items.slots[i].asset = IdealLoadAsset("assets/ui/slot.png"); // placeholder for slot, I'd like it squared so we should create it to be 16x16 at least, 24x24 for larger
+    // For now, not efficient but will work
+    int item_slot_x_coords[COMMAND_MENU_SLOT_COUNT] = {
+
+    };
+/*
+    asset_t slot_default    = IdealLoadAsset("assets/ui/default_slot.png");
+    asset_t slot_common     = IdealLoadAsset("assets/ui/common_slot.png");
+    asset_t slot_rare       = IdealLoadAsset("assets/ui/rare_slot.png");
+    asset_t slot_epic       = IdealLoadAsset("assets/ui/epic_slot.png");
+    asset_t slot_legendary  = IdealLoadAsset("assets/ui/legendary_slot.png");
+    asset_t slot_mythic     = IdealLoadAsset("assets/ui/mythical_slot.png");
+*/
+    game_command_menu_items_t game_command_menu_items = {0};
+    game_command_menu_items.slots[0].occupied = true;
+
+    for (int i = 0; i < COMMAND_MENU_SLOT_COUNT; ++i)
+    {
+        game_command_menu_items.slots[i].asset = slot_default;
+    }
 
     typedef struct
     {
@@ -2134,13 +2190,15 @@ int main(int argc, char *argv[])
         menu_item_t options[3]; // items, equipment and status for now
     } game_command_menu_t;
 
-#define COMMAND_MENU_ITEM       0
-#define COMMAND_MENU_EQUIP      1
-#define COMMAND_MENU_STATUS     2
+#define COMMAND_MENU_OPTION_COUNT       3
+#define COMMAND_MENU_ITEM               0
+#define COMMAND_MENU_EQUIP              1
+#define COMMAND_MENU_STATUS             2
 
     game_command_menu_t game_command_menu = {0};
     game_command_menu.box = IdealLoadAsset("assets/ui/command_menu_box.png");
-    game_command_menu.option_box[COMMAND_MENU_ITEM] = IdealLoadAsset("assets/ui/command_menu_options_box.png");
+    for (int i = 0; i < COMMAND_MENU_OPTION_COUNT; ++i)
+        game_command_menu.option_box[i] = IdealLoadAsset("assets/ui/command_menu_options_box - mockup.png");
 
     game_command_menu.options[0].text = "Items",
     game_command_menu.options[0].x = CENTER_TEXT_X("Items", 72),
@@ -5354,6 +5412,49 @@ int main(int argc, char *argv[])
                 // Option box rendered is relative to the option hovered by using the index
                 RenderAssetInCameraSpace(&game_command_menu.option_box[game_command_menu.index], 
                                          SCREEN_CENTER_X - 112, SCREEN_CENTER_Y - (game_command_menu.option_box[game_command_menu.index].h / 2));
+
+                switch (game_command_menu_items.index)
+                {
+                    case 0:
+                    {
+                    } break;
+                    default:
+                    {
+                        
+                    } break;
+                }
+
+                if (game_command_menu_items.slots[0].occupied)
+                {
+                    
+                }
+
+
+                switch (game_command_menu.index)
+                {
+                    case 0: // Items
+                    {
+                        RenderText(SDLWindow.Renderer, font_atlas,
+                                   CENTER_TEXT_X("1", 12),
+                                   SCREEN_CENTER_Y + 2, 
+                                   "1",
+                                   white);
+
+                        RenderAssetInCameraSpace(&game_command_menu_items.slots[0].asset, 
+                                                 SCREEN_CENTER_X - 90, 
+                                                 SCREEN_CENTER_Y - 50);
+
+
+                        RenderAssetInCameraSpace(&equipment[0].model, 
+                                                 game_command_menu_items.slots[0].asset.body.x + 2, 
+                                                 game_command_menu_items.slots[0].asset.body.y + 2);
+                    } break;
+                    default:
+                    {
+
+                    } break;
+                }
+
 
                 CursorForItems(&game_command_menu.options[game_command_menu.index], &right_cursor_asset, 4, 1);
                 RenderAssetInCameraSpace(&right_cursor_asset,
