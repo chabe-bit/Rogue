@@ -35,7 +35,7 @@ typedef double f64;
 #define WINDOW_HEIGHT 464
 
 #define ASPECT_WIDTH  256
-#define ASPECT_HEIGHT 240
+#define ASPECT_HEIGHT 244
 
 #define SCREEN_CENTER_X (ASPECT_WIDTH  / 2)
 #define SCREEN_CENTER_Y (ASPECT_HEIGHT / 2)

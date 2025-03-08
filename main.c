@@ -537,12 +537,12 @@ void RenderAsset(asset_t *asset, int x, int y, int w, int h)
 }
 
 // Render any asset in camera space e.g UI, HUD
-void RenderAssetInCameraSpace(asset_t *asset, int x, int y, int w, int h)
+void RenderAssetInCameraSpace(asset_t *asset, int x, int y)
 {
     asset->body.x = x;
     asset->body.y = y;
-    asset->body.w = w;
-    asset->body.h = h;
+    asset->body.w = asset->w;
+    asset->body.h = asset->h;
 
     if (asset->texture)
     {
@@ -837,6 +837,56 @@ void StatOverview_Init(char *buffer, class_status_overview_t *dst, char *src)
     printf("hey: %s\n", dst->text);
 }
 
+char *Game_RarityRoller()
+{
+    // Proof of concept for rolling a rarity
+    u32 rarity_roller = rand() % 99;
+    char *rarity_name = NULL; 
+    
+    // Out of 100 values, there are 5 different regions, each of which will have own threshold/percentage-rate
+    int rarity_common_threshold     = 60; // 60% 
+    int rarity_rare_threshold       = 85; // 25% 
+    int rarity_epic_threshold       = 93; // 8%
+    int rarity_legenary_threshold   = 98; // 5%
+    int rarity_mythical_threshold   = 99; // 1% 
+    
+    if (rarity_roller < rarity_common_threshold)
+    {
+        rarity_name = "Common";
+        printf("Rarity: %s | Rolled: %d\n", rarity_name, rarity_roller);
+    }
+    else if (rarity_roller < rarity_rare_threshold && 
+             rarity_roller > rarity_common_threshold)
+    {
+        rarity_name = "Rare";
+        printf("Rarity: %s | Rolled: %d\n", rarity_name, rarity_roller);
+    }
+    else if (rarity_roller < rarity_epic_threshold && 
+             rarity_roller > rarity_rare_threshold)
+    {
+        rarity_name = "Epic";
+        printf("Rarity: %s | Rolled: %d\n", rarity_name, rarity_roller);
+    }
+    else if (rarity_roller < rarity_legenary_threshold && 
+             rarity_roller > rarity_epic_threshold)
+    {
+        rarity_name = "Legendary";
+        printf("Rarity: %s | Rolled: %d\n", rarity_name, rarity_roller);
+    }
+    else if (rarity_roller < rarity_mythical_threshold && 
+             rarity_roller > rarity_legenary_threshold)
+    {
+        rarity_name = "Mythical";
+        printf("Rarity: %s | Rolled: %d\n", rarity_name, rarity_roller);
+    }
+    else
+    {
+        rarity_name = "Invalid";
+        fprintf(stderr, "Invalid rarity rolled: %d\n", rarity_roller);
+    }    
+
+    return rarity_name;
+}
 
 // ------------------------------------------------------------------------------
 
@@ -934,9 +984,9 @@ int main(int argc, char *argv[])
     LoadAsset(&title_screen_asset, "assets/blank_screen.png");
     InitializeAssetToRender(&title_screen_asset, 0, 0, ASPECT_WIDTH, ASPECT_HEIGHT);
     
-    asset_t new_game_menu = {0};
-    LoadAsset(&new_game_menu, "assets/new_game_screen.png");
-    InitializeAssetToRender(&new_game_menu, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+    asset_t new_game_command_menu = {0};
+    LoadAsset(&new_game_command_menu, "assets/new_game_screen.png");
+    InitializeAssetToRender(&new_game_command_menu, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
     
     InitializeCamera();
     int CameraX = (int)(-SDLCamera.X);
@@ -1125,6 +1175,7 @@ int main(int argc, char *argv[])
     asset_t gold_coin_count_bg_asset = {0};
     LoadAsset(&gold_coin_count_bg_asset, "assets/ui/gold_coin_count_background.png");
     InitializeAssetToRender(&gold_coin_count_bg_asset, 0, 0, gold_coin_count_bg_asset.w, gold_coin_count_bg_asset.h);
+
 
     typedef struct class_select_t
     {       
@@ -1969,57 +2020,19 @@ int main(int argc, char *argv[])
         u32 sell_value;
 
         u32 range;
-        const char *name;
-        const char *description; // debatable, 
+        char *name;
+        char *effect; // may have different effects from its rarity 
         
         // white -> common -> 61% 
         // blue -> rare -> 25%
         // purple -> epic -> 8%
         // yellow -> legendary -> 5%
         // red -> mythical -> 1%
-        const char *rarity; 
+        char *rarity; 
        
         asset_t model;
     } game_equipment_t;
-    
-    int rarity_roller = rand() % 99;
-
-    // Out of 100 values, there are 5 different regions, each of which will have own threshold/percentage-rate
-    int rarity_common_threshold = 60; // ~60% chance
-    int rarity_rare_threshold = 85; 
-    int rarity_epic_threshold = 93; 
-    int rarity_legenary_threshold = 98; 
-    int rarity_mythical_threshold = 99; // 0 - 99 == 100
-    
-    if (rarity_roller <= rarity_common_threshold)
-    {
-        printf("common! 60 percent \n");
-    }
-    else if (rarity_roller <= rarity_rare_threshold && 
-             rarity_roller > rarity_common_threshold)
-    {
-        printf("rare! 25 percent \n");
-    }
-    else if (rarity_roller <= rarity_epic_threshold && 
-             rarity_roller > rarity_rare_threshold)
-    {
-        printf("epic! 8 percent \n");
-    }
-    else if (rarity_roller <= rarity_legenary_threshold && 
-             rarity_roller > rarity_epic_threshold)
-    {
-        printf("legendary! 5 percent \n");
-    }
-    else if (rarity_roller <= rarity_mythical_threshold && 
-             rarity_roller > rarity_legenary_threshold)
-    {
-        printf("mythical! 1 percent \n");
-    }
-    else
-    {
-        printf("invalid rarity\n");
-    }
-
+   
     // long sword example
     game_equipment_t equipment[1] = {0};
     equipment[0].id = 0;
@@ -2029,7 +2042,7 @@ int main(int argc, char *argv[])
     equipment[0].range = 2; // 2 tiles
      
     equipment[0].name = "Long Sword";
-    equipment[0].rarity = "Common"; // randomly roll through the rarities and apply name, common default, we may even have it roll as well when the player spawns and not only through chests, just for that extra spice. 
+    equipment[0].rarity = Game_RarityRoller(); // randomly roll through the rarities and apply name, common default, we may even have it roll as well when the player spawns and not only through chests, just for that extra spice. 
     equipment[0].model = IdealLoadAsset("assets/weapons/long_sword.png");
 
 
@@ -2048,14 +2061,12 @@ int main(int argc, char *argv[])
         int index;
         bool is_active;
 
-        game_command_menu_slots_t slots[18]; // 18 inventory slots
+        game_command_menu_slots_t slots[12]; // 12 inventory slots
     } game_command_menu_items_t;
 
     game_command_menu_items_t gcm_items = {0};
     for (int i = 0; i < 18; ++i)
-        gcm_items.slots[i].asset = IdealLoadAsset("assets/sprites/archer.png"); // placeholder for slot, I'd like it squared so we should create it to be 16x16 at least, 24x24 for larger
-
-
+        gcm_items.slots[i].asset = IdealLoadAsset("assets/ui/slot.png"); // placeholder for slot, I'd like it squared so we should create it to be 16x16 at least, 24x24 for larger
 
     typedef struct
     {
@@ -2095,11 +2106,11 @@ int main(int argc, char *argv[])
         // the cursor over to that box, in this case of the 'items', the player will
         // enter their inventory to examine or use their items.
         
-        //   |        | > | Items |
+        //   |        | > | Items     |
         //   |        |   | Equipment |
-        //   |        |   | Status |
-        //   |        |   | ... |
-        //   |        |   | ... |
+        //   |        |   | Status    |
+        //   |        |   | ...       |
+        //   |        |   | ...       |
 
 
         /* Items -> Overview of entire inventory, player can use items and only examine equipments
@@ -2117,13 +2128,33 @@ int main(int argc, char *argv[])
         bool is_opened;
     
         // Asset for the command menu and respective options (items, equipment ...)
-        asset_t command_menu;
-        asset_t menu_box[3];
+        asset_t box;
+        asset_t option_box[3];
         
         menu_item_t options[3]; // items, equipment and status for now
     } game_command_menu_t;
 
-    game_command_menu_t game_menu = {0};
+#define COMMAND_MENU_ITEM       0
+#define COMMAND_MENU_EQUIP      1
+#define COMMAND_MENU_STATUS     2
+
+    game_command_menu_t game_command_menu = {0};
+    game_command_menu.box = IdealLoadAsset("assets/ui/command_menu_box.png");
+    game_command_menu.option_box[COMMAND_MENU_ITEM] = IdealLoadAsset("assets/ui/command_menu_options_box.png");
+
+    game_command_menu.options[0].text = "Items",
+    game_command_menu.options[0].x = CENTER_TEXT_X("Items", 72),
+    game_command_menu.options[0].y = SCREEN_CENTER_Y - 48;
+    
+    game_command_menu.options[1].text = "Equip",
+    game_command_menu.options[1].x = CENTER_TEXT_X("Equip", 72),
+    game_command_menu.options[1].y = SCREEN_CENTER_Y - 32;
+
+    game_command_menu.options[2].text = "Status",
+    game_command_menu.options[2].x = CENTER_TEXT_X("Status", 72),
+    game_command_menu.options[2].y = SCREEN_CENTER_Y - 16;
+
+
 
     while (Running) 
     {
@@ -2223,6 +2254,15 @@ int main(int argc, char *argv[])
                                         personality_scenario[0].index = ArraySize(personality_scenario[0].info.monster_options) - 1;
                                 }
 
+                                if (is_game_running && game_command_menu.is_opened)
+                                {
+                                    game_command_menu.index--;
+                                    if (game_command_menu.index < 0)
+                                        game_command_menu.index = ArraySize(game_command_menu.options) - 1;
+                                    printf("game command index: %d\n", game_command_menu.index); 
+                                    Sound_PlaySFX(&master_volume.sfx[1]->wav); // Change the sfx
+                                }
+
                             } break;
                             case SDLK_s:
                             {
@@ -2275,6 +2315,16 @@ int main(int argc, char *argv[])
                                     personality_scenario[0].index++;
                                     if (personality_scenario[0].index >= ArraySize(personality_scenario[0].info.monster_options))
                                         personality_scenario[0].index = 0;
+                                }
+
+                                if (is_game_running && game_command_menu.is_opened)
+                                {
+                                    game_command_menu.index++;
+                                    if (game_command_menu.index >= ArraySize(game_command_menu.options))
+                                        game_command_menu.index = 0;
+
+                                    printf("game command index: %d\n", game_command_menu.index); 
+                                    Sound_PlaySFX(&master_volume.sfx[1]->wav);
                                 }
                             } break;
                             case SDLK_a:
@@ -2537,14 +2587,21 @@ int main(int argc, char *argv[])
                             } break;
                             case SDLK_TAB:
                             {
-                                if (is_game_running && !game_menu.is_opened)
+                                if (is_game_running && !game_command_menu.is_opened)
                                 {
-                                    game_menu.is_opened = true;
+                                    game_command_menu.is_opened = true;
+
+                                    // Player cannot move in this event
+                                    character_data.model.conditions.is_movable = false;
                                     printf("menu opened\n");
                                 }
                                 else
                                 {
-                                    game_menu.is_opened = false;
+                                    game_command_menu.is_opened = false;
+                                    game_command_menu.index = 0; // Set the cursor back to the top of the list, items
+
+                                    // Player can now move
+                                    character_data.model.conditions.is_movable = true;
                                     printf("menu closed\n");
                                 }
 
@@ -4312,8 +4369,7 @@ int main(int argc, char *argv[])
                     if (display_player_gold_count)
                     {
                         RenderAssetInCameraSpace(&gold_coin_count_bg_asset, 
-                                             SCREEN_CENTER_X + 88, SCREEN_CENTER_Y - 105, 
-                                             gold_coin_count_bg_asset.w, gold_coin_count_bg_asset.h); 
+                                             SCREEN_CENTER_X + 88, SCREEN_CENTER_Y - 105); 
 
                         RenderText(SDLWindow.Renderer, font_atlas, 
                                CENTER_TEXT_X(gold_coins, 104), SCREEN_CENTER_Y - 95,
@@ -4327,8 +4383,7 @@ int main(int argc, char *argv[])
                     {
                         character_data.model.conditions.is_movable = false; 
                         RenderAssetInCameraSpace(&dialogue_box_asset, 
-                                             SCREEN_CENTER_X - (128 - 32), SCREEN_CENTER_Y + 32, 
-                                             dialogue_box_asset.w, dialogue_box_asset.h); 
+                                             SCREEN_CENTER_X - (128 - 32), SCREEN_CENTER_Y + 32); 
                         RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
                                    SCREEN_CENTER_X - (128 - 56), 
                                    SCREEN_CENTER_Y + 56,
@@ -4350,8 +4405,7 @@ int main(int argc, char *argv[])
                     {
                         character_data.model.conditions.is_movable = false; 
                         RenderAssetInCameraSpace(&dialogue_box_asset, 
-                                             SCREEN_CENTER_X - (128 - 32), SCREEN_CENTER_Y + 32, 
-                                             dialogue_box_asset.w, dialogue_box_asset.h); 
+                                             SCREEN_CENTER_X - (128 - 32), SCREEN_CENTER_Y + 32); 
                             
                         RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
                                    SCREEN_CENTER_X - (128 - 56), 
@@ -5261,10 +5315,10 @@ int main(int argc, char *argv[])
             for (int i = 0; i < 10; ++i)
             {
                 RenderText(SDLWindow.Renderer, font_atlas,
-                       offset_x_arr[i],
-                       base_y_arr[i],
-                       full_text[i] + non_colored_len,
-                       stat_overview_color[i]);
+                           offset_x_arr[i],
+                           base_y_arr[i],
+                           full_text[i] + non_colored_len,
+                           stat_overview_color[i]);
             }
             
 
@@ -5280,6 +5334,8 @@ int main(int argc, char *argv[])
             for (int i = 0; i < ArraySize(walls); ++i)
                 AABB_Resolution(&character_data.model, &walls[i]);
 
+
+
             AttachCameraToPlayer(&character_data.model, &room_asset[0]);
 
             SDL_SetRenderTarget(SDLWindow.Renderer, SDLCamera.TargetTexture);
@@ -5289,6 +5345,29 @@ int main(int argc, char *argv[])
             RenderAndUpdateAsset(&room_asset[0]);
             RenderAndUpdateAsset(&down_stairs_asset);
             RenderAndUpdateAsset(&character_data.model);
+                
+            if (game_command_menu.is_opened)
+            {
+                RenderAssetInCameraSpace(&game_command_menu.box, 
+                                         SCREEN_CENTER_X + 32, SCREEN_CENTER_Y - (game_command_menu.box.h / 2));
+
+                // Option box rendered is relative to the option hovered by using the index
+                RenderAssetInCameraSpace(&game_command_menu.option_box[game_command_menu.index], 
+                                         SCREEN_CENTER_X - 112, SCREEN_CENTER_Y - (game_command_menu.option_box[game_command_menu.index].h / 2));
+
+                CursorForItems(&game_command_menu.options[game_command_menu.index], &right_cursor_asset, 4, 1);
+                RenderAssetInCameraSpace(&right_cursor_asset,
+                                         game_command_menu.options[game_command_menu.index].x - 12,     
+                                         game_command_menu.options[game_command_menu.index].y - 2);     
+                for (int i = 0; i < ArraySize(game_command_menu.options); ++i)
+                {
+                    RenderText(SDLWindow.Renderer, font_atlas,
+                               game_command_menu.options[i].x,
+                               game_command_menu.options[i].y, 
+                               game_command_menu.options[i].text,
+                               white);
+                }
+            }
 
             for (int i = 0; i < ArraySize(walls); ++i)
                 RenderAndUpdateAsset(&walls[i]);
