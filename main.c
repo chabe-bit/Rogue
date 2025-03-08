@@ -280,6 +280,45 @@ void LoadAsset(asset_t *asset, const char *filename)
     stbi_image_free(data);  
 }
 
+// Probably the ideal way of loading an asset
+asset_t IdealLoadAsset(const char *filename)
+{
+    asset_t asset = {0};
+
+    int channels;
+    unsigned char *data = stbi_load(filename, &asset.w, &asset.h, &channels, STBI_default);
+    if (data == NULL)
+    {
+        fprintf(stderr, "Failed to load files: %s\n", filename);
+        return asset;
+    }
+    
+    int fmt = channels == 2 ? SDL_PIXELFORMAT_RGBA8888 : SDL_PIXELFORMAT_RGBA32;
+    int pitch = asset.w * channels;
+
+    // Free later!
+    asset.texture = SDL_CreateTexture(SDLWindow.Renderer, fmt, SDL_TEXTUREACCESS_STATIC, asset.w, asset.h);
+    if (asset.texture == NULL)
+    {
+        fprintf(stderr, "Failed to create texture for sprites: %s\n", SDL_GetError());
+        return asset;
+    }
+
+    if (SDL_UpdateTexture(asset.texture, NULL, (const void *)data, pitch) < 0)
+    {
+        fprintf(stderr, "Failed to update texture for sprites: %s\n", SDL_GetError());
+        return asset;
+    }
+
+    // Initializing asset
+    asset.body.w = asset.w;
+    asset.body.h = asset.h;
+
+    stbi_image_free(data);  
+
+    return asset;
+}
+
 bool AABB_Detection(SDL_Rect *a, SDL_Rect *b)
 {
     if(a->y + a->h <= b->y) 
@@ -1839,10 +1878,188 @@ int main(int argc, char *argv[])
     }
 
     SDL_Color stat_overview_color[10] = {0};
+  
+    // -------- In-game menus --------
+    
+    // A menu that opens when the player hits ESC, options for sound settings and to exit,
+    // save in the future
+    typedef struct
+    {
+        int index;
+        bool is_active;
+
+        // Two options for sound settings and exit
+        menu_item_t options[2];
+
+        // Init with our current volume settings
+        sound_settings_t *sound_settings;
+    } game_settings_t;
+
+    typedef struct
+    {
+        // Properties of an item:
+        // -> ID 
+        // -> bool if it can be used or not, some classes don't use MP, so trying to recovering MP should be handled. 
+        // -> name
+        // -> description
+        // -> stat effects (hp, mp ...)i
+        // -> buy/sell value
+        // -> asset 
    
+        // Only implementing health and mana pots for now
+        u32 id;
+       
+        u32 hp_recovery;
+        u32 mp_recovery;
+        u32 buy_value;
+        u32 sell_value;
+        
+        const char *name;
+        const char *description;
+
+        asset_t asset;
+    } game_item_t;
+
+#define ITEM_COUNT 2
+#define ITEM_HEALTH_POTION 0
+#define ITEM_MANA_POTION   1 
+    game_item_t game_items[ITEM_COUNT] = {0};
+
+    game_items[ITEM_HEALTH_POTION].id = 0;
+    game_items[ITEM_HEALTH_POTION].hp_recovery = 20;
+    game_items[ITEM_HEALTH_POTION].mp_recovery = 0;
+    game_items[ITEM_HEALTH_POTION].buy_value = 5;
+    game_items[ITEM_HEALTH_POTION].sell_value = 1;
+    game_items[ITEM_HEALTH_POTION].name = "Health Potion";
+    game_items[ITEM_HEALTH_POTION].description = "Recovers 20 HP";
+    game_items[ITEM_HEALTH_POTION].asset = IdealLoadAsset("assets/archer.png");
+
+    game_items[ITEM_MANA_POTION].id = 1;
+    game_items[ITEM_MANA_POTION].hp_recovery = 0;
+    game_items[ITEM_MANA_POTION].mp_recovery = 30;
+    game_items[ITEM_MANA_POTION].buy_value = 5;
+    game_items[ITEM_MANA_POTION].sell_value = 1;
+    game_items[ITEM_MANA_POTION].name = "Mana Potion";
+    game_items[ITEM_MANA_POTION].description = "Recovers 30 MP";
+    game_items[ITEM_MANA_POTION].asset = IdealLoadAsset("assets/archer.png");
+  
+    printf("asset w: %d\n", game_items[ITEM_HEALTH_POTION].asset.body.w);
+    printf("asset h: %d\n", game_items[ITEM_HEALTH_POTION].asset.body.h);
+
+
+    typedef struct
+    {
+        // Properties of an equipment:
+        // -> ID 
+        // -> bool if the equipment can be equiped, wizard cannot be using long swords...or maybe they can
+        // -> name
+        // -> description
+        // -> stat effects (atk, wis, vit, def ...)
+        // -> buy/sell value
+        // -> asset 
+
+        u32 id;
+    
+        u32 attack;
+        u32 defense;
+        u32 buy_value;
+        u32 sell_value;
+
+        const char *name;
+        const char *description;
+       
+        asset_t model;
+    } game_equipment_t;
+
+    typedef struct
+    {
+        // Properties of each slot:
+        //  -> index to iterate over
+        //  -> bool to check if it's empty or not, if it's empty a new item can be stored, if it's an existing item
+        //  you're picking it then it can be stacked.
+        //  -> 
+
+
+
+    } game_menu_inventory_slots_t;
+
+
+    typedef struct
+    {
+        int index;
+        bool is_active;
+
+        asset_t slots[18]; // 18 inventory slots
+    } game_menu_items_t;
+
+
+    typedef struct
+    {
+        // Rough idea:
+        // There will be a helm, chestplate, main-hand, off-hand, and two accessory slots, 
+        // a total of 6 slots. There is then for now depending on how large we decide the
+        // inventory to be, where both of these will be in the same
+        // array, but the equipment slots 'cut off'. This approach I think will be simple
+        // work with in that if I wanted to equip or unequip something, it'd swap with
+        // whatever item or slot in the inventory, rather than keeping them seperate
+        // and writing some middle man to talk between the two.
+
+        // We'll be using a 1D array, not 2D, and traverse through the inventory similarly to
+        // how we are with our glyph grid from name entry. And to keep the movement aligned in moving between
+        // the equipment slots and item slots, we should instead create a grid that's 6 high  
+        // to match with the 6 equipment slots, OTHERWISE we'll have the same issue with our glyph grid 
+        // where our confirm button is 'seperate' from the rest of the grid, but only works in this 1D
+        // array because we aligned the padding of the 1 confirm button we have an equal width
+        // of the glyph grid.
+        
+        int index;
+        bool is_active;
+
+
+        asset_t slots[24]; // 6 equipment slots and 18 inventory slots
+         
+    } game_menu_equipment_t;
+
+
+
+    // A command menu similar to that from FF games, opens on TAB
+    typedef struct
+    {
+        // Opening this game menu pops to the right side of the screen, with the
+        // list of commands. Each command hovered over will render a box for that specific
+        // option to the center of the screen, example 'items', this is the first index
+        // that is hovered over, so the player can expect to see their inventory of 
+        // items upon opening this menu. Hitting confirm for that option will move 
+        // the cursor over to that box, in this case of the 'items', the player will
+        // enter their inventory to examine or use their items.
+        
+        //   |        | > | Items |
+        //   |        |   | Equipment |
+        //   |        |   | Status |
+        //   |        |   | ... |
+        //   |        |   | ... |
+
+
+        /* Items -> Overview of entire inventory, player can use items and only examine equipments
+         * Attack ?
+         * Spells ?
+         * Equipment -> Inventory for only equipments that the player can examine and equip
+         * Status -> Overview of character's status; name, level, personality, exp, remaining exp to next level, stats and more
+         */
+
+        // Cursor package -> index and bool
+        int index;
+        bool is_active; 
+
+        // Menu package
+        bool is_opened;
+        menu_item_t options[3]; // items, equipment and status for now
+    } game_menu_t;
+
+    game_menu_t game_menu = {0};
+
     while (Running) 
     {
-
         // Poll events
         while (SDL_PollEvent(&SDLWindow.e))
         {
@@ -1850,7 +2067,7 @@ int main(int argc, char *argv[])
             {
                 case SDL_QUIT:
                 {
-                    Running = false;
+        Running = false;
                 } break;
                 case SDL_CONTROLLERBUTTONDOWN:
                 {
@@ -1884,1308 +2101,1325 @@ int main(int argc, char *argv[])
                 } break;
                 case SDL_KEYDOWN:
                 {  
-                    switch (SDLWindow.e.key.keysym.sym)
+                    //if (SDLWindow.e.key.repeat == 0)
                     {
-                        case SDLK_w:
+                        switch (SDLWindow.e.key.keysym.sym)
                         {
-                            character_data.model.direction.up = true;
-                            boulder_asset.direction.up = true;
+                            case SDLK_w:
+                            {
+                                character_data.model.direction.up = true;
+                                boulder_asset.direction.up = true;
 
-                            if (boulder_has_reached_end)
-                                boulder_has_reached_end = false;
+                                if (boulder_has_reached_end)
+                                    boulder_has_reached_end = false;
 
-                            if (is_title_screen)
-                            {
-                                option_index--;
-                                if (option_index < 0)
-                                    option_index = ArraySize(title_screen_options) - 1;
-                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-                            
-                            if (is_new_game)
-                            {
-                                button_select--;
-                                if (button_select < 0)
-                                    button_select = ArraySize(confirmation_buttons) - 1;
-                            }
-                            
-                            if (confirmation.is_active)
-                            {
-                                confirmation.index--;
-                                if (confirmation.index < 0)
-                                    confirmation.index = ArraySize(confirmation.info.buttons) - 1;
-                                //Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-
-                            if (is_settings)
-                            {
-                                Sound_MoveUpSettings(&sound_settings); 
-                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-                        
-                            if (is_name_submission)
-                            {
-                                NameEntry_MoveUp(&name_entry);
-                            }
-
-                            Personality_MoveUpScenario(&test_scenarios);
-                            
-                            if (personality_scenario[0].is_active)
-                            {
-                                personality_scenario[0].index--;
-                                if (personality_scenario[0].index < 0)
-                                    personality_scenario[0].index = ArraySize(personality_scenario[0].info.monster_options) - 1;
-                            }
-
-                        } break;
-                        case SDLK_s:
-                        {
-                            character_data.model.direction.down = true;
-                            boulder_asset.direction.down = true;
-                            
-                            if (boulder_has_reached_end)
-                                boulder_has_reached_end = false;
-                            if (player_talking_to_oldman)
-                                player_talking_to_oldman = false;
-
-                            if (is_title_screen)
-                            {
-                                option_index++;
-                                if (option_index >= ArraySize(title_screen_options))
-                                    option_index = 0;
-                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-
-                            if (is_new_game)
-                            {
-                                button_select++;
-                                if (button_select >= ArraySize(confirmation_buttons))
-                                    button_select = 0;
-                            }
-    
-                            if (confirmation.is_active)
-                            {
-                                confirmation.index++;
-                                if (confirmation.index >= ArraySize(confirmation.info.buttons))
-                                    confirmation.index = 0;
-                                //Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-
-                            if (is_settings)
-                            {
-                                Sound_MoveDownSettings(&sound_settings); 
-                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-
-                            if (is_name_submission)
-                            {
-                                NameEntry_MoveDown(&name_entry);
-                            }  
-
-                            Personality_MoveDownScenario(&test_scenarios);
-
-                            if (personality_scenario[0].is_active)
-                            {
-                                personality_scenario[0].index++;
-                                if (personality_scenario[0].index >= ArraySize(personality_scenario[0].info.monster_options))
-                                    personality_scenario[0].index = 0;
-                            }
-                        } break;
-                        case SDLK_a:
-                        {
-                            character_data.model.direction.left = true;
-                            boulder_asset.direction.left = true;
-                            
-                            if (boulder_has_reached_end)
-                                boulder_has_reached_end = false;
-
-                            if (character_creation_screen.is_active && !confirmation.is_active)
-                            {
-                                character_creation_screen.index--;
-                                if (character_creation_screen.index < 0)
-                                    character_creation_screen.index = ArraySize(character_creation_screen.info) - 1;
-                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-
-                            if (character_allocation_select_screen.is_active && !confirmation.is_active)
-                            {
-                                character_allocation_select_screen.index--;
-                                if (character_allocation_select_screen.index < 0)
-                                    character_allocation_select_screen.index = ArraySize(character_allocation_select_screen.info) - 1;
-                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-                      
-                            // switch case below
-                            if (is_settings && sound_settings.index == 0)
-                            {
-                                //Sound_DecreaseVolume(&volume_controller[0]);
-                                Sound_TestDecreaseVolume(&test_volume_controller, MASTER_INDEX);
-                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-
-                            if (is_settings && sound_settings.index == 1)
-                            {
-                                //Sound_DecreaseVolume(&volume_controller[1]);
-                                Sound_TestDecreaseVolume(&test_volume_controller, MUSIC_INDEX);
-                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-
-                            if (is_settings && sound_settings.index == 2)
-                            {
-                                //Sound_DecreaseVolume(&volume_controller[2]);
-                                Sound_TestDecreaseVolume(&test_volume_controller, SFX_INDEX);
-                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            } 
-
-                            if (is_settings)
-                            {
-                                switch (sound_settings.index)
+                                if (is_title_screen)
                                 {
-                                    case 0:
-                                    {
-                                        volume_settings_state = VOL_SETTINGS_MASTER;
-                                    } break;
-                                    case 1:
-                                    {
-                                        volume_settings_state = VOL_SETTINGS_MUSIC;
-                                    } break;
-                                    case 2:
-                                    {
-                                        volume_settings_state = VOL_SETTINGS_SFX;
-                                    } break;
-                                    case 3:
-                                    {
-                                        Sound_MoveLeftSettings(&sound_settings);
-                                    } break;
-                                    case 4:
-                                    {
-                                        Sound_MoveLeftSettings(&sound_settings);
-                                    } break;
+                                    option_index--;
+                                    if (option_index < 0)
+                                        option_index = ArraySize(title_screen_options) - 1;
+                                    Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                 }
-
-                                for (int vc = 0; vc < VOLUME_CONTROLLER_COUNT; ++vc) 
-                                {
-                                    switch (test_volume_controller.info[vc].index)
-                                    {
-                                        case 0:
-                                        {
-                                            //test_volume_controller.info[vc].mute = true;
-                                            test_volume_controller.info[vc].mute = true;
-                                        } break;
-                                        case 1:
-                                        {
-                                            test_volume_controller.info[vc].one = true;
-                                        } break;
-                                        case 2:
-                                        {
-                                            test_volume_controller.info[vc].two = true;
-                                        } break;
-                                        case 3:
-                                        {
-                                            test_volume_controller.info[vc].three = true;
-                                        } break;
-                                        case 4:
-                                        {
-                                            test_volume_controller.info[vc].max = true;
-                                        } break;
-                                        default:
-                                        {
-                                            test_volume_controller.info[vc].one = true;
-                                        } break;
-
-                                    }
-                                }
-
-                            }
-
-                            if (is_name_submission)
-                            {
-                                NameEntry_MoveLeft(&name_entry);
-                            }
-
-                            if (personality_results_screen)
-                            {
-                                next_button.index--;
-                                if (next_button.index < 0)
-                                    next_button.index = ArraySize(next_button.button) - 1;
-                            }
-                        } break;
-                        case SDLK_d:
-                        {
-                            character_data.model.direction.right = true;
-                            boulder_asset.direction.right = true;
-
-                            if (boulder_has_reached_end)
-                                boulder_has_reached_end = false;
-
-                            if (character_creation_screen.is_active && !confirmation.is_active)
-                            {
-                                character_creation_screen.index++;
-                                if (character_creation_screen.index >= ArraySize(character_creation_screen.info))
-                                    character_creation_screen.index = 0;
-                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-
-                            if (character_allocation_select_screen.is_active && !confirmation.is_active)
-                            {
-                                character_allocation_select_screen.index++;
-                                if (character_allocation_select_screen.index >= ArraySize(character_allocation_select_screen.info))
-                                    character_allocation_select_screen.index = 0;
-                                Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                            }
-
-                            if (is_settings)
-                            {
-                                switch (sound_settings.index)
-                                {
-                                    case 0:
-                                    {
-                                        Sound_TestIncreaseVolume(&test_volume_controller, 0);
-                                        Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                                        
-                                        volume_controller[0].touched = true;
-                                        printf("master touched\n");
-                                        volume_settings_state = VOL_SETTINGS_MASTER;
-
-                                    } break;
-                                    case 1:
-                                    {
-                                        Sound_TestIncreaseVolume(&test_volume_controller, 1);
-                                        Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                                       
-                                        volume_controller[1].touched = true;
-                                        printf("music touched\n");
-                                        volume_settings_state = VOL_SETTINGS_MUSIC;
-
-                                    } break;
-                                    case 2:
-                                    {
-                                        Sound_TestIncreaseVolume(&test_volume_controller, 2);
-                                        Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                                        
-                                        volume_controller[2].touched = true;
-                                        printf("sfx touched\n");
-                                        volume_settings_state = VOL_SETTINGS_SFX;
-                                    } break;
-                                    case 3:
-                                    {
-                                        Sound_MoveRightSettings(&sound_settings);
-                                    } break;
-                                    case 4:
-                                    {
-                                        Sound_MoveRightSettings(&sound_settings);
-
-                                    } break;
-                                }
-
-                                for (int vc = 0; vc < VOLUME_CONTROLLER_COUNT; ++vc) 
-                                {
-                                    switch (test_volume_controller.info[vc].index)
-                                    {
-                                        case 0:
-                                        {
-                                            test_volume_controller.info[vc].mute = true;
-                                        } break;
-                                        case 1:
-                                        {
-                                            test_volume_controller.info[vc].one = true;
-                                        } break;
-                                        case 2:
-                                        {
-                                            test_volume_controller.info[vc].two = true;
-                                        } break;
-                                        case 3:
-                                        {
-                                            test_volume_controller.info[vc].three = true;
-                                        } break;
-                                        case 4:
-                                        {
-                                            test_volume_controller.info[vc].max = true;
-                                        } break;
-                                        default:
-                                        {
-                                            test_volume_controller.info[vc].one = true;
-                                        } break;
-                                    }
-                                }
-
-                            }
-                           
-                            
-                            if (is_name_submission)
-                            {
-                                NameEntry_MoveRight(&name_entry);
-                            }
-
-                            if (personality_results_screen)
-                            {
-                                next_button.index++;
-                                if (next_button.index >= ArraySize(next_button.button))
-                                    next_button.index = 0;
-                            }
-                        } break;
-                        case SDLK_BACKSPACE:
-                        {
-                            if (is_name_submission)
-                            {
-                                name_entry.is_active = true;
-                                character_class_name_submission_state = CLASS_NAME_DELETE;
-                            }
-                        } break;
-                        case SDLK_ESCAPE:
-                        {
-                            if (character_creation_screen.is_active)
-                            {
-                                class_select_state = CLASS_SELECT_BACK;
-                            }
-
-                            if (character_allocation_select_screen.is_active && !personality_test.is_active)
-                            {
-                                class_allocation_state = CLASS_ALLOCATION_BACK;
-                            }
-
-                            if (is_settings)
-                            {
-                                volume_settings_state = VOL_SETTINGS_BACK;
-                            }
-                        } break;
-                        case SDLK_RETURN:
-                        {
-                            // TEST
-                            if (is_title_screen)
-                            {
-                                            
-                                Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                switch (option_index)
-                                {
-                                    case 0:
-                                    {
-                                        title_screen_state = TITLE_NEW_GAME;
-                                    } break;
-                                    case 1:
-                                    {
-                                        title_screen_state = TITLE_LOAD_GAME;
-                                    } break;
-                                    case 2:
-                                    {
-                                        title_screen_state = TITLE_SETTINGS;
-                                    } break;
-                                    case 3:
-                                    {
-                                        title_screen_state = TITLE_EXIT;
-                                    } break;
-                                    default:
-                                    {
-                                        title_screen_state = TITLE_NONE;
-                                    } break;
-                                }
-                            }
-                            
-                            if (character_creation_screen.is_active)
-                            {
-                                Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                switch (character_creation_screen.index)
-                                {
-                                    case 0:
-                                    {
-                                        class_select_state = CLASS_SELECT_KNIGHT;
-                                    } break;
-                                    case 1:
-                                    {
-                                        class_select_state = CLASS_SELECT_PALADIN;
-                                    } break;
-                                    case 2:
-                                    {
-                                        class_select_state = CLASS_SELECT_WIZARD;
-                                    } break; 
-                                    case 3:
-                                    {
-                                        class_select_state = CLASS_SELECT_ARCHER;
-                                    } break;
-                                }
-                            }
-                           
-                            if (character_allocation_select_screen.is_active)
-                            {
-                                Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                switch (character_allocation_select_screen.index)
-                                {
-                                    case 0:
-                                    {
-                                        class_allocation_state = CLASS_ALLOCATION_PERSONALITY; 
-                                    } break;
-                                    case 1:
-                                    {
-                                        class_allocation_state = CLASS_ALLOCATION_PRESET; 
-                                    } break;
-                                    case 2:
-                                    {
-                                        class_allocation_state = CLASS_ALLOCATION_MANUAL; 
-                                    } break;
-                                }
-                            }
-
-                            if (character_creation_screen.is_active && confirmation.is_active)
-                            {
-                                Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                switch (confirmation.index)
-                                {
-                                    case 0:
-                                    {
-                                        character_creation_screen.is_active = false;
-                                        character_allocation_select_screen.is_active = true;
-                                        confirmation.is_active = false; 
-                                    } break;
-                                    case 1:
-                                    {
-                                        confirmation.is_active = false; 
-                                        confirmation.index = 0;
-                                        class_select_state = CLASS_SELECT_NONE;
-                                    } break;
-                                }
-                             
-                            }
-                          
-                            if (character_allocation_select_screen.is_active && confirmation.is_active)
-                            {
-                                Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                switch (confirmation.index)
-                                {
-                                    case 0:
-                                    {
-                                        if (character_allocation_select_screen.index == 0)
-                                        {
-                                            character_allocation_select_screen.is_active = false;
-                                            is_personality_test = true;
-                                            personality_test.is_active = true;
-                                        }
-                                        
-                                        confirmation.is_active = false; 
-                                    } break;
-                                    case 1:
-                                    {
-                                        confirmation.is_active = false;
-                                        confirmation.index = 0;
-                                        class_allocation_state = CLASS_ALLOCATION_NONE;
-                                    } break;
-                                }
-                            }
-
-                            if (is_personality_test && personality_test.is_active && confirmation.is_active)
-                            {
-                                Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                switch (confirmation.index)
-                                {
-                                    case 0: // yes
-                                    {
-                                        // turn into a function
-                                        switch (personality_test.index)
-                                        {
-                                            case 1:
-                                            {
-                                                personality_test.index = 7;
-                                            } break;
-                                            case 2:
-                                            {
-                                                personality_test.index = 14;
-                                            } break;
-                                            case 3:
-                                            {
-                                                personality_test.index = 6;
-                                            } break;
-                                            case 4:
-                                            {
-                                                personality_test.index = 15;
-                                            } break;
-                                            case 5:
-                                            {
-                                                personality_test.index = 8;
-                                            } break;
-                                            case 6:
-                                            {
-                                                personality_test.index = 7;
-                                            } break;
-                                            case 7:
-                                            {
-                                                personality_test.index = 10;
-                                            } break;
-                                            case 8:
-                                            {
-                                                personality_test.index = 10;
-                                            } break;
-                                            case 9:
-                                            {
-                                                personality_test.index = 11;
-                                            } break;
-                                            case 10:
-                                            {
-                                                personality_test.index = 14;
-                                            } break;
-                                            case 11:
-                                            {
-                                                personality_test.index = 14;
-                                            } break;
-                                            case 12:
-                                            {
-                                                personality_test.index = 31;
-                                            } break;
-                                            case 13:
-                                            {
-                                                personality_test.index = 25;
-                                            } break;
-                                            case 14:
-                                            {
-                                                personality_test.index = 18;
-                                            } break;
-                                            case 15:
-                                            {
-                                                personality_test.index = 16;
-                                            } break;
-                                            case 16:
-                                            {
-                                                personality_test.index = 17;
-                                            } break;
-                                            case 17:
-                                            {
-                                                personality_test.index = 21;
-                                            } break;
-                                            case 18:
-                                            {
-                                                personality_test.index = 19;
-                                            } break;
-                                            case 19:
-                                            {
-                                                personality_test.index = 20;
-                                            } break;
-                                            case 20:
-                                            {
-                                                personality_test.index = 21;
-                                            } break; 
-                                            case 21:
-                                            {
-                                                personality_test.index = 23;
-                                            } break;
-                                            case 22:
-                                            {
-                                                personality_test.index = 38;
-                                            } break;
-                                            case 23:
-                                            {
-                                                personality_test.index = 24;
-                                            } break;
-                                            case 24:
-                                            {
-                                                personality_test.index = 34;
-                                            } break;
-                                            case 25:
-                                            {
-                                                personality_test.index = 31;
-                                            } break;
-                                            case 26:
-                                            {
-                                                personality_test.index = 27;
-                                            } break;
-                                            case 27:
-                                            {
-                                                personality_test.index = 28;
-                                            } break;
-                                            case 28:
-                                            {
-                                                personality_test.index = 29;
-                                            } break;
-                                            case 29:
-                                            {
-                                                personality_test.index = 30;
-                                            } break;
-                                            case 30:
-                                            {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_VILLAGE; // final question
-                                            } break;
-                                            case 31:
-                                            {
-                                                personality_test.index = 32;
-                                            } break;
-                                            case 32:
-                                            {
-                                                personality_test.index = 33;
-                                            } break;
-                                            case 33:
-                                            {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_DESERT; // final question
-                                            } break;
-                                            case 34:
-                                            {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST; //CLASS_PERSONALITY_RESULT_MONSTER; // final question
-                                            } break;
-                                            case 35:
-                                            {
-                                                personality_test.index = 0; // final question
-                                            } break;
-                                            case 36:
-                                            {
-                                                personality_test.index = 37;
-                                            } break;
-                                            case 37:
-                                            {
-                                                personality_test.index = 43;
-                                            } break;
-                                            case 38:
-                                            {
-                                                personality_test.index = 39;
-                                            } break;
-                                            case 39:
-                                            {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_TOWER;
-                                            } break;
-                                            case 40:
-                                            {
-                                                personality_test.index = 42;
-                                            } break; 
-                                            case 41:
-                                            {
-                                                personality_test.index = 43;
-                                            } break;
-                                            case 42:
-                                            {
-                                                personality_test.index = 43;
-                                            } break;
-                                            case 43:
-                                            {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST; 
-                                            } break;
-                                            case 44:
-                                            {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_THEATER; 
-                                            } break;
-                                            case 45:
-                                            {
-                                                personality_test.index = 47;
-                                            } break;
-                                            case 46:
-                                            {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CAVE; 
-                                            } break;
-                                            case 47:
-                                            {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CAVE; 
-                                            } break;
-                                            case 48:
-                                            {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST;//CLASS_PERSONALITY_RESULT_CASTLE;
-                                            } break;
-                                            case 49:
-                                            {
-                                               character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST;//CLASS_PERSONALITY_RESULT_CASTLE; 
-                                            } break;
-                                        }
-                                    } break;
-                                    case 1: // no
-                                    {
-                                        switch (personality_test.index)
-                                        {
-                                            case 1:
-                                            {
-                                                personality_test.index = 9;
-                                            } break;
-                                            case 2:
-                                            {
-                                                personality_test.index = 8;
-                                            } break;
-                                            case 3:
-                                            {
-                                                personality_test.index = 8;
-                                            } break;
-                                            case 4:
-                                            {
-                                                personality_test.index = 6;
-                                            } break;
-                                            case 5:
-                                            {
-                                                personality_test.index = 16;
-                                            } break;
-                                            case 6:
-                                            {
-                                                personality_test.index = 8;
-                                            } break;
-                                            case 7:
-                                            {
-                                                personality_test.index = 5;
-                                            } break;
-                                            case 8:
-                                            {
-                                                personality_test.index = 9;
-                                            } break;
-                                            case 9:
-                                            {
-                                                personality_test.index = 12;
-                                            } break;
-                                            case 10:
-                                            {
-                                                personality_test.index = 13;
-                                            } break;
-                                            case 11:
-                                            {
-                                                personality_test.index = 13;
-                                            } break;
-                                            case 12:
-                                            {
-                                                personality_test.index = 14;
-                                            } break;
-                                            case 13:
-                                            {
-                                                personality_test.index = 15;
-                                            } break;
-                                            case 14:
-                                            {
-                                                personality_test.index = 19;
-                                            } break;
-                                            case 15:
-                                            {
-                                                personality_test.index = 20;
-                                            } break;
-                                            case 16:
-                                            {
-                                                personality_test.index = 22;
-                                            } break;
-                                            case 17:
-                                            {
-                                                personality_test.index = 25;
-                                            } break;
-                                            case 18:
-                                            {
-                                                personality_test.index = 23;
-                                            } break;
-                                            case 19:
-                                            {
-                                                personality_test.index = 25;
-                                            } break;
-                                            case 20:
-                                            {
-                                                personality_test.index = 22;
-                                            } break; 
-                                            case 21:
-                                            {
-                                                personality_test.index = 23;
-                                            } break;
-                                            case 22:
-                                            {
-                                                personality_test.index = 38;
-                                            } break;
-                                            case 23:
-                                            { 
-                                                personality_test.index = 40;
-                                            } break;
-                                            case 24:
-                                            {
-                                                personality_test.index = 25;
-                                            } break;
-                                            case 25:
-                                            {
-                                                personality_test.index = 26;
-                                            } break;
-                                            case 26:
-                                            {
-                                                personality_test.index = 28;
-                                            } break;
-                                            case 27:
-                                            {
-                                                personality_test.index = 29;
-                                            } break;
-                                            case 28:
-                                            {
-                                                personality_test.index = 30;
-                                            } break;
-                                            case 29:
-                                            {
-                                                personality_test.index = 30;
-                                            } break;
-                                            case 30:
-                                            {
-                                                personality_test.index = 40; 
-                                            } break;
-                                            case 31:
-                                            {
-                                                personality_test.index = 34;
-                                            } break;
-                                            case 32:
-                                            {
-                                                personality_test.index = 36;
-                                            } break;
-                                            case 33:
-                                            {
-                                                personality_test.index = 36;
-                                            } break;
-                                            case 34:
-                                            {
-                                                personality_test.index = 36;
-                                            } break;
-                                            case 35:
-                                            {
-                                                personality_test.index = 36; 
-                                            } break;
-                                            case 36:
-                                            {
-                                                personality_test.index = 48;
-                                            } break;
-                                            case 37:
-                                            {
-                                                personality_test.index = 49;
-                                            } break;
-                                            case 38:
-                                            {
-                                                personality_test.index = 40;
-                                            } break;
-                                            case 39:
-                                            {
-                                                personality_test.index = 41; 
-                                            } break;
-                                            case 40:
-                                            {
-                                                personality_test.index = 41;
-                                            } break; 
-                                            case 41:
-                                            {
-                                                personality_test.index = 42;
-                                            } break;
-                                            case 42:
-                                            {
-                                                personality_test.index = 44;
-                                            } break;
-                                            case 43:
-                                            {
-                                                personality_test.index = 45; 
-                                            } break;
-                                            case 44:
-                                            {
-                                                personality_test.index = 45;
-                                            } break;
-                                            case 45:
-                                            {
-                                                personality_test.index = 46;
-                                            } break;
-                                            case 46:
-                                            {
-                                                personality_test.index = 47; 
-                                            } break;
-                                            case 47:
-                                            {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_THEATER; 
-                                            } break;
-                                            case 48:
-                                            {
-                                                personality_test.index = 49;
-                                            } break;
-                                            case 49:
-                                            {
-                                                character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CAVE;
-                                            } break;
-                                        }
-                                    } break;
-                                }
-                            }
-                                                       
-
-                            if (is_settings)
-                            {
-                                switch (sound_settings.index)
-                                {
-                                    case 3: // apply
-                                    {
-                                        Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                        test_volume_controller.apply = true;
-                                        volume_settings_state = VOL_SETTINGS_APPLY;
-                                    } break;
-                                    case 4:
-                                    {
-                                        Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                        volume_settings_state = VOL_SETTINGS_BACK;
-                                    } break;
-                                    default:
-                                    { 
-                                         
-                                    } break;
-                                }
-                            }
-
-                            if (is_name_submission)
-                            {
-                                Sound_PlaySFX(&master_volume.sfx[1]->wav);
                                 
-                                printf("name_entry.index: %d\n", name_entry.index);
-                                name_entry.index = name_entry.current_row * NAME_ENTRY_GRID_COLS + name_entry.current_col;
-
-                                // Glyph grid
-                                if (name_entry.index >= 0 && name_entry.index < 50)
+                                if (is_new_game)
                                 {
-                                    name_entry.is_active = true;
-                                    character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    button_select--;
+                                    if (button_select < 0)
+                                        button_select = ArraySize(confirmation_buttons) - 1;
                                 }
-
-                                // Button grid 
-                                if (name_entry.index >= 50 && name_entry.index < 60)
-                                {
-                                    name_entry.is_active = true;
-                                    character_class_name_submission_state = CLASS_NAME_CONFIRM;
-                                }
-                            }
-
-                            if (is_personality_test)
-                            {
-                                if (test_scenarios.result & SCENARIO_VILLAGE)
-                                {
-                                    switch (test_scenarios.scenario[VILLAGE_INDEX].index)
-                                    {
-                                        case 0:
-                                        {
-                                            printf("Show-off\n");
-                                            personality_types_state = PERSONALITY_SHOW_OFF;
-                                            PushString(test_scenarios.personality, "Show-Off");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[VILLAGE_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 1:
-                                        {
-                                            printf("Slippery Devil\n");
-                                            personality_types_state = PERSONALITY_SLIPPERY_DEVIL;
-                                            PushString(test_scenarios.personality, "Slippery Devil");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[VILLAGE_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 2:
-                                        {
-                                            printf("Shrinking Violet\n");
-                                            personality_types_state = PERSONALITY_SHRINKING_VIOLET;
-                                            PushString(test_scenarios.personality, "Shrinking Violet");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[VILLAGE_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                    }
-
-                                }
-
-                                if (test_scenarios.result & SCENARIO_MONSTER)
-                                {
-                                    switch (test_scenarios.scenario[MONSTER_INDEX].index)
-                                    {
-                                        case 0: 
-                                        {
-                                            printf("Paragon\n");
-                                            personality_types_state = PERSONALITY_PARAGON;
-                                            PushString(test_scenarios.personality, "Paragon");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[MONSTER_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 1: 
-                                        {
-                                            printf("Wimp\n");
-                                            personality_types_state = PERSONALITY_WIMP;
-                                            PushString(test_scenarios.personality, "Wimp");
-                                            loading_results = true;
-                                            test_scenarios.scenario[MONSTER_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 2: 
-                                        {
-                                            printf("Spoilt Brat\n");
-                                            personality_types_state = PERSONALITY_SPOILT_BRAT;
-                                            PushString(test_scenarios.personality, "Spoilt Brat");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[MONSTER_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 3: 
-                                        {
-                                            printf("Egghead\n");
-                                            personality_types_state = PERSONALITY_EGGHEAD;
-                                            PushString(test_scenarios.personality, "Egghead");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[MONSTER_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 4: 
-                                        {
-                                            printf("Klutz\n");
-                                            personality_types_state = PERSONALITY_KLUTZ;
-                                            PushString(test_scenarios.personality, "Klutz");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[MONSTER_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                    } 
-                                }
-
-                                if (test_scenarios.result & SCENARIO_CAVE)
-                                {
-                                    switch (test_scenarios.scenario[CAVE_INDEX].index)
-                                    {
-                                        case 0: 
-                                        {
-                                            printf("Straight Arrow\n");
-                                            personality_types_state = PERSONALITY_STRAIGHT_ARROW;
-                                            PushString(test_scenarios.personality, "Straight Arrow");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[CAVE_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 1: 
-                                        {
-                                            printf("Mule\n");
-                                            personality_types_state = PERSONALITY_MULE;
-                                            PushString(test_scenarios.personality, "Mule");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[CAVE_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 2: 
-                                        {
-                                            printf("Scatterbrain\n");
-                                            personality_types_state = PERSONALITY_SCATTER_BRAIN;
-                                            PushString(test_scenarios.personality, "Scatterbrain");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[CAVE_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 3: 
-                                        {
-                                            printf("Narcissist\n");
-                                            personality_types_state = PERSONALITY_NARCISSIST;
-                                            PushString(test_scenarios.personality, "Narcissist");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[CAVE_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 4: 
-                                        {
-                                            printf("Sore Loser\n");
-                                            personality_types_state = PERSONALITY_SORE_LOSER;
-                                            PushString(test_scenarios.personality, "Sore Loser");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[CAVE_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                    } 
-                                }
-
-                                if (test_scenarios.result & SCENARIO_DESERT)
-                                {
-                                    switch (test_scenarios.scenario[DESERT_INDEX].index)
-                                    {
-                                        case 0: 
-                                        {
-                                            personality_types_state = PERSONALITY_THUG;
-                                            PushString(test_scenarios.personality, "Thug");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[DESERT_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 1: 
-                                        {
-                                            printf("Daredevil\n");
-                                            personality_types_state = PERSONALITY_DAREDEVIL;
-                                            PushString(test_scenarios.personality, "Daredevil");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[DESERT_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                        case 2: 
-                                        {
-                                            printf("Idealist\n");
-                                            personality_types_state = PERSONALITY_IDEALIST;
-                                            PushString(test_scenarios.personality, "Idealist");
-                                            loading_results = true;
-                                            
-                                            test_scenarios.scenario[DESERT_INDEX].is_active = false;
-                                            is_personality_test = false;
-                                            personality_results_screen = true;
-                                        } break;
-                                    } 
-                                }
-                            }
                                 
-                            if (test_scenarios.result & SCENARIO_TOWER)
-                            {
-                                switch (test_scenarios.scenario[TOWER_INDEX].index)
+                                if (confirmation.is_active)
                                 {
-                                    case 0: 
-                                    {
-                                        printf("Daydreamer\n");
-                                        personality_types_state = PERSONALITY_DAYDREAMER;
-                                        PushString(test_scenarios.personality, "Daydreamer");
-                                        loading_results = true;
-                                        
-                                        test_scenarios.scenario[TOWER_INDEX].is_active = false;
-                                        is_personality_test = false;
-                                        personality_results_screen = true;
-                                    } break;
-                                    case 1: 
-                                    {
-                                        printf("Socialite\n");
-                                        personality_types_state = PERSONALITY_SOCIALITE;
-                                        PushString(test_scenarios.personality, "Socialite");
-                                        loading_results = true;
-                                        
-                                        test_scenarios.scenario[TOWER_INDEX].is_active = false;
-                                        is_personality_test = false;
-                                        personality_results_screen = true;
-                                    } break;
+                                    confirmation.index--;
+                                    if (confirmation.index < 0)
+                                        confirmation.index = ArraySize(confirmation.info.buttons) - 1;
+                                    //Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                 }
-                            }
-                           
-                            if (test_scenarios.result & SCENARIO_THEATER)
-                            {
-                                switch (test_scenarios.scenario[THEATER_INDEX].index)
+
+                                if (is_settings)
                                 {
-                                    case 0: 
-                                    {
-                                        personality_types_state = PERSONALITY_FREE_SPIRIT;
-                                        PushString(test_scenarios.personality, "Free Spirit");
-                                        loading_results = true;
-                                        
-                                        test_scenarios.scenario[THEATER_INDEX].is_active = false;
-                                        is_personality_test = false;
-                                        personality_results_screen = true;
-                                    } break;
-                                    case 1: 
-                                    {
-                                        personality_types_state = PERSONALITY_CRYBABY;
-                                        PushString(test_scenarios.personality, "Crybaby");
-                                        loading_results = true;
-                                        
-                                        test_scenarios.scenario[THEATER_INDEX].is_active = false;
-                                        is_personality_test = false;
-                                        personality_results_screen = true;
-                                    } break;
-                                    case 2: 
-                                    {
-                                        personality_types_state = PERSONALITY_LONE_WOLF;
-                                        PushString(test_scenarios.personality, "Lone Wolf");
-                                        loading_results = true;
-                                        
-                                        test_scenarios.scenario[THEATER_INDEX].is_active = false;
-                                        is_personality_test = false;
-                                        personality_results_screen = true;
-                                    } break;
-                                    case 3: 
-                                    {
-                                        personality_types_state = PERSONALITY_LOUT;
-                                        PushString(test_scenarios.personality, "Lout");
-                                        loading_results = true;
-                                        
-                                        test_scenarios.scenario[THEATER_INDEX].is_active = false;
-                                        is_personality_test = false;
-                                        personality_results_screen = true;
-                                    } break;
+                                    Sound_MoveUpSettings(&sound_settings); 
+                                    Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                 }
-                            }
+                            
+                                if (is_name_submission)
+                                {
+                                    NameEntry_MoveUp(&name_entry);
+                                }
 
-                            if (test_scenarios.scenario[FOREST_INDEX].is_active)
+                                Personality_MoveUpScenario(&test_scenarios);
+                                
+                                if (personality_scenario[0].is_active)
+                                {
+                                    personality_scenario[0].index--;
+                                    if (personality_scenario[0].index < 0)
+                                        personality_scenario[0].index = ArraySize(personality_scenario[0].info.monster_options) - 1;
+                                }
+
+                            } break;
+                            case SDLK_s:
                             {
-
+                                character_data.model.direction.down = true;
+                                boulder_asset.direction.down = true;
+                                
+                                if (boulder_has_reached_end)
+                                    boulder_has_reached_end = false;
                                 if (player_talking_to_oldman)
-                                    hold_dialogue_box = true;
+                                    player_talking_to_oldman = false;
 
-                                if (hold_dialogue_box)
+                                if (is_title_screen)
                                 {
-                                    if (next_text && dialogue_index < 6)
-                                    {
-                                        dialogue_index++;
-                                        next_text = false;
-                                    }
-  
-                                    if (dialogue_index > 5)
-                                    {
-                                        dialogue_index = 0;
-                                        character_data.model.conditions.is_movable = true;
-                                        player_talking_to_oldman = false;
-                                        hold_dialogue_box = false;
-                                    }
+                                    option_index++;
+                                    if (option_index >= ArraySize(title_screen_options))
+                                        option_index = 0;
+                                    Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                 }
 
-                                if (hold_dialogue_box_return_boulder)
+                                if (is_new_game)
                                 {
-                                    dialogue_index_2++;
-                                    if (dialogue_index_2 > 1)
-                                    {
-                                        dialogue_index_2 = 0;
-                                        character_data.model.conditions.is_movable = true; 
-                                        hold_dialogue_box_return_boulder = false;
-                                    }
+                                    button_select++;
+                                    if (button_select >= ArraySize(confirmation_buttons))
+                                        button_select = 0;
                                 }
-                            }
+        
+                                if (confirmation.is_active)
+                                {
+                                    confirmation.index++;
+                                    if (confirmation.index >= ArraySize(confirmation.info.buttons))
+                                        confirmation.index = 0;
+                                    //Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                }
 
-                            if (personality_results_screen)
+                                if (is_settings)
+                                {
+                                    Sound_MoveDownSettings(&sound_settings); 
+                                    Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                }
+
+                                if (is_name_submission)
+                                {
+                                    NameEntry_MoveDown(&name_entry);
+                                }  
+
+                                Personality_MoveDownScenario(&test_scenarios);
+
+                                if (personality_scenario[0].is_active)
+                                {
+                                    personality_scenario[0].index++;
+                                    if (personality_scenario[0].index >= ArraySize(personality_scenario[0].info.monster_options))
+                                        personality_scenario[0].index = 0;
+                                }
+                            } break;
+                            case SDLK_a:
                             {
-                                if (next_button.is_active)
+                                character_data.model.direction.left = true;
+                                boulder_asset.direction.left = true;
+                                
+                                if (boulder_has_reached_end)
+                                    boulder_has_reached_end = false;
+
+                                if (character_creation_screen.is_active && !confirmation.is_active)
                                 {
-                                    switch (next_button.index)
+                                    character_creation_screen.index--;
+                                    if (character_creation_screen.index < 0)
+                                        character_creation_screen.index = ArraySize(character_creation_screen.info) - 1;
+                                    Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                }
+
+                                if (character_allocation_select_screen.is_active && !confirmation.is_active)
+                                {
+                                    character_allocation_select_screen.index--;
+                                    if (character_allocation_select_screen.index < 0)
+                                        character_allocation_select_screen.index = ArraySize(character_allocation_select_screen.info) - 1;
+                                    Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                }
+                          
+                                // switch case below
+                                if (is_settings && sound_settings.index == 0)
+                                {
+                                    //Sound_DecreaseVolume(&volume_controller[0]);
+                                    Sound_TestDecreaseVolume(&test_volume_controller, MASTER_INDEX);
+                                    Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                }
+
+                                if (is_settings && sound_settings.index == 1)
+                                {
+                                    //Sound_DecreaseVolume(&volume_controller[1]);
+                                    Sound_TestDecreaseVolume(&test_volume_controller, MUSIC_INDEX);
+                                    Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                }
+
+                                if (is_settings && sound_settings.index == 2)
+                                {
+                                    //Sound_DecreaseVolume(&volume_controller[2]);
+                                    Sound_TestDecreaseVolume(&test_volume_controller, SFX_INDEX);
+                                    Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                } 
+
+                                if (is_settings)
+                                {
+                                    switch (sound_settings.index)
                                     {
-                                        case 0: // next
+                                        case 0:
                                         {
-                                            printf("next\n");
-                                            Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                            personality_results_screen = false;
-                                            is_name_submission = true;
-                                            next_button.is_active = false;
+                                            volume_settings_state = VOL_SETTINGS_MASTER;
+                                        } break;
+                                        case 1:
+                                        {
+                                            volume_settings_state = VOL_SETTINGS_MUSIC;
+                                        } break;
+                                        case 2:
+                                        {
+                                            volume_settings_state = VOL_SETTINGS_SFX;
+                                        } break;
+                                        case 3:
+                                        {
+                                            Sound_MoveLeftSettings(&sound_settings);
+                                        } break;
+                                        case 4:
+                                        {
+                                            Sound_MoveLeftSettings(&sound_settings);
+                                        } break;
+                                    }
+
+                                    for (int vc = 0; vc < VOLUME_CONTROLLER_COUNT; ++vc) 
+                                    {
+                                        switch (test_volume_controller.info[vc].index)
+                                        {
+                                            case 0:
+                                            {
+                                                //test_volume_controller.info[vc].mute = true;
+                                                test_volume_controller.info[vc].mute = true;
+                                            } break;
+                                            case 1:
+                                            {
+                                                test_volume_controller.info[vc].one = true;
+                                            } break;
+                                            case 2:
+                                            {
+                                                test_volume_controller.info[vc].two = true;
+                                            } break;
+                                            case 3:
+                                            {
+                                                test_volume_controller.info[vc].three = true;
+                                            } break;
+                                            case 4:
+                                            {
+                                                test_volume_controller.info[vc].max = true;
+                                            } break;
+                                            default:
+                                            {
+                                                test_volume_controller.info[vc].one = true;
+                                            } break;
+
+                                        }
+                                    }
+
+                                }
+
+                                if (is_name_submission)
+                                {
+                                    NameEntry_MoveLeft(&name_entry);
+                                }
+
+                                if (personality_results_screen)
+                                {
+                                    next_button.index--;
+                                    if (next_button.index < 0)
+                                        next_button.index = ArraySize(next_button.button) - 1;
+                                }
+                            } break;
+                            case SDLK_d:
+                            {
+                                character_data.model.direction.right = true;
+                                boulder_asset.direction.right = true;
+
+                                if (boulder_has_reached_end)
+                                    boulder_has_reached_end = false;
+
+                                if (character_creation_screen.is_active && !confirmation.is_active)
+                                {
+                                    character_creation_screen.index++;
+                                    if (character_creation_screen.index >= ArraySize(character_creation_screen.info))
+                                        character_creation_screen.index = 0;
+                                    Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                }
+
+                                if (character_allocation_select_screen.is_active && !confirmation.is_active)
+                                {
+                                    character_allocation_select_screen.index++;
+                                    if (character_allocation_select_screen.index >= ArraySize(character_allocation_select_screen.info))
+                                        character_allocation_select_screen.index = 0;
+                                    Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                }
+
+                                if (is_settings)
+                                {
+                                    switch (sound_settings.index)
+                                    {
+                                        case 0:
+                                        {
+                                            Sound_TestIncreaseVolume(&test_volume_controller, 0);
+                                            Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                            
+                                            volume_controller[0].touched = true;
+                                            printf("master touched\n");
+                                            volume_settings_state = VOL_SETTINGS_MASTER;
+
+                                        } break;
+                                        case 1:
+                                        {
+                                            Sound_TestIncreaseVolume(&test_volume_controller, 1);
+                                            Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                           
+                                            volume_controller[1].touched = true;
+                                            printf("music touched\n");
+                                            volume_settings_state = VOL_SETTINGS_MUSIC;
+
+                                        } break;
+                                        case 2:
+                                        {
+                                            Sound_TestIncreaseVolume(&test_volume_controller, 2);
+                                            Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                            
+                                            volume_controller[2].touched = true;
+                                            printf("sfx touched\n");
+                                            volume_settings_state = VOL_SETTINGS_SFX;
+                                        } break;
+                                        case 3:
+                                        {
+                                            Sound_MoveRightSettings(&sound_settings);
+                                        } break;
+                                        case 4:
+                                        {
+                                            Sound_MoveRightSettings(&sound_settings);
+
+                                        } break;
+                                    }
+
+                                    for (int vc = 0; vc < VOLUME_CONTROLLER_COUNT; ++vc) 
+                                    {
+                                        switch (test_volume_controller.info[vc].index)
+                                        {
+                                            case 0:
+                                            {
+                                                test_volume_controller.info[vc].mute = true;
+                                            } break;
+                                            case 1:
+                                            {
+                                                test_volume_controller.info[vc].one = true;
+                                            } break;
+                                            case 2:
+                                            {
+                                                test_volume_controller.info[vc].two = true;
+                                            } break;
+                                            case 3:
+                                            {
+                                                test_volume_controller.info[vc].three = true;
+                                            } break;
+                                            case 4:
+                                            {
+                                                test_volume_controller.info[vc].max = true;
+                                            } break;
+                                            default:
+                                            {
+                                                test_volume_controller.info[vc].one = true;
+                                            } break;
+                                        }
+                                    }
+
+                                }
+                               
+                                
+                                if (is_name_submission)
+                                {
+                                    NameEntry_MoveRight(&name_entry);
+                                }
+
+                                if (personality_results_screen)
+                                {
+                                    next_button.index++;
+                                    if (next_button.index >= ArraySize(next_button.button))
+                                        next_button.index = 0;
+                                }
+                            } break;
+                            case SDLK_BACKSPACE:
+                            {
+                                if (is_name_submission)
+                                {
+                                    name_entry.is_active = true;
+                                    character_class_name_submission_state = CLASS_NAME_DELETE;
+                                }
+                            } break;
+                            case SDLK_ESCAPE:
+                            {
+                                if (character_creation_screen.is_active)
+                                {
+                                    class_select_state = CLASS_SELECT_BACK;
+                                }
+
+                                if (character_allocation_select_screen.is_active && !personality_test.is_active)
+                                {
+                                    class_allocation_state = CLASS_ALLOCATION_BACK;
+                                }
+
+                                if (is_settings)
+                                {
+                                    volume_settings_state = VOL_SETTINGS_BACK;
+                                }
+                            } break;
+                            case SDLK_TAB:
+                            {
+                                if (is_game_running && !game_menu.is_opened)
+                                {
+                                    game_menu.is_opened = true;
+                                    printf("menu opened\n");
+                                }
+                                else
+                                {
+                                    game_menu.is_opened = false;
+                                    printf("menu closed\n");
+                                }
+
+
+                            } break;
+                            case SDLK_RETURN:
+                            {
+                                // TEST
+                                if (is_title_screen)
+                                {
+                                    Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                    switch (option_index)
+                                    {
+                                        case 0:
+                                        {
+                                            title_screen_state = TITLE_NEW_GAME;
+                                        } break;
+                                        case 1:
+                                        {
+                                            title_screen_state = TITLE_LOAD_GAME;
+                                        } break;
+                                        case 2:
+                                        {
+                                            title_screen_state = TITLE_SETTINGS;
+                                        } break;
+                                        case 3:
+                                        {
+                                            title_screen_state = TITLE_EXIT;
+                                        } break;
+                                        default:
+                                        {
+                                            title_screen_state = TITLE_NONE;
                                         } break;
                                     }
                                 }
-                            }
+                                
+                                if (character_creation_screen.is_active)
+                                {
+                                    Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                    switch (character_creation_screen.index)
+                                    {
+                                        case 0:
+                                        {
+                                            class_select_state = CLASS_SELECT_KNIGHT;
+                                        } break;
+                                        case 1:
+                                        {
+                                            class_select_state = CLASS_SELECT_PALADIN;
+                                        } break;
+                                        case 2:
+                                        {
+                                            class_select_state = CLASS_SELECT_WIZARD;
+                                        } break; 
+                                        case 3:
+                                        {
+                                            class_select_state = CLASS_SELECT_ARCHER;
+                                        } break;
+                                    }
+                                }
+                               
+                                if (character_allocation_select_screen.is_active)
+                                {
+                                    Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                    switch (character_allocation_select_screen.index)
+                                    {
+                                        case 0:
+                                        {
+                                            class_allocation_state = CLASS_ALLOCATION_PERSONALITY; 
+                                        } break;
+                                        case 1:
+                                        {
+                                            class_allocation_state = CLASS_ALLOCATION_PRESET; 
+                                        } break;
+                                        case 2:
+                                        {
+                                            class_allocation_state = CLASS_ALLOCATION_MANUAL; 
+                                        } break;
+                                    }
+                                }
+
+                                if (character_creation_screen.is_active && confirmation.is_active)
+                                {
+                                    Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                    switch (confirmation.index)
+                                    {
+                                        case 0:
+                                        {
+                                            character_creation_screen.is_active = false;
+                                            character_allocation_select_screen.is_active = true;
+                                            confirmation.is_active = false; 
+                                        } break;
+                                        case 1:
+                                        {
+                                            confirmation.is_active = false; 
+                                            confirmation.index = 0;
+                                            class_select_state = CLASS_SELECT_NONE;
+                                        } break;
+                                    }
+                                 
+                                }
                               
-                            if (is_class_overview_screen)
-                            {
-                                if (next_button.is_active)
+                                if (character_allocation_select_screen.is_active && confirmation.is_active)
                                 {
-                                    switch (next_button.index)
+                                    Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                    switch (confirmation.index)
                                     {
-                                        case 0: // next
+                                        case 0:
                                         {
-                                            printf("next\n");
-                                            Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                            is_class_overview_screen = false;
-                                            is_game_running = true;
-                                            next_button.is_active = false;
+                                            if (character_allocation_select_screen.index == 0)
+                                            {
+                                                character_allocation_select_screen.is_active = false;
+                                                is_personality_test = true;
+                                                personality_test.is_active = true;
+                                            }
+                                            
+                                            confirmation.is_active = false; 
+                                        } break;
+                                        case 1:
+                                        {
+                                            confirmation.is_active = false;
+                                            confirmation.index = 0;
+                                            class_allocation_state = CLASS_ALLOCATION_NONE;
                                         } break;
                                     }
                                 }
-                            }
-                        } break;
-                        default:
-                        {
 
-                        } break;
+                                if (is_personality_test && personality_test.is_active && confirmation.is_active)
+                                {
+                                    Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                    switch (confirmation.index)
+                                    {
+                                        case 0: // yes
+                                        {
+                                            // turn into a function
+                                            switch (personality_test.index)
+                                            {
+                                                case 1:
+                                                {
+                                                    personality_test.index = 7;
+                                                } break;
+                                                case 2:
+                                                {
+                                                    personality_test.index = 14;
+                                                } break;
+                                                case 3:
+                                                {
+                                                    personality_test.index = 6;
+                                                } break;
+                                                case 4:
+                                                {
+                                                    personality_test.index = 15;
+                                                } break;
+                                                case 5:
+                                                {
+                                                    personality_test.index = 8;
+                                                } break;
+                                                case 6:
+                                                {
+                                                    personality_test.index = 7;
+                                                } break;
+                                                case 7:
+                                                {
+                                                    personality_test.index = 10;
+                                                } break;
+                                                case 8:
+                                                {
+                                                    personality_test.index = 10;
+                                                } break;
+                                                case 9:
+                                                {
+                                                    personality_test.index = 11;
+                                                } break;
+                                                case 10:
+                                                {
+                                                    personality_test.index = 14;
+                                                } break;
+                                                case 11:
+                                                {
+                                                    personality_test.index = 14;
+                                                } break;
+                                                case 12:
+                                                {
+                                                    personality_test.index = 31;
+                                                } break;
+                                                case 13:
+                                                {
+                                                    personality_test.index = 25;
+                                                } break;
+                                                case 14:
+                                                {
+                                                    personality_test.index = 18;
+                                                } break;
+                                                case 15:
+                                                {
+                                                    personality_test.index = 16;
+                                                } break;
+                                                case 16:
+                                                {
+                                                    personality_test.index = 17;
+                                                } break;
+                                                case 17:
+                                                {
+                                                    personality_test.index = 21;
+                                                } break;
+                                                case 18:
+                                                {
+                                                    personality_test.index = 19;
+                                                } break;
+                                                case 19:
+                                                {
+                                                    personality_test.index = 20;
+                                                } break;
+                                                case 20:
+                                                {
+                                                    personality_test.index = 21;
+                                                } break; 
+                                                case 21:
+                                                {
+                                                    personality_test.index = 23;
+                                                } break;
+                                                case 22:
+                                                {
+                                                    personality_test.index = 38;
+                                                } break;
+                                                case 23:
+                                                {
+                                                    personality_test.index = 24;
+                                                } break;
+                                                case 24:
+                                                {
+                                                    personality_test.index = 34;
+                                                } break;
+                                                case 25:
+                                                {
+                                                    personality_test.index = 31;
+                                                } break;
+                                                case 26:
+                                                {
+                                                    personality_test.index = 27;
+                                                } break;
+                                                case 27:
+                                                {
+                                                    personality_test.index = 28;
+                                                } break;
+                                                case 28:
+                                                {
+                                                    personality_test.index = 29;
+                                                } break;
+                                                case 29:
+                                                {
+                                                    personality_test.index = 30;
+                                                } break;
+                                                case 30:
+                                                {
+                                                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_VILLAGE; // final question
+                                                } break;
+                                                case 31:
+                                                {
+                                                    personality_test.index = 32;
+                                                } break;
+                                                case 32:
+                                                {
+                                                    personality_test.index = 33;
+                                                } break;
+                                                case 33:
+                                                {
+                                                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_DESERT; // final question
+                                                } break;
+                                                case 34:
+                                                {
+                                                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST; //CLASS_PERSONALITY_RESULT_MONSTER; // final question
+                                                } break;
+                                                case 35:
+                                                {
+                                                    personality_test.index = 0; // final question
+                                                } break;
+                                                case 36:
+                                                {
+                                                    personality_test.index = 37;
+                                                } break;
+                                                case 37:
+                                                {
+                                                    personality_test.index = 43;
+                                                } break;
+                                                case 38:
+                                                {
+                                                    personality_test.index = 39;
+                                                } break;
+                                                case 39:
+                                                {
+                                                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_TOWER;
+                                                } break;
+                                                case 40:
+                                                {
+                                                    personality_test.index = 42;
+                                                } break; 
+                                                case 41:
+                                                {
+                                                    personality_test.index = 43;
+                                                } break;
+                                                case 42:
+                                                {
+                                                    personality_test.index = 43;
+                                                } break;
+                                                case 43:
+                                                {
+                                                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST; 
+                                                } break;
+                                                case 44:
+                                                {
+                                                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_THEATER; 
+                                                } break;
+                                                case 45:
+                                                {
+                                                    personality_test.index = 47;
+                                                } break;
+                                                case 46:
+                                                {
+                                                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CAVE; 
+                                                } break;
+                                                case 47:
+                                                {
+                                                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CAVE; 
+                                                } break;
+                                                case 48:
+                                                {
+                                                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST;//CLASS_PERSONALITY_RESULT_CASTLE;
+                                                } break;
+                                                case 49:
+                                                {
+                                                   character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_FOREST;//CLASS_PERSONALITY_RESULT_CASTLE; 
+                                                } break;
+                                            }
+                                        } break;
+                                        case 1: // no
+                                        {
+                                            switch (personality_test.index)
+                                            {
+                                                case 1:
+                                                {
+                                                    personality_test.index = 9;
+                                                } break;
+                                                case 2:
+                                                {
+                                                    personality_test.index = 8;
+                                                } break;
+                                                case 3:
+                                                {
+                                                    personality_test.index = 8;
+                                                } break;
+                                                case 4:
+                                                {
+                                                    personality_test.index = 6;
+                                                } break;
+                                                case 5:
+                                                {
+                                                    personality_test.index = 16;
+                                                } break;
+                                                case 6:
+                                                {
+                                                    personality_test.index = 8;
+                                                } break;
+                                                case 7:
+                                                {
+                                                    personality_test.index = 5;
+                                                } break;
+                                                case 8:
+                                                {
+                                                    personality_test.index = 9;
+                                                } break;
+                                                case 9:
+                                                {
+                                                    personality_test.index = 12;
+                                                } break;
+                                                case 10:
+                                                {
+                                                    personality_test.index = 13;
+                                                } break;
+                                                case 11:
+                                                {
+                                                    personality_test.index = 13;
+                                                } break;
+                                                case 12:
+                                                {
+                                                    personality_test.index = 14;
+                                                } break;
+                                                case 13:
+                                                {
+                                                    personality_test.index = 15;
+                                                } break;
+                                                case 14:
+                                                {
+                                                    personality_test.index = 19;
+                                                } break;
+                                                case 15:
+                                                {
+                                                    personality_test.index = 20;
+                                                } break;
+                                                case 16:
+                                                {
+                                                    personality_test.index = 22;
+                                                } break;
+                                                case 17:
+                                                {
+                                                    personality_test.index = 25;
+                                                } break;
+                                                case 18:
+                                                {
+                                                    personality_test.index = 23;
+                                                } break;
+                                                case 19:
+                                                {
+                                                    personality_test.index = 25;
+                                                } break;
+                                                case 20:
+                                                {
+                                                    personality_test.index = 22;
+                                                } break; 
+                                                case 21:
+                                                {
+                                                    personality_test.index = 23;
+                                                } break;
+                                                case 22:
+                                                {
+                                                    personality_test.index = 38;
+                                                } break;
+                                                case 23:
+                                                { 
+                                                    personality_test.index = 40;
+                                                } break;
+                                                case 24:
+                                                {
+                                                    personality_test.index = 25;
+                                                } break;
+                                                case 25:
+                                                {
+                                                    personality_test.index = 26;
+                                                } break;
+                                                case 26:
+                                                {
+                                                    personality_test.index = 28;
+                                                } break;
+                                                case 27:
+                                                {
+                                                    personality_test.index = 29;
+                                                } break;
+                                                case 28:
+                                                {
+                                                    personality_test.index = 30;
+                                                } break;
+                                                case 29:
+                                                {
+                                                    personality_test.index = 30;
+                                                } break;
+                                                case 30:
+                                                {
+                                                    personality_test.index = 40; 
+                                                } break;
+                                                case 31:
+                                                {
+                                                    personality_test.index = 34;
+                                                } break;
+                                                case 32:
+                                                {
+                                                    personality_test.index = 36;
+                                                } break;
+                                                case 33:
+                                                {
+                                                    personality_test.index = 36;
+                                                } break;
+                                                case 34:
+                                                {
+                                                    personality_test.index = 36;
+                                                } break;
+                                                case 35:
+                                                {
+                                                    personality_test.index = 36; 
+                                                } break;
+                                                case 36:
+                                                {
+                                                    personality_test.index = 48;
+                                                } break;
+                                                case 37:
+                                                {
+                                                    personality_test.index = 49;
+                                                } break;
+                                                case 38:
+                                                {
+                                                    personality_test.index = 40;
+                                                } break;
+                                                case 39:
+                                                {
+                                                    personality_test.index = 41; 
+                                                } break;
+                                                case 40:
+                                                {
+                                                    personality_test.index = 41;
+                                                } break; 
+                                                case 41:
+                                                {
+                                                    personality_test.index = 42;
+                                                } break;
+                                                case 42:
+                                                {
+                                                    personality_test.index = 44;
+                                                } break;
+                                                case 43:
+                                                {
+                                                    personality_test.index = 45; 
+                                                } break;
+                                                case 44:
+                                                {
+                                                    personality_test.index = 45;
+                                                } break;
+                                                case 45:
+                                                {
+                                                    personality_test.index = 46;
+                                                } break;
+                                                case 46:
+                                                {
+                                                    personality_test.index = 47; 
+                                                } break;
+                                                case 47:
+                                                {
+                                                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_THEATER; 
+                                                } break;
+                                                case 48:
+                                                {
+                                                    personality_test.index = 49;
+                                                } break;
+                                                case 49:
+                                                {
+                                                    character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_CAVE;
+                                                } break;
+                                            }
+                                        } break;
+                                    }
+                                }
+                                                           
+
+                                if (is_settings)
+                                {
+                                    switch (sound_settings.index)
+                                    {
+                                        case 3: // apply
+                                        {
+                                            Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                            test_volume_controller.apply = true;
+                                            volume_settings_state = VOL_SETTINGS_APPLY;
+                                        } break;
+                                        case 4:
+                                        {
+                                            Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                            volume_settings_state = VOL_SETTINGS_BACK;
+                                        } break;
+                                        default:
+                                        { 
+                                             
+                                        } break;
+                                    }
+                                }
+
+                                if (is_name_submission)
+                                {
+                                    Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                    
+                                    printf("name_entry.index: %d\n", name_entry.index);
+                                    name_entry.index = name_entry.current_row * NAME_ENTRY_GRID_COLS + name_entry.current_col;
+
+                                    // Glyph grid
+                                    if (name_entry.index >= 0 && name_entry.index < 50)
+                                    {
+                                        name_entry.is_active = true;
+                                        character_class_name_submission_state = CLASS_NAME_ENTER;
+                                    }
+
+                                    // Button grid 
+                                    if (name_entry.index >= 50 && name_entry.index < 60)
+                                    {
+                                        name_entry.is_active = true;
+                                        character_class_name_submission_state = CLASS_NAME_CONFIRM;
+                                    }
+                                }
+
+                                if (is_personality_test)
+                                {
+                                    if (test_scenarios.result & SCENARIO_VILLAGE)
+                                    {
+                                        switch (test_scenarios.scenario[VILLAGE_INDEX].index)
+                                        {
+                                            case 0:
+                                            {
+                                                printf("Show-off\n");
+                                                personality_types_state = PERSONALITY_SHOW_OFF;
+                                                PushString(test_scenarios.personality, "Show-Off");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[VILLAGE_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 1:
+                                            {
+                                                printf("Slippery Devil\n");
+                                                personality_types_state = PERSONALITY_SLIPPERY_DEVIL;
+                                                PushString(test_scenarios.personality, "Slippery Devil");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[VILLAGE_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 2:
+                                            {
+                                                printf("Shrinking Violet\n");
+                                                personality_types_state = PERSONALITY_SHRINKING_VIOLET;
+                                                PushString(test_scenarios.personality, "Shrinking Violet");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[VILLAGE_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                        }
+
+                                    }
+
+                                    if (test_scenarios.result & SCENARIO_MONSTER)
+                                    {
+                                        switch (test_scenarios.scenario[MONSTER_INDEX].index)
+                                        {
+                                            case 0: 
+                                            {
+                                                printf("Paragon\n");
+                                                personality_types_state = PERSONALITY_PARAGON;
+                                                PushString(test_scenarios.personality, "Paragon");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[MONSTER_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 1: 
+                                            {
+                                                printf("Wimp\n");
+                                                personality_types_state = PERSONALITY_WIMP;
+                                                PushString(test_scenarios.personality, "Wimp");
+                                                loading_results = true;
+                                                test_scenarios.scenario[MONSTER_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 2: 
+                                            {
+                                                printf("Spoilt Brat\n");
+                                                personality_types_state = PERSONALITY_SPOILT_BRAT;
+                                                PushString(test_scenarios.personality, "Spoilt Brat");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[MONSTER_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 3: 
+                                            {
+                                                printf("Egghead\n");
+                                                personality_types_state = PERSONALITY_EGGHEAD;
+                                                PushString(test_scenarios.personality, "Egghead");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[MONSTER_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 4: 
+                                            {
+                                                printf("Klutz\n");
+                                                personality_types_state = PERSONALITY_KLUTZ;
+                                                PushString(test_scenarios.personality, "Klutz");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[MONSTER_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                        } 
+                                    }
+
+                                    if (test_scenarios.result & SCENARIO_CAVE)
+                                    {
+                                        switch (test_scenarios.scenario[CAVE_INDEX].index)
+                                        {
+                                            case 0: 
+                                            {
+                                                printf("Straight Arrow\n");
+                                                personality_types_state = PERSONALITY_STRAIGHT_ARROW;
+                                                PushString(test_scenarios.personality, "Straight Arrow");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[CAVE_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 1: 
+                                            {
+                                                printf("Mule\n");
+                                                personality_types_state = PERSONALITY_MULE;
+                                                PushString(test_scenarios.personality, "Mule");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[CAVE_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 2: 
+                                            {
+                                                printf("Scatterbrain\n");
+                                                personality_types_state = PERSONALITY_SCATTER_BRAIN;
+                                                PushString(test_scenarios.personality, "Scatterbrain");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[CAVE_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 3: 
+                                            {
+                                                printf("Narcissist\n");
+                                                personality_types_state = PERSONALITY_NARCISSIST;
+                                                PushString(test_scenarios.personality, "Narcissist");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[CAVE_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 4: 
+                                            {
+                                                printf("Sore Loser\n");
+                                                personality_types_state = PERSONALITY_SORE_LOSER;
+                                                PushString(test_scenarios.personality, "Sore Loser");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[CAVE_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                        } 
+                                    }
+
+                                    if (test_scenarios.result & SCENARIO_DESERT)
+                                    {
+                                        switch (test_scenarios.scenario[DESERT_INDEX].index)
+                                        {
+                                            case 0: 
+                                            {
+                                                personality_types_state = PERSONALITY_THUG;
+                                                PushString(test_scenarios.personality, "Thug");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[DESERT_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 1: 
+                                            {
+                                                printf("Daredevil\n");
+                                                personality_types_state = PERSONALITY_DAREDEVIL;
+                                                PushString(test_scenarios.personality, "Daredevil");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[DESERT_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                            case 2: 
+                                            {
+                                                printf("Idealist\n");
+                                                personality_types_state = PERSONALITY_IDEALIST;
+                                                PushString(test_scenarios.personality, "Idealist");
+                                                loading_results = true;
+                                                
+                                                test_scenarios.scenario[DESERT_INDEX].is_active = false;
+                                                is_personality_test = false;
+                                                personality_results_screen = true;
+                                            } break;
+                                        } 
+                                    }
+                                }
+                                    
+                                if (test_scenarios.result & SCENARIO_TOWER)
+                                {
+                                    switch (test_scenarios.scenario[TOWER_INDEX].index)
+                                    {
+                                        case 0: 
+                                        {
+                                            printf("Daydreamer\n");
+                                            personality_types_state = PERSONALITY_DAYDREAMER;
+                                            PushString(test_scenarios.personality, "Daydreamer");
+                                            loading_results = true;
+                                            
+                                            test_scenarios.scenario[TOWER_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
+                                        } break;
+                                        case 1: 
+                                        {
+                                            printf("Socialite\n");
+                                            personality_types_state = PERSONALITY_SOCIALITE;
+                                            PushString(test_scenarios.personality, "Socialite");
+                                            loading_results = true;
+                                            
+                                            test_scenarios.scenario[TOWER_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
+                                        } break;
+                                    }
+                                }
+                               
+                                if (test_scenarios.result & SCENARIO_THEATER)
+                                {
+                                    switch (test_scenarios.scenario[THEATER_INDEX].index)
+                                    {
+                                        case 0: 
+                                        {
+                                            personality_types_state = PERSONALITY_FREE_SPIRIT;
+                                            PushString(test_scenarios.personality, "Free Spirit");
+                                            loading_results = true;
+                                            
+                                            test_scenarios.scenario[THEATER_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
+                                        } break;
+                                        case 1: 
+                                        {
+                                            personality_types_state = PERSONALITY_CRYBABY;
+                                            PushString(test_scenarios.personality, "Crybaby");
+                                            loading_results = true;
+                                            
+                                            test_scenarios.scenario[THEATER_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
+                                        } break;
+                                        case 2: 
+                                        {
+                                            personality_types_state = PERSONALITY_LONE_WOLF;
+                                            PushString(test_scenarios.personality, "Lone Wolf");
+                                            loading_results = true;
+                                            
+                                            test_scenarios.scenario[THEATER_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
+                                        } break;
+                                        case 3: 
+                                        {
+                                            personality_types_state = PERSONALITY_LOUT;
+                                            PushString(test_scenarios.personality, "Lout");
+                                            loading_results = true;
+                                            
+                                            test_scenarios.scenario[THEATER_INDEX].is_active = false;
+                                            is_personality_test = false;
+                                            personality_results_screen = true;
+                                        } break;
+                                    }
+                                }
+
+                                if (test_scenarios.scenario[FOREST_INDEX].is_active)
+                                {
+
+                                    if (player_talking_to_oldman)
+                                        hold_dialogue_box = true;
+
+                                    if (hold_dialogue_box)
+                                    {
+                                        if (next_text && dialogue_index < 6)
+                                        {
+                                            dialogue_index++;
+                                            next_text = false;
+                                        }
+      
+                                        if (dialogue_index > 5)
+                                        {
+                                            dialogue_index = 0;
+                                            character_data.model.conditions.is_movable = true;
+                                            player_talking_to_oldman = false;
+                                            hold_dialogue_box = false;
+                                        }
+                                    }
+
+                                    if (hold_dialogue_box_return_boulder)
+                                    {
+                                        dialogue_index_2++;
+                                        if (dialogue_index_2 > 1)
+                                        {
+                                            dialogue_index_2 = 0;
+                                            character_data.model.conditions.is_movable = true; 
+                                            hold_dialogue_box_return_boulder = false;
+                                        }
+                                    }
+                                }
+
+                                if (personality_results_screen)
+                                {
+                                    if (next_button.is_active)
+                                    {
+                                        switch (next_button.index)
+                                        {
+                                            case 0: // next
+                                            {
+                                                printf("next\n");
+                                                Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                                personality_results_screen = false;
+                                                is_name_submission = true;
+                                                next_button.is_active = false;
+                                            } break;
+                                        }
+                                    }
+                                }
+                                  
+                                if (is_class_overview_screen)
+                                {
+                                    if (next_button.is_active)
+                                    {
+                                        switch (next_button.index)
+                                        {
+                                            case 0: // next
+                                            {
+                                                printf("next\n");
+                                                Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                                is_class_overview_screen = false;
+                                                is_game_running = true;
+                                                next_button.is_active = false;
+                                            } break;
+                                        }
+                                    }
+                                }
+                            } break;
+                            default:
+                            {
+
+                            } break;
+                        }
                     }
                 } break;
                 default:
@@ -3193,7 +3427,6 @@ int main(int argc, char *argv[])
                    // Nothing 
                 } break;
             }
-            
         }
        
         if (is_title_screen)
@@ -4977,19 +5210,12 @@ int main(int argc, char *argv[])
         if (is_game_running)
         {
             UpdatePlayer(&character_data.model, &sfx_move);
-            for (int i = 0; i < ArraySize(enemy_arr); ++i)
-            {
-                if (AABB_Detection(&character_data.model.body, &enemy_arr[i].body))
-                {
-                    CombatCheck(&character_data.model, &enemy_arr[i]);
-                    CombatUpdate(&character_data.model, &enemy_arr[i], &sfx_attack);
-                    AABB_Resolution(&character_data.model, &enemy_arr[i]);
-                }
-            }
-
             for (int i = 0; i < ArraySize(walls); ++i)
-            {
                 AABB_Resolution(&character_data.model, &walls[i]);
+
+            if (game_menu.is_opened)
+            {
+                // Render command menu
             }
 
 
@@ -5004,9 +5230,7 @@ int main(int argc, char *argv[])
             RenderAndUpdateAsset(&character_data.model);
 
             for (int i = 0; i < ArraySize(walls); ++i)
-            {
                 RenderAndUpdateAsset(&walls[i]);
-            }
 
             // Set render target to camera
             SDL_SetRenderTarget(SDLWindow.Renderer, NULL);
