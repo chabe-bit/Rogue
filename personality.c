@@ -20,7 +20,8 @@ test_personality_test_results_t clown  = {
         {255, 255, 255, 255}, 
         {255, 255, 255, 255}, 
         {255, 255, 255, 255},
-    },    .description = {
+    },    
+    .description = {
          "You are that classic character...",
          "the clown...When you see someone",
          "working away seriously at",

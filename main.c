@@ -14,11 +14,6 @@
 
 static bool Running;
 
-struct
-{
-    bool up, down, left, right;
-} Orientation;
-
 typedef struct
 {
     SDL_Event e;
@@ -38,17 +33,6 @@ camera_t SDLCamera;
 
 typedef struct
 {
-    struct {   
-        int strength, dexterity, constitution;
-    } physical;
-
-    struct {
-        int intelligense, wisdom, charisma;
-    } mental;
-} base_abilities_t;
-
-typedef struct
-{
     int hp, atk, def, exp;
     SDL_Rect health_bar;
 } stats_t;
@@ -58,11 +42,10 @@ typedef struct
     bool up, down, left, right;
 } asset_direction_t;
 
-#define NUM_ENEMIES 2
 typedef struct
 {
-    //bool collidable;
-    int x, y, w, h;
+    int x, y;
+    int w, h;
     asset_direction_t direction;
     union 
     {
@@ -74,7 +57,6 @@ typedef struct
         bool is_collidable;
     } conditions;
     SDL_Rect body;
-    SDL_Rect hitbox;
     SDL_Rect adjacent_hitboxes[4];
     SDL_Texture *texture;
 } asset_t;
@@ -83,7 +65,6 @@ typedef struct
 {
     int index;
     bool is_active;
-
     const char *table[50]; 
 } personality_test_t; 
 
@@ -157,9 +138,6 @@ void PersonalityTest_Init(personality_test_t *personality_test)
     {
         personality_test->table[i] = question_table[i]; 
     }
-   
-    
-    
 }
 
 
@@ -272,7 +250,7 @@ void ExitOption()
     exit(1);
 }
 
-static void LoadAsset(asset_t *asset, const char *filename)
+void LoadAsset(asset_t *asset, const char *filename)
 {
     int channels;
     unsigned char *data = stbi_load(filename, &asset->w, &asset->h, &channels, STBI_default);
@@ -302,46 +280,49 @@ static void LoadAsset(asset_t *asset, const char *filename)
     stbi_image_free(data);  
 }
 
-bool AABB(SDL_Rect *a, SDL_Rect *b)
+bool AABB_Detection(SDL_Rect *a, SDL_Rect *b)
 {
-    if(a->y + a->h <= b->y) return false;
+    if(a->y + a->h <= b->y) 
+        return false;
 
-    if(a->y >= b->y + b->h) return false;
+    if(a->y >= b->y + b->h) 
+        return false;
 
-    if(a->x + a->w <= b->x) return false;
+    if(a->x + a->w <= b->x) 
+        return false;
 
-    if(a->x >= b->x + b->w) return false;
+    if(a->x >= b->x + b->w) 
+        return false;
 
     return true;
 }
 
-void CollisionXCheck(asset_t *a, asset_t *b)
+void AABB_Resolution(asset_t *a, asset_t *b)
 {
-    if (AABB(&a->body, &b->body) && b->conditions.is_collidable)
+    if (AABB_Detection(&a->body, &b->body) && 
+        (a->conditions.is_collidable && b->conditions.is_collidable))
     {
         a->body.x = a->x;
     }
-}  
 
-void CollisionYCheck(asset_t *a, asset_t *b)
-{
-    if (AABB(&a->body, &b->body) && b->conditions.is_collidable)
+    if (AABB_Detection(&a->body, &b->body) &&
+        (a->conditions.is_collidable && b->conditions.is_collidable))
     {
         a->body.y = a->y;
     }
 }
 
-static void 
+void 
 CombatCheck(asset_t *player, asset_t* asset)
 {
-    if (AABB(&player->body, &asset->body) && asset->conditions.is_collidable)
+    if (AABB_Detection(&player->body, &asset->body) && asset->conditions.is_collidable)
     {
         player->conditions.is_attacking = true;
         asset->conditions.is_under_attack = true;
     }
 }
 
-static void
+void
 CombatUpdate(asset_t *player, asset_t *asset, sound_wav_t *sound) 
 {
     if (asset->conditions.is_under_attack)
@@ -409,7 +390,7 @@ void UpdateAsset(asset_t *asset, asset_t *player)
     {
         if (asset->direction.up)
         {      
-            if (AABB(&asset->body, &player->body) && 
+            if (AABB_Detection(&asset->body, &player->body) && 
                 asset->conditions.is_collidable)
             {
                 asset->body.y -= asset->body.h;
@@ -420,7 +401,7 @@ void UpdateAsset(asset_t *asset, asset_t *player)
 
         if (asset->direction.down)
         {
-            if (AABB(&asset->body, &player->body) && 
+            if (AABB_Detection(&asset->body, &player->body) && 
                 asset->conditions.is_collidable)
             {
                 asset->body.y += asset->body.h; 
@@ -431,7 +412,7 @@ void UpdateAsset(asset_t *asset, asset_t *player)
 
         if (asset->direction.left)
         {
-            if (AABB(&asset->body, &player->body) && 
+            if (AABB_Detection(&asset->body, &player->body) && 
                 asset->conditions.is_collidable)
             {
                 asset->body.x -= asset->body.w; 
@@ -442,7 +423,7 @@ void UpdateAsset(asset_t *asset, asset_t *player)
 
         if (asset->direction.right)
         {
-            if (AABB(&asset->body, &player->body) && 
+            if (AABB_Detection(&asset->body, &player->body) && 
                 asset->conditions.is_collidable)
             {
                 asset->body.x += asset->body.w; 
@@ -1379,24 +1360,10 @@ int main(int argc, char *argv[])
         { "No", SCREEN_CENTER_X, SCREEN_CENTER_Y + 16 },
     };
   
-    const char *back_or_next_cursor_names[2] = {
-        "Back(Q)",
-        "Next(E)"
-    };
-
     const char *back_or_next_cursor_files[2] = {
         "assets/left_cursor.png",
         "assets/right_cursor.png"
     };
-
-    int back_or_next_cursor_index = 0;
-    class_select_t back_or_next_cursor[2] = {0};
-    for (int i = 0; i < ArraySize(back_or_next_cursor); ++i)
-    {
-        LoadAsset(&back_or_next_cursor[i].asset, back_or_next_cursor_files[i]);
-        back_or_next_cursor[i].name = back_or_next_cursor_names[i];
-    }
-
 
     sound_settings_t sound_settings = {0};
     Sound_InitSettings(&sound_settings); 
@@ -1407,14 +1374,10 @@ int main(int argc, char *argv[])
     sound_volume_controller_t test_volume_controller = {0};
     Sound_TestInitVolumeBar(&sound_settings, &test_volume_controller, VOLUME_CONTROLLER_COUNT);
 
-    printf("test_volume_controller: %d\n", test_volume_controller.info[0].blocks[0].x);
-
 
     ////////////// Enter name grid 
     name_entry_t name_entry = {0};
     NameEntry_Init(&name_entry);
-
-
 
 
     /////////////////////////////////////////////////////////////////////////
@@ -1783,26 +1746,8 @@ int main(int argc, char *argv[])
     } character_data_t;
     
     character_data_t character_data = {0};
-    character_data.level = 1;
-    character_data.experience = 0;
-    character_data.model.conditions.is_collidable = true;
-    character_data.model.conditions.is_movable = true;
-    character_data.model.direction.up = false;
-    character_data.model.direction.down = false;
-    character_data.model.direction.left = false;
-    character_data.model.direction.right = false;
-
-
-    printf("player is movable: %d\n", character_data.model.conditions.is_movable);
-/*
-    typedef struct
-    {
-        vec2_t pos;
-        char *text;
-    } class_status_overview_t;*/
 
     bool init_name = true;
-    
     const char *dst_txt = "Name:                      "; // Just to specify we're working with a str of size 27, for now
     class_status_overview_t class_status_overview[14] = {
         // Box 1 - Info
@@ -1829,17 +1774,13 @@ int main(int argc, char *argv[])
     {
         int index;
         bool is_active;
-        menu_item_t button[2];
-    } next_and_back_button_t;
+        menu_item_t button[1];
+    } next_button_t;
 
-    next_and_back_button_t next_and_back_button = {0};
-    next_and_back_button.button[0].text = "Next";
-    next_and_back_button.button[0].x = CENTER_TEXT_X(next_and_back_button.button[0].text, 96);
-    next_and_back_button.button[0].y = SCREEN_CENTER_Y + 96;
-
-    next_and_back_button.button[1].text = "Back";
-    next_and_back_button.button[1].x = CENTER_TEXT_X(next_and_back_button.button[1].text, -96);
-    next_and_back_button.button[1].y = SCREEN_CENTER_Y + 96;
+    next_button_t next_button = {0};
+    next_button.button[0].text = "Next";
+    next_button.button[0].x = CENTER_TEXT_X(next_button.button[0].text, 96);
+    next_button.button[0].y = SCREEN_CENTER_Y + 96;
 
     bool boulder_has_reached_end = false;
 
@@ -1878,24 +1819,6 @@ int main(int argc, char *argv[])
 
     printf("%s\n", forest_scenario_dialogue_intro[dialogue_index]);
     printf("%s\n", forest_scenario_dialogue_return_the_boulder[dialogue_index_2]);
-    
-
-
-/*
-    const char *forest_scenario_dialogue_intro[32] = {
-        {"Whoa-whoa-whoa! I see you're lost. Go"},
-        {"west. That's to your left. Keep walking"},
-        {"in that direction and you'll be clear of"},
-        {"this forest. If you happen to see a boulder,"},
-        {"could you push it back to me? I will be sure"},
-        {"to repay you."}
-    };
-    const char *forest_scenario_dialogue_return_the_boulder[32] = {
-        {"Oh! You brought the rock to me. Thank you!"},
-        {"Here's 10 gold coins for your troubles."}
-    };
-
-*/
 
     SDL_GameController *controller = NULL;
     for (int i = 0; i < SDL_NumJoysticks(); ++i)
@@ -2182,9 +2105,9 @@ int main(int argc, char *argv[])
 
                             if (personality_results_screen)
                             {
-                                next_and_back_button.index--;
-                                if (next_and_back_button.index < 0)
-                                    next_and_back_button.index = ArraySize(next_and_back_button.button) - 1;
+                                next_button.index--;
+                                if (next_button.index < 0)
+                                    next_button.index = ArraySize(next_button.button) - 1;
                             }
                         } break;
                         case SDLK_d:
@@ -2194,11 +2117,6 @@ int main(int argc, char *argv[])
 
                             if (boulder_has_reached_end)
                                 boulder_has_reached_end = false;
-                            if (player_is_out_of_bounds)
-                            {
-                                //test_scenarios.result |= SCENARIO_FOREST;
-                                //test_scenarios.scenario[FOREST_INDEX].is_active = false;
-                            }
 
                             if (character_creation_screen.is_active && !confirmation.is_active)
                             {
@@ -2301,9 +2219,9 @@ int main(int argc, char *argv[])
 
                             if (personality_results_screen)
                             {
-                                next_and_back_button.index++;
-                                if (next_and_back_button.index >= ArraySize(next_and_back_button.button))
-                                    next_and_back_button.index = 0;
+                                next_button.index++;
+                                if (next_button.index >= ArraySize(next_button.button))
+                                    next_button.index = 0;
                             }
                         } break;
                         case SDLK_BACKSPACE:
@@ -2892,16 +2810,18 @@ int main(int argc, char *argv[])
                             if (is_name_submission)
                             {
                                 Sound_PlaySFX(&master_volume.sfx[1]->wav);
-
                                 
                                 printf("name_entry.index: %d\n", name_entry.index);
                                 name_entry.index = name_entry.current_row * NAME_ENTRY_GRID_COLS + name_entry.current_col;
+
+                                // Glyph grid
                                 if (name_entry.index >= 0 && name_entry.index < 50)
                                 {
                                     name_entry.is_active = true;
                                     character_class_name_submission_state = CLASS_NAME_ENTER;
                                 }
 
+                                // Button grid 
                                 if (name_entry.index >= 50 && name_entry.index < 60)
                                 {
                                     name_entry.is_active = true;
@@ -3075,12 +2995,6 @@ int main(int argc, char *argv[])
                                     } 
                                 }
 
-                                if (test_scenarios.result & SCENARIO_FOREST)
-                                {
-
-                                   
-                                }
-                            
                                 if (test_scenarios.result & SCENARIO_DESERT)
                                 {
                                     switch (test_scenarios.scenario[DESERT_INDEX].index)
@@ -3197,30 +3111,6 @@ int main(int argc, char *argv[])
                                 }
                             }
 
-                            if (personality_results_screen)
-                            {
-                                if (next_and_back_button.is_active)
-                                {
-                                    switch (next_and_back_button.index)
-                                    {
-                                        case 0: // next
-                                        {
-                                            printf("next\n");
-                                            Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                            personality_results_screen = false;
-                                            is_name_submission = true;
-                                            next_and_back_button.is_active = false;
-                                        } break;
-                                        case 1: // back
-                                        {
-                                            printf("back\n");
-                                            Sound_PlaySFX(&master_volume.sfx[1]->wav);
-                                            next_and_back_button.is_active = false;
-                                        } break;
-                                    }
-                                }
-                            }
-  
                             if (test_scenarios.scenario[FOREST_INDEX].is_active)
                             {
 
@@ -3255,7 +3145,42 @@ int main(int argc, char *argv[])
                                     }
                                 }
                             }
-                          
+
+                            if (personality_results_screen)
+                            {
+                                if (next_button.is_active)
+                                {
+                                    switch (next_button.index)
+                                    {
+                                        case 0: // next
+                                        {
+                                            printf("next\n");
+                                            Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                            personality_results_screen = false;
+                                            is_name_submission = true;
+                                            next_button.is_active = false;
+                                        } break;
+                                    }
+                                }
+                            }
+                              
+                            if (is_class_overview_screen)
+                            {
+                                if (next_button.is_active)
+                                {
+                                    switch (next_button.index)
+                                    {
+                                        case 0: // next
+                                        {
+                                            printf("next\n");
+                                            Sound_PlaySFX(&master_volume.sfx[1]->wav);
+                                            is_class_overview_screen = false;
+                                            is_game_running = true;
+                                            next_button.is_active = false;
+                                        } break;
+                                    }
+                                }
+                            }
                         } break;
                         default:
                         {
@@ -3319,8 +3244,6 @@ int main(int argc, char *argv[])
                            title_screen_options[i].y,
                            title_screen_options[i].text, white);
             }
-            
-        
         }
     
         if (is_settings) 
@@ -3449,7 +3372,6 @@ int main(int argc, char *argv[])
                 } break;
             }
         }
-
 
         if (is_new_game)
         {
@@ -3936,35 +3858,26 @@ int main(int argc, char *argv[])
 
                     for (int i = 0; i < ArraySize(forest_scenario_walls); ++i)
                     {
-                        CollisionXCheck(&character_data.model, &forest_scenario_walls[i]);
-                        CollisionYCheck(&character_data.model, &forest_scenario_walls[i]);
-                        
-                        CollisionXCheck(&boulder_asset, &forest_scenario_walls[i]);
-                        CollisionYCheck(&boulder_asset, &forest_scenario_walls[i]);
+                        AABB_Resolution(&character_data.model, &forest_scenario_walls[i]);
+                        AABB_Resolution(&boulder_asset, &forest_scenario_walls[i]);
                     }
                     
                     for (int i = 0; i < ArraySize(boulder_wall_asset); ++i)
                     {
-                        CollisionXCheck(&character_data.model, &boulder_wall_asset[i]);
-                        CollisionYCheck(&character_data.model, &boulder_wall_asset[i]);
-
-                        CollisionXCheck(&boulder_asset, &boulder_wall_asset[i]);
-                        CollisionYCheck(&boulder_asset, &boulder_wall_asset[i]);
+                        AABB_Resolution(&character_data.model, &boulder_wall_asset[i]);
+                        AABB_Resolution(&boulder_asset, &boulder_wall_asset[i]);
                     }
 
-                    CollisionXCheck(&character_data.model, &boulder_asset);
-                    CollisionYCheck(&character_data.model, &boulder_asset);
-                   
-                    CollisionXCheck(&character_data.model, &oldman_asset);
-                    CollisionYCheck(&character_data.model, &oldman_asset);
+                    AABB_Resolution(&character_data.model, &boulder_asset);
+                    AABB_Resolution(&character_data.model, &oldman_asset);
 
                     // Boulder going out of bounds counts as ending the scene too
                     if (!player_is_out_of_bounds)
                     {
                         for (int i = 0; i < ArraySize(forest_out_of_bounds); ++i)
                         {
-                            if (AABB(&character_data.model.body, &forest_out_of_bounds[i].body) ||
-                                AABB(&boulder_asset.body, &forest_out_of_bounds[i].body))
+                            if (AABB_Detection(&character_data.model.body, &forest_out_of_bounds[i].body) ||
+                                AABB_Detection(&boulder_asset.body, &forest_out_of_bounds[i].body))
                             {
                                 printf("out of bounds!\n");
                                 
@@ -3974,6 +3887,11 @@ int main(int argc, char *argv[])
                                     PushString(test_scenarios.personality, "Lazybones");
                                     loading_results = true;
                                     
+                                    // Set character's x,y coords for when the game loop starts, player
+                                    // is left at the position when leaving the forest scenario
+                                    character_data.model.body.x = 10 * 16;
+                                    character_data.model.body.y = 16 * 24;
+
                                     test_scenarios.scenario[FOREST_INDEX].is_active = false;
                                     is_personality_test = false;
                                     personality_results_screen = true;
@@ -3996,6 +3914,9 @@ int main(int argc, char *argv[])
                                     PushString(test_scenarios.personality, "Plugger");
                                     loading_results = true;
                                     
+                                    character_data.model.body.x = 10 * 16;
+                                    character_data.model.body.y = 16 * 24;
+
                                     test_scenarios.scenario[FOREST_INDEX].is_active = false;
                                     is_personality_test = false;
                                     personality_results_screen = true;
@@ -4007,6 +3928,9 @@ int main(int argc, char *argv[])
                                     PushString(test_scenarios.personality, "Drudge");
                                     loading_results = true;
                                     
+                                    character_data.model.body.x = 10 * 16;
+                                    character_data.model.body.y = 16 * 24;
+
                                     test_scenarios.scenario[FOREST_INDEX].is_active = false;
                                     is_personality_test = false;
                                     personality_results_screen = true;
@@ -4018,6 +3942,9 @@ int main(int argc, char *argv[])
                                     PushString(test_scenarios.personality, "Tough-Cookie");
                                     loading_results = true;
                                     
+                                    character_data.model.body.x = 10 * 16;
+                                    character_data.model.body.y = 16 * 24;
+
                                     test_scenarios.scenario[FOREST_INDEX].is_active = false;
                                     is_personality_test = false;
                                     personality_results_screen = true;
@@ -4032,7 +3959,7 @@ int main(int argc, char *argv[])
                     {
                         for (int i = 0; i < ArraySize(oldman_asset.adjacent_hitboxes); ++i)
                         {
-                            if (AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[i]))
+                            if (AABB_Detection(&character_data.model.body, &oldman_asset.adjacent_hitboxes[i]))
                             {
                                 printf("touching\n");
                                 player_talking_to_oldman = true;
@@ -4040,10 +3967,10 @@ int main(int argc, char *argv[])
                         }
                     }
 
-                    if (!AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[0]) &&
-                        !AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[1]) &&
-                        !AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[2]) &&
-                        !AABB(&character_data.model.body, &oldman_asset.adjacent_hitboxes[3]) )
+                    if (!AABB_Detection(&character_data.model.body, &oldman_asset.adjacent_hitboxes[0]) &&
+                        !AABB_Detection(&character_data.model.body, &oldman_asset.adjacent_hitboxes[1]) &&
+                        !AABB_Detection(&character_data.model.body, &oldman_asset.adjacent_hitboxes[2]) &&
+                        !AABB_Detection(&character_data.model.body, &oldman_asset.adjacent_hitboxes[3]) )
                     {
                         printf("not touching\n");
                         player_talking_to_oldman = false;
@@ -4065,7 +3992,7 @@ int main(int argc, char *argv[])
                     static char gold_coins[3];
                     if (!boulder_has_reached_end)
                     {
-                        if (AABB(&boulder_asset.body, &forest_scenario_finish_line.body))
+                        if (AABB_Detection(&boulder_asset.body, &forest_scenario_finish_line.body))
                         {
                             boulder_count++;
                             gold_count_from_old_man += 10;
@@ -4845,33 +4772,25 @@ int main(int argc, char *argv[])
 
                 PersonalityTest_RenderResults(&test_scenarios, font_atlas, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                 
-                CursorForItems(&next_and_back_button.button[next_and_back_button.index], &right_cursor_asset, 4, 1);
+                CursorForItems(&next_button.button[next_button.index], &right_cursor_asset, 4, 1);
                 RenderAndUpdateAsset(&right_cursor_asset);
-                for (int i = 0; i < ArraySize(next_and_back_button.button); ++i)
+                for (int i = 0; i < ArraySize(next_button.button); ++i)
                 {
                     RenderText(SDLWindow.Renderer, font_atlas,
-                               next_and_back_button.button[i].x,
-                               next_and_back_button.button[i].y,
-                               next_and_back_button.button[i].text,
+                               next_button.button[i].x,
+                               next_button.button[i].y,
+                               next_button.button[i].text,
                                white);
-         
-
                 }
 
-                    
-                if (!next_and_back_button.is_active)
+                if (!next_button.is_active)
                 {
-                    switch (next_and_back_button.index)
+                    switch (next_button.index)
                     {
                         case 0:
                         {
-                            next_and_back_button.is_active = true;
+                            next_button.is_active = true;
                         } break;
-                        case 1:
-                        {
-                            next_and_back_button.is_active = true;
-                        } break;
-
                     }
                 }
             }
@@ -4939,7 +4858,6 @@ int main(int argc, char *argv[])
 
         if (is_class_overview_screen)
         {
-            SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
           
             static char full_text[10][28];
             static int full_len;
@@ -5005,6 +4923,31 @@ int main(int argc, char *argv[])
                 init_name = false;
             }
 
+            SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+                            
+            CursorForItems(&next_button.button[next_button.index], &right_cursor_asset, 4, 1);
+            RenderAndUpdateAsset(&right_cursor_asset);
+            for (int i = 0; i < ArraySize(next_button.button); ++i)
+            {
+                RenderText(SDLWindow.Renderer, font_atlas,
+                           next_button.button[i].x,
+                           next_button.button[i].y,
+                           next_button.button[i].text,
+                           white);
+            }
+
+                
+            if (!next_button.is_active)
+            {
+                switch (next_button.index)
+                {
+                    case 0:
+                    {
+                        next_button.is_active = true;
+                    } break;
+                }
+            }
+            
 
             for (int i = 0; i < ArraySize(class_status_overview); ++i)
             {
@@ -5033,29 +4976,24 @@ int main(int argc, char *argv[])
         
         if (is_game_running)
         {
-            UpdatePlayer(&player_asset, &sfx_move);
+            UpdatePlayer(&character_data.model, &sfx_move);
             for (int i = 0; i < ArraySize(enemy_arr); ++i)
             {
-                if (AABB(&player_asset.body, &enemy_arr[i].body))
+                if (AABB_Detection(&character_data.model.body, &enemy_arr[i].body))
                 {
-                    CombatCheck(&player_asset, &enemy_arr[i]);
-                    CombatUpdate(&player_asset, &enemy_arr[i], &sfx_attack);
-                    CollisionXCheck(&player_asset, &enemy_arr[i]);
-                    CollisionYCheck(&player_asset, &enemy_arr[i]);
+                    CombatCheck(&character_data.model, &enemy_arr[i]);
+                    CombatUpdate(&character_data.model, &enemy_arr[i], &sfx_attack);
+                    AABB_Resolution(&character_data.model, &enemy_arr[i]);
                 }
             }
 
             for (int i = 0; i < ArraySize(walls); ++i)
             {
-                if (AABB(&player_asset.body, &walls[i].body))
-                {
-                    CollisionXCheck(&player_asset, &walls[i]);
-                    CollisionYCheck(&player_asset, &walls[i]);
-                }
+                AABB_Resolution(&character_data.model, &walls[i]);
             }
 
 
-            AttachCameraToPlayer(&player_asset, &room_asset[0]);
+            AttachCameraToPlayer(&character_data.model, &room_asset[0]);
 
             SDL_SetRenderTarget(SDLWindow.Renderer, SDLCamera.TargetTexture);
             SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
@@ -5063,16 +5001,7 @@ int main(int argc, char *argv[])
 
             RenderAndUpdateAsset(&room_asset[0]);
             RenderAndUpdateAsset(&down_stairs_asset);
-            RenderAndUpdateAsset(&player_asset);
-
-
-            for (int i = 0; i < ArraySize(enemy_arr); ++i)
-            {   
-                if (enemy_arr[i].texture)
-                {
-                    RenderAndUpdateAsset(&enemy_arr[i]);
-                }
-            }
+            RenderAndUpdateAsset(&character_data.model);
 
             for (int i = 0; i < ArraySize(walls); ++i)
             {
@@ -5086,14 +5015,6 @@ int main(int argc, char *argv[])
         
             // Render to camera
             SDL_RenderCopy(SDLWindow.Renderer, SDLCamera.TargetTexture, NULL, NULL);
-
-            static SDL_Rect hey_rect;
-            hey_rect.x = SCREEN_CENTER_X;
-            hey_rect.y = SCREEN_CENTER_Y;
-            hey_rect.w = 64;     
-            hey_rect.h = 64;    
-            SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
-            SDL_RenderDrawRect(SDLWindow.Renderer, &hey_rect);
         }
 
         SDL_RenderSetLogicalSize(SDLWindow.Renderer, ASPECT_WIDTH, ASPECT_HEIGHT);    
