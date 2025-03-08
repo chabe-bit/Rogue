@@ -988,7 +988,7 @@ int main(int argc, char *argv[])
     player_stats.atk = 8;
     player_stats.def = 9;
     player_stats.exp = 0;
-    LoadAsset(&player_asset, "assets/knight.png");
+    LoadAsset(&player_asset, "assets/sprites/knight.png");
     InitializeAssetToRender(&player_asset, 10 * 16, 16 * 24, player_asset.w, player_asset.h);
     
     player_asset.conditions.is_collidable = true;
@@ -996,8 +996,8 @@ int main(int argc, char *argv[])
 
 
     const char *enemy_filenames[2] = {
-        "assets/enemy1.png",
-        "assets/enemy2.png"
+        "assets/sprites/enemy1.png",
+        "assets/sprites/enemy2.png"
     };
     
     asset_t enemy_arr[3];
@@ -1022,13 +1022,13 @@ int main(int argc, char *argv[])
     InitializeAssetToRender(&forest_scenario_map, CameraX, CameraY, forest_scenario_map.w, forest_scenario_map.h);
     
     asset_t oldman_asset = {0};
-    LoadAsset(&oldman_asset, "assets/oldman.png");
+    LoadAsset(&oldman_asset, "assets/sprites/oldman.png");
     InitializeAssetToRender(&oldman_asset, CameraX, CameraY, oldman_asset.w, oldman_asset.h);
     oldman_asset.conditions.is_collidable = true;
 
     int boulder_count = 0;
     asset_t boulder_asset = {0};
-    LoadAsset(&boulder_asset, "assets/boulder.png");
+    LoadAsset(&boulder_asset, "assets/sprites/boulder.png");
     InitializeAssetToRender(&boulder_asset, CameraX, CameraY, boulder_asset.w, boulder_asset.h);
     boulder_asset.conditions.is_collidable = true;
     boulder_asset.conditions.is_movable = true;
@@ -1036,7 +1036,7 @@ int main(int argc, char *argv[])
     asset_t boulder_wall_asset[5] = {0};
     for (int i = 0; i < ArraySize(boulder_wall_asset); ++i)
     {
-        LoadAsset(&boulder_wall_asset[i], "assets/boulder.png");
+        LoadAsset(&boulder_wall_asset[i], "assets/sprites/boulder.png");
         InitializeAssetToRender(&boulder_wall_asset[i], CameraX, CameraY, boulder_wall_asset[i].w, boulder_wall_asset[i].h);
         boulder_wall_asset[i].conditions.is_collidable = true;
 
@@ -1099,19 +1099,19 @@ int main(int argc, char *argv[])
     };
 
     asset_t up_cursor_asset = {0};
-    LoadAsset(&up_cursor_asset, "assets/up_cursor.png");
+    LoadAsset(&up_cursor_asset, "assets/ui/up_cursor.png");
     InitializeAssetToRender(&up_cursor_asset, 0, 0, up_cursor_asset.w, up_cursor_asset.h);
     
     asset_t down_cursor_asset = {0};
-    LoadAsset(&down_cursor_asset, "assets/down_cursor.png");
+    LoadAsset(&down_cursor_asset, "assets/ui/down_cursor.png");
     InitializeAssetToRender(&down_cursor_asset, 0, 0, down_cursor_asset.w, down_cursor_asset.h);
     
     asset_t right_cursor_asset = {0};
-    LoadAsset(&right_cursor_asset, "assets/right_cursor.png");
+    LoadAsset(&right_cursor_asset, "assets/ui/right_cursor.png");
     InitializeAssetToRender(&right_cursor_asset, 0, 0, right_cursor_asset.w, right_cursor_asset.h);
        
     asset_t left_cursor_asset = {0};
-    LoadAsset(&left_cursor_asset, "assets/left_cursor.png");
+    LoadAsset(&left_cursor_asset, "assets/ui/left_cursor.png");
     InitializeAssetToRender(&left_cursor_asset, 0, 0, left_cursor_asset.w, left_cursor_asset.h);
        
     asset_t new_game_asset = {0};
@@ -1119,11 +1119,11 @@ int main(int argc, char *argv[])
     InitializeAssetToRender(&new_game_asset, 0, 0, new_game_asset.w, new_game_asset.h); 
 
     asset_t dialogue_box_asset = {0};
-    LoadAsset(&dialogue_box_asset, "assets/dialogue_box.png");
+    LoadAsset(&dialogue_box_asset, "assets/ui/dialogue_box.png");
     InitializeAssetToRender(&dialogue_box_asset, 0, 0, dialogue_box_asset.w, dialogue_box_asset.h);
    
     asset_t gold_coin_count_bg_asset = {0};
-    LoadAsset(&gold_coin_count_bg_asset, "assets/gold_coin_count_background.png");
+    LoadAsset(&gold_coin_count_bg_asset, "assets/ui/gold_coin_count_background.png");
     InitializeAssetToRender(&gold_coin_count_bg_asset, 0, 0, gold_coin_count_bg_asset.w, gold_coin_count_bg_asset.h);
 
     typedef struct class_select_t
@@ -1134,10 +1134,10 @@ int main(int argc, char *argv[])
     } class_select_t;
 
     const char *class_files[4] = {
-        "assets/knight.png",
-        "assets/paladin.png",
-        "assets/wizard.png",
-        "assets/archer.png"
+        "assets/sprites/knight.png",
+        "assets/sprites/paladin.png",
+        "assets/sprites/wizard.png",
+        "assets/sprites/archer.png"
     };
  
     const char *class_names[4] = {
@@ -1920,6 +1920,7 @@ int main(int argc, char *argv[])
         asset_t asset;
     } game_item_t;
 
+    // Example use of item creation below
 #define ITEM_COUNT 2
 #define ITEM_HEALTH_POTION 0
 #define ITEM_MANA_POTION   1 
@@ -1932,7 +1933,7 @@ int main(int argc, char *argv[])
     game_items[ITEM_HEALTH_POTION].sell_value = 1;
     game_items[ITEM_HEALTH_POTION].name = "Health Potion";
     game_items[ITEM_HEALTH_POTION].description = "Recovers 20 HP";
-    game_items[ITEM_HEALTH_POTION].asset = IdealLoadAsset("assets/archer.png");
+    game_items[ITEM_HEALTH_POTION].asset = IdealLoadAsset("assets/sprites/archer.png");
 
     game_items[ITEM_MANA_POTION].id = 1;
     game_items[ITEM_MANA_POTION].hp_recovery = 0;
@@ -1941,12 +1942,8 @@ int main(int argc, char *argv[])
     game_items[ITEM_MANA_POTION].sell_value = 1;
     game_items[ITEM_MANA_POTION].name = "Mana Potion";
     game_items[ITEM_MANA_POTION].description = "Recovers 30 MP";
-    game_items[ITEM_MANA_POTION].asset = IdealLoadAsset("assets/archer.png");
+    game_items[ITEM_MANA_POTION].asset = IdealLoadAsset("assets/sprites/archer.png");
   
-    printf("asset w: %d\n", game_items[ITEM_HEALTH_POTION].asset.body.w);
-    printf("asset h: %d\n", game_items[ITEM_HEALTH_POTION].asset.body.h);
-
-
     typedef struct
     {
         // Properties of an equipment:
@@ -1958,6 +1955,12 @@ int main(int argc, char *argv[])
         // -> buy/sell value
         // -> asset 
 
+        // Tiers in terms of quality for weapons and armors from weakest to strongest 
+        // -> Leather 
+        // -> Wood
+        // -> Iron
+        // -> Steel
+        
         u32 id;
     
         u32 attack;
@@ -1965,32 +1968,93 @@ int main(int argc, char *argv[])
         u32 buy_value;
         u32 sell_value;
 
+        u32 range;
         const char *name;
-        const char *description;
+        const char *description; // debatable, 
+        
+        // white -> common -> 61% 
+        // blue -> rare -> 25%
+        // purple -> epic -> 8%
+        // yellow -> legendary -> 5%
+        // red -> mythical -> 1%
+        const char *rarity; 
        
         asset_t model;
     } game_equipment_t;
+    
+    int rarity_roller = rand() % 99;
+
+    // Out of 100 values, there are 5 different regions, each of which will have own threshold/percentage-rate
+    int rarity_common_threshold = 60; // ~60% chance
+    int rarity_rare_threshold = 85; 
+    int rarity_epic_threshold = 93; 
+    int rarity_legenary_threshold = 98; 
+    int rarity_mythical_threshold = 99; // 0 - 99 == 100
+    
+    if (rarity_roller <= rarity_common_threshold)
+    {
+        printf("common! 60 percent \n");
+    }
+    else if (rarity_roller <= rarity_rare_threshold && 
+             rarity_roller > rarity_common_threshold)
+    {
+        printf("rare! 25 percent \n");
+    }
+    else if (rarity_roller <= rarity_epic_threshold && 
+             rarity_roller > rarity_rare_threshold)
+    {
+        printf("epic! 8 percent \n");
+    }
+    else if (rarity_roller <= rarity_legenary_threshold && 
+             rarity_roller > rarity_epic_threshold)
+    {
+        printf("legendary! 5 percent \n");
+    }
+    else if (rarity_roller <= rarity_mythical_threshold && 
+             rarity_roller > rarity_legenary_threshold)
+    {
+        printf("mythical! 1 percent \n");
+    }
+    else
+    {
+        printf("invalid rarity\n");
+    }
+
+    // long sword example
+    game_equipment_t equipment[1] = {0};
+    equipment[0].id = 0;
+    equipment[0].attack = 5;
+    equipment[0].buy_value = 10;
+    equipment[0].sell_value = 5;
+    equipment[0].range = 2; // 2 tiles
+     
+    equipment[0].name = "Long Sword";
+    equipment[0].rarity = "Common"; // randomly roll through the rarities and apply name, common default, we may even have it roll as well when the player spawns and not only through chests, just for that extra spice. 
+    equipment[0].model = IdealLoadAsset("assets/weapons/long_sword.png");
+
 
     typedef struct
     {
         // Properties of each slot:
-        //  -> index to iterate over
         //  -> bool to check if it's empty or not, if it's empty a new item can be stored, if it's an existing item
         //  you're picking it then it can be stacked.
-        //  -> 
 
-
-
-    } game_menu_inventory_slots_t;
-
+        bool occupied;
+        asset_t asset;
+    } game_command_menu_slots_t;
 
     typedef struct
     {
         int index;
         bool is_active;
 
-        asset_t slots[18]; // 18 inventory slots
-    } game_menu_items_t;
+        game_command_menu_slots_t slots[18]; // 18 inventory slots
+    } game_command_menu_items_t;
+
+    game_command_menu_items_t gcm_items = {0};
+    for (int i = 0; i < 18; ++i)
+        gcm_items.slots[i].asset = IdealLoadAsset("assets/sprites/archer.png"); // placeholder for slot, I'd like it squared so we should create it to be 16x16 at least, 24x24 for larger
+
 
 
     typedef struct
@@ -2016,9 +2080,7 @@ int main(int argc, char *argv[])
         bool is_active;
 
 
-        asset_t slots[24]; // 6 equipment slots and 18 inventory slots
-         
-    } game_menu_equipment_t;
+    } game_command_menu_equipment_t;
 
 
 
@@ -2053,10 +2115,15 @@ int main(int argc, char *argv[])
 
         // Menu package
         bool is_opened;
+    
+        // Asset for the command menu and respective options (items, equipment ...)
+        asset_t command_menu;
+        asset_t menu_box[3];
+        
         menu_item_t options[3]; // items, equipment and status for now
-    } game_menu_t;
+    } game_command_menu_t;
 
-    game_menu_t game_menu = {0};
+    game_command_menu_t game_menu = {0};
 
     while (Running) 
     {
@@ -5212,12 +5279,6 @@ int main(int argc, char *argv[])
             UpdatePlayer(&character_data.model, &sfx_move);
             for (int i = 0; i < ArraySize(walls); ++i)
                 AABB_Resolution(&character_data.model, &walls[i]);
-
-            if (game_menu.is_opened)
-            {
-                // Render command menu
-            }
-
 
             AttachCameraToPlayer(&character_data.model, &room_asset[0]);
 
