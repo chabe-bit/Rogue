@@ -12,10 +12,6 @@
 
 #include <SDL2/SDL.h>
 
-typedef unsigned char   u1;
-typedef unsigned short  u2;
-typedef unsigned int    u4;
-
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -49,7 +45,7 @@ typedef double f64;
 
 typedef struct
 {
-    int x, y;
+    i32 x, y;
 } vec2_t;
 
 typedef struct
@@ -59,8 +55,8 @@ typedef struct
 
 typedef struct menu_item_t
 {
-    const char *text;
-    int x, y;
+    char *text;
+    i32 x, y;
 } menu_item_t;
 
 
