@@ -555,6 +555,24 @@ void RenderAssetInCameraSpace(asset_t *asset, i32 x, int y)
     }
 }
 
+void RenderAssetInCameraSpaceDIMENSION(asset_t *asset, i32 x, int y, int w, int h)
+{
+    asset->body.x = x;
+    asset->body.y = y;
+    asset->body.w = w;
+    asset->body.h = h;
+
+    if (asset->texture)
+    {
+        SDL_SetTextureBlendMode(asset->texture, SDL_BLENDMODE_BLEND);
+        if (SDL_RenderCopy(SDLWindow.Renderer, asset->texture, NULL, &asset->body) < 0)
+        {
+            fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
+            return;
+        }
+    }
+}
+
 void SetAssetAdjacentHitBoxes(asset_t *asset)
 {
     i32 TOP =   0;
@@ -1971,6 +1989,7 @@ int main(int argc, char *argv[])
         sound_settings_t *sound_settings;
     } game_settings_t;
 
+
     typedef struct
     {
         // Properties of an item:
@@ -1997,6 +2016,15 @@ int main(int argc, char *argv[])
         asset_t asset;
     } game_item_t;
 
+    typedef struct
+    {
+        game_item_t data;
+        asset_t box;
+    } game_item_decription_t;
+
+    game_item_decription_t game_item_description = {0};
+    game_item_description.box = IdealLoadAsset("assets/ui/item_description_box.png");
+
     // Example use of item creation below
 #define ITEM_COUNT 2
 #define ITEM_HEALTH_POTION 0
@@ -2011,7 +2039,7 @@ int main(int argc, char *argv[])
     game_items[ITEM_HEALTH_POTION].sell_value = 1;
     game_items[ITEM_HEALTH_POTION].name = "Health Potion";
     game_items[ITEM_HEALTH_POTION].description = "Recovers 20 HP";
-    game_items[ITEM_HEALTH_POTION].asset = IdealLoadAsset("assets/sprites/archer.png");
+    game_items[ITEM_HEALTH_POTION].asset = IdealLoadAsset("assets/items/health_potion.png");
 
     game_items[ITEM_MANA_POTION].id = 1;
     game_items[ITEM_MANA_POTION].in_inventory = true;
@@ -2021,7 +2049,7 @@ int main(int argc, char *argv[])
     game_items[ITEM_MANA_POTION].sell_value = 1;
     game_items[ITEM_MANA_POTION].name = "Mana Potion";
     game_items[ITEM_MANA_POTION].description = "Recovers 30 MP";
-    game_items[ITEM_MANA_POTION].asset = IdealLoadAsset("assets/sprites/archer.png");
+    game_items[ITEM_MANA_POTION].asset = IdealLoadAsset("assets/items/mana_potion.png");
   
     typedef struct
     {
@@ -2099,10 +2127,10 @@ int main(int argc, char *argv[])
 
         bool occupied;
         game_item_t *item; // Pass created item into slot
+        game_item_decription_t description_box;
 
         u32 quantity; // only items that share the same ID can stack
         asset_t model;
-        asset_t description_box;
         game_rarity_roller_t rarity;
         SDL_Texture *quantity_font; // text for quantity of item that will move together with the item.
     } game_command_menu_slots_t;
@@ -2172,6 +2200,7 @@ int main(int argc, char *argv[])
         bool is_movable;
         bool open_options;
     } game_slot_options_t;
+
     int item_slot_option_index = 0;
     bool item_slot_option = false;
     bool item_slot_option_is_movable = false;
@@ -2185,12 +2214,35 @@ int main(int argc, char *argv[])
     game_command_menu_items_t game_command_menu_items = {0};
     u32 item_slot_current_row = game_command_menu_items.index / ITEMS_SLOT_GRID_COLS;
     u32 item_slot_current_col = game_command_menu_items.index % ITEMS_SLOT_GRID_ROWS;
-    
-    game_command_menu_items.slots[0].item = &game_items[0];
-    if (game_command_menu_items.slots[0].item->in_inventory)
+   
+    // Hardcode example, ideally we call a function once that pushes or pops an item in/out of the inventory
+    for (int i = 0; i < 2; ++i)
     {
-        game_command_menu_items.slots[0].occupied = true;
-        printf("Item name: %s\n", game_command_menu_items.slots[0].item->name);
+        game_command_menu_items.slots[i].item = &game_items[i];
+
+        if (game_command_menu_items.slots[i].item->in_inventory)
+        {
+            game_command_menu_items.slots[i].occupied = true;
+
+           /* 
+            game_items[ITEM_HEALTH_POTION].id = 0;
+            game_items[ITEM_HEALTH_POTION].in_inventory = true;
+            game_items[ITEM_HEALTH_POTION].hp_recovery = 20;
+            game_items[ITEM_HEALTH_POTION].mp_recovery = 0;
+            game_items[ITEM_HEALTH_POTION].buy_value = 5;
+            game_items[ITEM_HEALTH_POTION].sell_value = 1;
+            game_items[ITEM_HEALTH_POTION].name = "Health Potion";
+            game_items[ITEM_HEALTH_POTION].description = "Recovers 20 HP";
+            game_items[ITEM_HEALTH_POTION].asset = IdealLoadAsset("assets/sprites/archer.png");
+    */
+
+            printf("Item name: %s\n", game_command_menu_items.slots[i].item->name);
+        }
+        else
+        {
+            game_command_menu_items.slots[i].occupied = true;
+        }
+
     }
 
     for (i32 i = 0; i < COMMAND_MENU_ITEMS_SLOT_COUNT; ++i)
@@ -5667,6 +5719,15 @@ int main(int argc, char *argv[])
                                                      game_command_menu_items.slots[i].model.y);
                         }
 
+                        // Render asset(s) inside slot
+                        // TODO: Iterate over a current count of items in inventory that updates on add or removal
+                        // of an item on a slot, stacking does not count towards it
+                        for (int i = 0; i < 2; ++i)
+                        {
+                            RenderAssetInCameraSpace(&game_items[i].asset,
+                                                 game_command_menu_items.slots[i].model.x + 2,
+                                                 game_command_menu_items.slots[i].model.y + 1);
+                        }
                     } break;
                 }
 
@@ -5691,11 +5752,39 @@ int main(int argc, char *argv[])
                     RenderAssetInCameraSpace(&right_cursor_asset, 
                                              game_command_menu_items.slots[game_command_menu_items.index].model.x - 10, 
                                              game_command_menu_items.slots[game_command_menu_items.index].model.y + 1);
-                    
+
                     // Render only if slot is occupied
                     if (game_command_menu_items.slots[game_command_menu_items.index].occupied)
-                        RenderAssetInCameraSpace(&item_menu_description_box,
-                                             SCREEN_CENTER_X - 112, SCREEN_CENTER_Y + 48);
+                    {
+                        // Rough example of rendering item description on hover
+                        RenderAssetInCameraSpace(&game_item_description.box,
+                                                 SCREEN_CENTER_X - 112, SCREEN_CENTER_Y + 48);
+
+                        /*RenderAssetInCameraSpaceDIMENSION(&game_items[0].asset, 
+                                                          SCREEN_CENTER_X - 96, SCREEN_CENTER_Y + 80,
+                                                          (game_items[0].asset.w*2), (game_items[0].asset.h*2));*/
+
+                        RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X(game_items[0].name, -56),
+                               SCREEN_CENTER_Y + 68, 
+                               game_items[0].name,
+                               white);
+
+                        RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X(game_items[0].description, -50),
+                               SCREEN_CENTER_Y + 80, 
+                               game_items[0].description,
+                               white);
+    
+                        RenderText(SDLWindow.Renderer, font_atlas,
+                               CENTER_TEXT_X("Sell Value: 1", 56),
+                               SCREEN_CENTER_Y + 92, 
+                               "Sell Value: 1",
+                               white);
+
+
+
+                    }
 
                     if (item_slot_option)
                     {
