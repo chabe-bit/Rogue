@@ -1990,6 +1990,7 @@ int main(int argc, char *argv[])
     } game_settings_t;
 
 
+    #define ITEM_STACK_MAX 99
     typedef struct
     {
         // Properties of an item:
@@ -2003,16 +2004,19 @@ int main(int argc, char *argv[])
    
         // Only implementing health and mana pots for now
         u32 id;
+        
+        // Tracks the number of current items in inventory
+        u32 count;
+        char count_buffer[2];
+
         bool in_inventory;
-       
         u32 hp_recovery;
         u32 mp_recovery;
         u32 buy_value;
         u32 sell_value;
         
-        const char *name;
-        const char *description;
-
+        char *name;
+        char *description;
         asset_t asset;
     } game_item_t;
 
@@ -2033,6 +2037,7 @@ int main(int argc, char *argv[])
 
     game_items[ITEM_HEALTH_POTION].id = 0;
     game_items[ITEM_HEALTH_POTION].in_inventory = true;
+    game_items[ITEM_HEALTH_POTION].count = 0;
     game_items[ITEM_HEALTH_POTION].hp_recovery = 20;
     game_items[ITEM_HEALTH_POTION].mp_recovery = 0;
     game_items[ITEM_HEALTH_POTION].buy_value = 5;
@@ -2043,6 +2048,7 @@ int main(int argc, char *argv[])
 
     game_items[ITEM_MANA_POTION].id = 1;
     game_items[ITEM_MANA_POTION].in_inventory = true;
+    game_items[ITEM_MANA_POTION].count = 0;
     game_items[ITEM_MANA_POTION].hp_recovery = 0;
     game_items[ITEM_MANA_POTION].mp_recovery = 30;
     game_items[ITEM_MANA_POTION].buy_value = 5;
@@ -2129,10 +2135,11 @@ int main(int argc, char *argv[])
         game_item_t *item; // Pass created item into slot
         game_item_decription_t description_box;
 
-        u32 quantity; // only items that share the same ID can stack
+        // Tracks number of THIS item is stacked, limit -> 99
+        u32 count; // only items that share the same ID can stack
+        
         asset_t model;
         game_rarity_roller_t rarity;
-        SDL_Texture *quantity_font; // text for quantity of item that will move together with the item.
     } game_command_menu_slots_t;
 
     typedef struct
@@ -2206,15 +2213,23 @@ int main(int argc, char *argv[])
     bool item_slot_option_is_movable = false;
     asset_t item_slot_asset = IdealLoadAsset("assets/ui/slot_options.png");
     asset_t item_menu_description_box = IdealLoadAsset("assets/ui/item_description_box.png");
-    menu_item_t item_slot_options[2] = {
+    menu_item_t item_slot_options[3] = {
         {"Use", CENTER_TEXT_X("Use", 0), SCREEN_CENTER_Y - 16},
-        {"Toss", CENTER_TEXT_X("Toss", 0), SCREEN_CENTER_Y},
+        {"Move", CENTER_TEXT_X("Move", 0), SCREEN_CENTER_Y},
+        {"Toss", CENTER_TEXT_X("Toss", 0), SCREEN_CENTER_Y + 16},
     };
     
     game_command_menu_items_t game_command_menu_items = {0};
     u32 item_slot_current_row = game_command_menu_items.index / ITEMS_SLOT_GRID_COLS;
     u32 item_slot_current_col = game_command_menu_items.index % ITEMS_SLOT_GRID_ROWS;
-   
+
+    // Example code
+    game_items[ITEM_HEALTH_POTION].count = 0;
+    game_items[ITEM_MANA_POTION].count = 4;
+
+    game_command_menu_items.slots[0].count = 4;    
+    game_command_menu_items.slots[1].count = 0;    
+
     // Hardcode example, ideally we call a function once that pushes or pops an item in/out of the inventory
     for (int i = 0; i < 2; ++i)
     {
@@ -2223,24 +2238,13 @@ int main(int argc, char *argv[])
         if (game_command_menu_items.slots[i].item->in_inventory)
         {
             game_command_menu_items.slots[i].occupied = true;
-
-           /* 
-            game_items[ITEM_HEALTH_POTION].id = 0;
-            game_items[ITEM_HEALTH_POTION].in_inventory = true;
-            game_items[ITEM_HEALTH_POTION].hp_recovery = 20;
-            game_items[ITEM_HEALTH_POTION].mp_recovery = 0;
-            game_items[ITEM_HEALTH_POTION].buy_value = 5;
-            game_items[ITEM_HEALTH_POTION].sell_value = 1;
-            game_items[ITEM_HEALTH_POTION].name = "Health Potion";
-            game_items[ITEM_HEALTH_POTION].description = "Recovers 20 HP";
-            game_items[ITEM_HEALTH_POTION].asset = IdealLoadAsset("assets/sprites/archer.png");
-    */
+            
 
             printf("Item name: %s\n", game_command_menu_items.slots[i].item->name);
         }
         else
         {
-            game_command_menu_items.slots[i].occupied = true;
+            game_command_menu_items.slots[i].occupied = false;
         }
 
     }
@@ -2331,9 +2335,8 @@ int main(int argc, char *argv[])
 
     game_command_menu_t game_command_menu = {0};
     game_command_menu.box = IdealLoadAsset("assets/ui/command_menu_box.png");
-    for (i32 i = 0; i < COMMAND_MENU_OPTION_COUNT; ++i)
-        game_command_menu.option_box[i] = IdealLoadAsset("assets/ui/command_menu_options_box - mockup.png");
-
+        
+    game_command_menu.option_box[0] = IdealLoadAsset("assets/ui/command_menu_options_box.png");
     game_command_menu.options[0].text = "Items",
     game_command_menu.options[0].x = CENTER_TEXT_X("Items", 72),
     game_command_menu.options[0].y = SCREEN_CENTER_Y - 64;
@@ -2356,7 +2359,7 @@ int main(int argc, char *argv[])
             {
                 case SDL_QUIT:
                 {
-        Running = false;
+                    Running = false;
                 } break;
                 case SDL_CONTROLLERBUTTONDOWN:
                 {
@@ -3812,45 +3815,52 @@ int main(int argc, char *argv[])
                                 {
                                     if (game_command_menu_items.is_opened)
                                     {
-                                        printf("slot index: %d\n", game_command_menu_items.index);
-                                        for (int i = 0; i < COMMAND_MENU_ITEMS_SLOT_COUNT; ++i)
+                                        if (game_command_menu_items.slots[game_command_menu_items.index].occupied)
                                         {
-                                            if (i == game_command_menu_items.index)
+                                            printf("slot index: %d\n", game_command_menu_items.index);
+                                            for (int i = 0; i < COMMAND_MENU_ITEMS_SLOT_COUNT; ++i)
                                             {
-                                                item_slot_option = true;
-                                                item_slot_option_is_movable = true;
+                                                if (i == game_command_menu_items.index)
+                                                {
+                                                    item_slot_option = true;
+                                                    item_slot_option_is_movable = true;
 
-                                                game_command_menu_items.is_movable = false;
-                                                game_command_menu_items.is_active = false;
+                                                    game_command_menu_items.is_movable = false;
+                                                    game_command_menu_items.is_active = false;
 
-                                                game_command_menu.is_active = false;
-                                                printf("opening slot\n");
-                                                break;
+                                                    game_command_menu.is_active = false;
+                                                    printf("opening slot\n");
+                                                    break;
+                                                }
                                             }
-                                        }
-                                    
-                                        if (item_slot_option)
-                                        {
-                                            switch (item_slot_option_index)
+                                   
+                                            if (item_slot_option)
                                             {
-                                                case 0:
+                                                switch (item_slot_option_index)
                                                 {
-                                                    // Apply item then close item option
-                                                    if (game_command_menu_items.slots[game_command_menu_items.index].occupied)
+                                                    case 0:
                                                     {
-                                                        
-                                                    }
-                                                    printf("Use\n");
-                                                } break;
-                                                case 1:
-                                                {
-                                                    // Toss item then close item option
-                                                    printf("Discard\n");
-                                                } break;
-                                                default:
-                                                {
+                                                        // Apply item then close item option
+                                                        printf("Use\n");
+                                                    } break;
+                                                    case 1:
+                                                    {
+                                                        // Toss item then close item option
+                                                        printf("Move\n");
+                                                    } break;
+                                                    case 2:
+                                                    {
+                                                        if (game_items[ITEM_HEALTH_POTION].count > 0)
+                                                            game_items[ITEM_HEALTH_POTION].count--;
 
-                                                } break;
+                                                        // Toss item then close item option
+                                                        printf("Toss\n");
+                                                    } break;
+                                                    default:
+                                                    {
+
+                                                    } break;
+                                                }
                                             }
                                         }
                                     }
@@ -3882,6 +3892,21 @@ int main(int argc, char *argv[])
 
                                 }
 
+                            } break;
+                            case SDLK_r:
+                            {
+                                if (game_command_menu.is_opened && game_command_menu.is_active)
+                                {
+                                    if (game_command_menu_items.slots[game_command_menu_items.index].occupied)
+                                    {
+                                        // Test to add health potions
+                                        if (game_items[game_command_menu_items.index].count < ITEM_STACK_MAX)
+                                            game_items[game_command_menu_items.index].count++;
+                                        printf("health potion count: %d\n", game_items[game_command_menu_items.index].count);
+
+                                    }
+                                }
+                                
                             } break;
                             default:
                             {
@@ -5705,12 +5730,18 @@ int main(int argc, char *argv[])
                 {
                     case 0: // Items
                     {
-                        // Placeholder for rendering item count
-                        RenderText(SDLWindow.Renderer, font_atlas,
-                                   CENTER_TEXT_X("1", 12),
-                                   SCREEN_CENTER_Y + 2, 
-                                   "1",
-                                   white);
+                        static int inventory_count = 0;
+                        int counter = 0;
+                        for (int i = 0; i < COMMAND_MENU_ITEMS_SLOT_COUNT; ++i)
+                        {
+                            if (game_command_menu_items.slots[i].occupied)
+                            {
+                                counter++;
+                            }
+                        }
+
+                        inventory_count = counter;
+                        printf("inventory_count: %d\n", inventory_count);
 
                         for (int i = 0; i < COMMAND_MENU_ITEMS_SLOT_COUNT; ++i)
                         {
@@ -5722,11 +5753,24 @@ int main(int argc, char *argv[])
                         // Render asset(s) inside slot
                         // TODO: Iterate over a current count of items in inventory that updates on add or removal
                         // of an item on a slot, stacking does not count towards it
-                        for (int i = 0; i < 2; ++i)
+                        for (int i = 0; i < inventory_count; ++i)
                         {
                             RenderAssetInCameraSpace(&game_items[i].asset,
                                                  game_command_menu_items.slots[i].model.x + 2,
                                                  game_command_menu_items.slots[i].model.y + 1);
+                        }
+
+                        for (int i = 0; i < COMMAND_MENU_ITEMS_SLOT_COUNT; ++i)
+                        {
+                            if (game_command_menu_items.slots[i].occupied)
+                            {
+                                sprintf(game_items[i].count_buffer, "%d", game_items[i].count); 
+                                RenderText(SDLWindow.Renderer, font_atlas,
+                                           game_command_menu_items.slots[i].model.x + 10,
+                                           game_command_menu_items.slots[i].model.y + 8, 
+                                           game_items[i].count_buffer,
+                                           white);
+                            }
                         }
                     } break;
                 }
@@ -5765,17 +5809,17 @@ int main(int argc, char *argv[])
                                                           (game_items[0].asset.w*2), (game_items[0].asset.h*2));*/
 
                         RenderText(SDLWindow.Renderer, font_atlas,
-                               CENTER_TEXT_X(game_items[0].name, -56),
+                               CENTER_TEXT_X(game_items[game_command_menu_items.index].name, -56),
                                SCREEN_CENTER_Y + 68, 
-                               game_items[0].name,
+                               game_items[game_command_menu_items.index].name,
                                white);
 
                         RenderText(SDLWindow.Renderer, font_atlas,
-                               CENTER_TEXT_X(game_items[0].description, -50),
+                               CENTER_TEXT_X(game_items[game_command_menu_items.index].description, -50),
                                SCREEN_CENTER_Y + 80, 
-                               game_items[0].description,
+                               game_items[game_command_menu_items.index].description,
                                white);
-    
+
                         RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("Sell Value: 1", 56),
                                SCREEN_CENTER_Y + 92, 
@@ -5784,30 +5828,35 @@ int main(int argc, char *argv[])
 
 
 
-                    }
+                        if (item_slot_option)
+                        {
+                            RenderAssetInCameraSpace(&item_slot_asset, 
+                                                     game_command_menu_items.slots[game_command_menu_items.index].model.x + 20, 
+                                                     game_command_menu_items.slots[game_command_menu_items.index].model.y - 3);
+                            
+                            RenderText(SDLWindow.Renderer, font_atlas,
+                                           game_command_menu_items.slots[game_command_menu_items.index].model.x + 36,
+                                           game_command_menu_items.slots[game_command_menu_items.index].model.y + 4, 
+                                           item_slot_options[0].text,
+                                           white);
 
-                    if (item_slot_option)
-                    {
-                        RenderAssetInCameraSpace(&item_slot_asset, 
-                                                 game_command_menu_items.slots[game_command_menu_items.index].model.x + 10, 
-                                                 game_command_menu_items.slots[game_command_menu_items.index].model.y - 2);
-                        
-                        RenderText(SDLWindow.Renderer, font_atlas,
-                                       game_command_menu_items.slots[game_command_menu_items.index].model.x + 24,
-                                       game_command_menu_items.slots[game_command_menu_items.index].model.y + 4, 
-                                       item_slot_options[0].text,
-                                       white);
+                            RenderText(SDLWindow.Renderer, font_atlas,
+                                           game_command_menu_items.slots[game_command_menu_items.index].model.x + 33,
+                                           game_command_menu_items.slots[game_command_menu_items.index].model.y + 16, 
+                                           item_slot_options[1].text,
+                                           white);
 
-                        RenderText(SDLWindow.Renderer, font_atlas,
-                                       game_command_menu_items.slots[game_command_menu_items.index].model.x + 21,
-                                       game_command_menu_items.slots[game_command_menu_items.index].model.y + 16, 
-                                       item_slot_options[1].text,
-                                       white);
+                            RenderText(SDLWindow.Renderer, font_atlas,
+                                           game_command_menu_items.slots[game_command_menu_items.index].model.x + 33,
+                                           game_command_menu_items.slots[game_command_menu_items.index].model.y + 28, 
+                                           item_slot_options[2].text,
+                                           white);
 
-                        CursorForItems(&item_slot_options[item_slot_option_index], &right_cursor_asset, 0, 0);
-                        RenderAssetInCameraSpace(&right_cursor_asset, 
-                                                 item_slot_options[item_slot_option_index].x, 
-                                                 item_slot_options[item_slot_option_index].y);
+                            CursorForItems(&item_slot_options[item_slot_option_index], &right_cursor_asset, 0, 0);
+                            RenderAssetInCameraSpace(&right_cursor_asset, 
+                                                     item_slot_options[item_slot_option_index].x, 
+                                                     item_slot_options[item_slot_option_index].y);
+                        }
                     }
                 }
             }
