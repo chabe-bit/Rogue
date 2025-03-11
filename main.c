@@ -1984,6 +1984,7 @@ int main(int argc, char *argv[])
    
         // Only implementing health and mana pots for now
         u32 id;
+        bool in_inventory;
        
         u32 hp_recovery;
         u32 mp_recovery;
@@ -2003,6 +2004,7 @@ int main(int argc, char *argv[])
     game_item_t game_items[ITEM_COUNT] = {0};
 
     game_items[ITEM_HEALTH_POTION].id = 0;
+    game_items[ITEM_HEALTH_POTION].in_inventory = true;
     game_items[ITEM_HEALTH_POTION].hp_recovery = 20;
     game_items[ITEM_HEALTH_POTION].mp_recovery = 0;
     game_items[ITEM_HEALTH_POTION].buy_value = 5;
@@ -2012,6 +2014,7 @@ int main(int argc, char *argv[])
     game_items[ITEM_HEALTH_POTION].asset = IdealLoadAsset("assets/sprites/archer.png");
 
     game_items[ITEM_MANA_POTION].id = 1;
+    game_items[ITEM_MANA_POTION].in_inventory = true;
     game_items[ITEM_MANA_POTION].hp_recovery = 0;
     game_items[ITEM_MANA_POTION].mp_recovery = 30;
     game_items[ITEM_MANA_POTION].buy_value = 5;
@@ -2038,7 +2041,8 @@ int main(int argc, char *argv[])
         // -> Steel
         
         u32 id;
-    
+        bool in_inventory;
+
         u32 attack;
         u32 defense;
         u32 buy_value;
@@ -2076,6 +2080,7 @@ int main(int argc, char *argv[])
     // long sword example
     game_equipment_t equipment[1] = {0};
     equipment[0].id = 0;
+    equipment[0].in_inventory = true; // temp
     equipment[0].attack = 5;
     equipment[0].buy_value = 10;
     equipment[0].sell_value = 5;
@@ -2093,8 +2098,11 @@ int main(int argc, char *argv[])
         //  you're picking it then it can be stacked.
 
         bool occupied;
+        game_item_t *item; // Pass created item into slot
+
         u32 quantity; // only items that share the same ID can stack
         asset_t model;
+        asset_t description_box;
         game_rarity_roller_t rarity;
         SDL_Texture *quantity_font; // text for quantity of item that will move together with the item.
     } game_command_menu_slots_t;
@@ -2113,61 +2121,77 @@ int main(int argc, char *argv[])
     {
         i32 index;
         bool is_active;
+        bool is_movable;
 
         bool is_opened;
         game_command_menu_slots_t slots[COMMAND_MENU_ITEMS_SLOT_COUNT]; 
     } game_command_menu_items_t;
 
-
-
     // For now, not efficient but will work
     vec2_t item_slot_coords[COMMAND_MENU_ITEMS_SLOT_COUNT] = {
         // First row
-        {SCREEN_CENTER_X - 90, SCREEN_CENTER_Y - 50},
-        {SCREEN_CENTER_X - 68, SCREEN_CENTER_Y - 50},
-        {SCREEN_CENTER_X - 46, SCREEN_CENTER_Y - 50},
-        {SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 50},
-        {SCREEN_CENTER_X - 2,  SCREEN_CENTER_Y - 50},
+        {SCREEN_CENTER_X - 90, SCREEN_CENTER_Y - 66},
+        {SCREEN_CENTER_X - 68, SCREEN_CENTER_Y - 66},
+        {SCREEN_CENTER_X - 46, SCREEN_CENTER_Y - 66},
+        {SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 66},
+        {SCREEN_CENTER_X - 2,  SCREEN_CENTER_Y - 66},
 
         // Second row
-        {SCREEN_CENTER_X - 90, SCREEN_CENTER_Y - 28},
-        {SCREEN_CENTER_X - 68, SCREEN_CENTER_Y - 28},
-        {SCREEN_CENTER_X - 46, SCREEN_CENTER_Y - 28},
-        {SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 28},
-        {SCREEN_CENTER_X - 2,  SCREEN_CENTER_Y - 28},
+        {SCREEN_CENTER_X - 90, SCREEN_CENTER_Y - 44},
+        {SCREEN_CENTER_X - 68, SCREEN_CENTER_Y - 44},
+        {SCREEN_CENTER_X - 46, SCREEN_CENTER_Y - 44},
+        {SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 44},
+        {SCREEN_CENTER_X - 2,  SCREEN_CENTER_Y - 44},
 
         // Third Row
-        {SCREEN_CENTER_X - 90, SCREEN_CENTER_Y - 6},
-        {SCREEN_CENTER_X - 68, SCREEN_CENTER_Y - 6},
-        {SCREEN_CENTER_X - 46, SCREEN_CENTER_Y - 6},
-        {SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 6},
-        {SCREEN_CENTER_X - 2,  SCREEN_CENTER_Y - 6},
+        {SCREEN_CENTER_X - 90, SCREEN_CENTER_Y - 22},
+        {SCREEN_CENTER_X - 68, SCREEN_CENTER_Y - 22},
+        {SCREEN_CENTER_X - 46, SCREEN_CENTER_Y - 22},
+        {SCREEN_CENTER_X - 24, SCREEN_CENTER_Y - 22},
+        {SCREEN_CENTER_X - 2,  SCREEN_CENTER_Y - 22},
 
         // Fourth Row
-        {SCREEN_CENTER_X - 90, SCREEN_CENTER_Y + 16},
-        {SCREEN_CENTER_X - 68, SCREEN_CENTER_Y + 16},
-        {SCREEN_CENTER_X - 46, SCREEN_CENTER_Y + 16},
-        {SCREEN_CENTER_X - 24, SCREEN_CENTER_Y + 16},
-        {SCREEN_CENTER_X - 2,  SCREEN_CENTER_Y + 16},
+        {SCREEN_CENTER_X - 90, SCREEN_CENTER_Y},
+        {SCREEN_CENTER_X - 68, SCREEN_CENTER_Y},
+        {SCREEN_CENTER_X - 46, SCREEN_CENTER_Y},
+        {SCREEN_CENTER_X - 24, SCREEN_CENTER_Y},
+        {SCREEN_CENTER_X - 2,  SCREEN_CENTER_Y},
 
         // Fifth Row
-        {SCREEN_CENTER_X - 90, SCREEN_CENTER_Y + 38},
-        {SCREEN_CENTER_X - 68, SCREEN_CENTER_Y + 38},
-        {SCREEN_CENTER_X - 46, SCREEN_CENTER_Y + 38},
-        {SCREEN_CENTER_X - 24, SCREEN_CENTER_Y + 38},
-        {SCREEN_CENTER_X - 2,  SCREEN_CENTER_Y + 38},
+        {SCREEN_CENTER_X - 90, SCREEN_CENTER_Y + 22},
+        {SCREEN_CENTER_X - 68, SCREEN_CENTER_Y + 22},
+        {SCREEN_CENTER_X - 46, SCREEN_CENTER_Y + 22},
+        {SCREEN_CENTER_X - 24, SCREEN_CENTER_Y + 22},
+        {SCREEN_CENTER_X - 2,  SCREEN_CENTER_Y + 22},
 
     };
 
-    printf("vec2 x: %d\n", item_slot_coords[0].x);
-    printf("vec2 y: %d\n", item_slot_coords[0].y);
-    printf("vec2: %d\n", item_slot_coords[1].x);
-
+    typedef struct
+    {
+        u32 index;
+        bool is_movable;
+        bool open_options;
+    } game_slot_options_t;
+    int item_slot_option_index = 0;
+    bool item_slot_option = false;
+    bool item_slot_option_is_movable = false;
+    asset_t item_slot_asset = IdealLoadAsset("assets/ui/slot_options.png");
+    asset_t item_menu_description_box = IdealLoadAsset("assets/ui/item_description_box.png");
+    menu_item_t item_slot_options[2] = {
+        {"Use", CENTER_TEXT_X("Use", 0), SCREEN_CENTER_Y - 16},
+        {"Toss", CENTER_TEXT_X("Toss", 0), SCREEN_CENTER_Y},
+    };
+    
     game_command_menu_items_t game_command_menu_items = {0};
     u32 item_slot_current_row = game_command_menu_items.index / ITEMS_SLOT_GRID_COLS;
     u32 item_slot_current_col = game_command_menu_items.index % ITEMS_SLOT_GRID_ROWS;
     
-    game_command_menu_items.slots[0].occupied = true;
+    game_command_menu_items.slots[0].item = &game_items[0];
+    if (game_command_menu_items.slots[0].item->in_inventory)
+    {
+        game_command_menu_items.slots[0].occupied = true;
+        printf("Item name: %s\n", game_command_menu_items.slots[0].item->name);
+    }
 
     for (i32 i = 0; i < COMMAND_MENU_ITEMS_SLOT_COUNT; ++i)
     {
@@ -2260,15 +2284,15 @@ int main(int argc, char *argv[])
 
     game_command_menu.options[0].text = "Items",
     game_command_menu.options[0].x = CENTER_TEXT_X("Items", 72),
-    game_command_menu.options[0].y = SCREEN_CENTER_Y - 48;
+    game_command_menu.options[0].y = SCREEN_CENTER_Y - 64;
     
     game_command_menu.options[1].text = "Equip",
     game_command_menu.options[1].x = CENTER_TEXT_X("Equip", 72),
-    game_command_menu.options[1].y = SCREEN_CENTER_Y - 32;
+    game_command_menu.options[1].y = SCREEN_CENTER_Y - 48;
 
     game_command_menu.options[2].text = "Status",
     game_command_menu.options[2].x = CENTER_TEXT_X("Status", 72),
-    game_command_menu.options[2].y = SCREEN_CENTER_Y - 16;
+    game_command_menu.options[2].y = SCREEN_CENTER_Y - 32;
 
 
     while (Running) 
@@ -2378,12 +2402,20 @@ int main(int argc, char *argv[])
                                     Sound_PlaySFX(&master_volume.sfx[1]->wav); // Change the sfx
                                 }
 
-                                if (is_game_running && game_command_menu_items.is_opened)
+                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.is_movable)
                                 {
                                     item_slot_current_row = (item_slot_current_row - 1 + ITEMS_SLOT_GRID_ROWS) % ITEMS_SLOT_GRID_ROWS;
                                     game_command_menu_items.index = item_slot_current_row * ITEMS_SLOT_GRID_COLS + item_slot_current_col;
                                     Sound_PlaySFX(&master_volume.sfx[1]->wav); // Change the sfx
                                 }
+
+                                if (is_game_running && item_slot_option_is_movable)
+                                {
+                                    item_slot_option_index--;
+                                    if (item_slot_option_index < 0)
+                                        item_slot_option_index = ArraySize(item_slot_options) - 1;
+                                }
+
 
 
                             } break;
@@ -2450,11 +2482,18 @@ int main(int argc, char *argv[])
                                     Sound_PlaySFX(&master_volume.sfx[1]->wav);
                                 }
                                
-                                if (is_game_running && game_command_menu_items.is_opened)
+                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.is_movable)
                                 {
                                     item_slot_current_row = (item_slot_current_row + 1) % ITEMS_SLOT_GRID_ROWS;
                                     game_command_menu_items.index = item_slot_current_row * ITEMS_SLOT_GRID_COLS + item_slot_current_col;
                                     Sound_PlaySFX(&master_volume.sfx[1]->wav); // Change the sfx
+                                }
+                                
+                                if (is_game_running && item_slot_option_is_movable)
+                                {
+                                    item_slot_option_index++;
+                                    if (item_slot_option_index >= ArraySize(item_slot_options))
+                                        item_slot_option_index = 0;
                                 }
                             } break;
                             case SDLK_a:
@@ -2576,7 +2615,7 @@ int main(int argc, char *argv[])
                                         next_button.index = ArraySize(next_button.button) - 1;
                                 }
 
-                                if (is_game_running && game_command_menu_items.is_opened)
+                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.is_movable)
                                 {
                                     item_slot_current_col = (item_slot_current_col - 1 + ITEMS_SLOT_GRID_COLS) % ITEMS_SLOT_GRID_COLS;
                                     game_command_menu_items.index = item_slot_current_row * ITEMS_SLOT_GRID_COLS + item_slot_current_col;
@@ -2695,7 +2734,7 @@ int main(int argc, char *argv[])
                                         next_button.index = 0;
                                 }
 
-                                if (is_game_running && game_command_menu_items.is_opened)
+                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.is_movable)
                                 {
                                     item_slot_current_col = (item_slot_current_col + 1) % ITEMS_SLOT_GRID_COLS;
                                     game_command_menu_items.index = item_slot_current_row * ITEMS_SLOT_GRID_COLS + item_slot_current_col;
@@ -2742,6 +2781,7 @@ int main(int argc, char *argv[])
                                 if (is_game_running && !game_command_menu.is_opened)
                                 {
                                     game_command_menu.is_opened = true;
+                                    game_command_menu.is_active = true;
                                     game_command_menu.is_movable = true;
 
                                     // Player cannot move in this event
@@ -2755,6 +2795,7 @@ int main(int argc, char *argv[])
                                          (!game_command_menu_items.is_opened))
                                 {
                                     game_command_menu.is_opened = false;
+                                    game_command_menu.is_active = false;
                                     game_command_menu.is_movable = false;
                                    
                                     game_command_menu.index = 0; // Set the cursor back to the top of the list, items
@@ -2764,13 +2805,22 @@ int main(int argc, char *argv[])
                                     printf("menu closed\n");
                                 }
 
-                                if (is_game_running && game_command_menu_items.is_opened)
+                                // NOTE: Use a UNION for toggling between the menus from command menu
+
+
+                                // Deactivate the item menu
+                                if (is_game_running && game_command_menu_items.is_active)
                                 {
-                                    // While in any of the menus from command menu, you cannot move the cursor from the 
-                                    // command menu
                                     game_command_menu_items.is_opened = false;
                                     game_command_menu.is_movable = true;
-
+                                }
+                                if (is_game_running && item_slot_option)
+                                {
+                                    game_command_menu_items.is_movable = true;
+                                    game_command_menu_items.is_active = true;
+                                    game_command_menu.is_active = true;
+                                    item_slot_option = false;
+                                    item_slot_option_is_movable = false;
                                 }
     
                             } break;
@@ -3706,35 +3756,78 @@ int main(int argc, char *argv[])
                                     }
                                 }
 
-                                if (is_game_running && game_command_menu.is_opened)
+                                if (is_game_running)
                                 {
-                                    switch (game_command_menu.index)
-                                    {
-                                        case 0:
-                                        {
-                                            game_command_menu_items.is_opened = true;
-                                            game_command_menu.is_movable = false;
-                                        } break;
-                                        case 1:
-                                        {
-                                            //game_command_menu_equip.is_opened = true;
-                                            printf("EQUIP\n");
-                                        } break;
-                                        case 2:
-                                        {
-                                            //game_command_menu_status.is_opened = true;
-                                            printf("STATUS\n");
-                                        } break;
-                                        default:
-                                        {
-
-                                        } break;
-                                    }
-
                                     if (game_command_menu_items.is_opened)
                                     {
                                         printf("slot index: %d\n", game_command_menu_items.index);
+                                        for (int i = 0; i < COMMAND_MENU_ITEMS_SLOT_COUNT; ++i)
+                                        {
+                                            if (i == game_command_menu_items.index)
+                                            {
+                                                item_slot_option = true;
+                                                item_slot_option_is_movable = true;
+
+                                                game_command_menu_items.is_movable = false;
+                                                game_command_menu_items.is_active = false;
+
+                                                game_command_menu.is_active = false;
+                                                printf("opening slot\n");
+                                                break;
+                                            }
+                                        }
+                                    
+                                        if (item_slot_option)
+                                        {
+                                            switch (item_slot_option_index)
+                                            {
+                                                case 0:
+                                                {
+                                                    // Apply item then close item option
+                                                    if (game_command_menu_items.slots[game_command_menu_items.index].occupied)
+                                                    {
+                                                        
+                                                    }
+                                                    printf("Use\n");
+                                                } break;
+                                                case 1:
+                                                {
+                                                    // Toss item then close item option
+                                                    printf("Discard\n");
+                                                } break;
+                                                default:
+                                                {
+
+                                                } break;
+                                            }
+                                        }
                                     }
+
+                                    if (game_command_menu.is_opened && game_command_menu.is_active)
+                                    {
+                                        switch (game_command_menu.index)
+                                        {
+                                            case 0:
+                                            {
+                                                game_command_menu_items.is_opened = true;
+                                                game_command_menu_items.is_movable = true;
+                                                game_command_menu.is_movable = false;
+                                            } break;
+                                            case 1:
+                                            {
+                                                printf("EQUIP\n");
+                                            } break;
+                                            case 2:
+                                            {
+                                                printf("STATUS\n");
+                                            } break;
+                                            default:
+                                            {
+
+                                            } break;
+                                        }
+                                    }
+
                                 }
 
                             } break;
@@ -5538,11 +5631,11 @@ int main(int argc, char *argv[])
             if (game_command_menu.is_opened)
             {
                 RenderAssetInCameraSpace(&game_command_menu.box, 
-                                         SCREEN_CENTER_X + 32, SCREEN_CENTER_Y - (game_command_menu.box.h / 2));
+                                         SCREEN_CENTER_X + 32, (SCREEN_CENTER_Y - (game_command_menu.box.h / 2) - 16));
 
                 // Option box rendered is relative to the option hovered by using the index
                 RenderAssetInCameraSpace(&game_command_menu.option_box[game_command_menu.index], 
-                                         SCREEN_CENTER_X - 112, SCREEN_CENTER_Y - (game_command_menu.option_box[game_command_menu.index].h / 2));
+                                         SCREEN_CENTER_X - 112, (SCREEN_CENTER_Y - (game_command_menu.option_box[game_command_menu.index].h / 2) - 16));
 
 /*
                 if (game_command_menu_items.slots[0].occupied)
@@ -5560,7 +5653,7 @@ int main(int argc, char *argv[])
                 {
                     case 0: // Items
                     {
-                        // Placeholder for rendering item count in items
+                        // Placeholder for rendering item count
                         RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X("1", 12),
                                    SCREEN_CENTER_Y + 2, 
@@ -5598,10 +5691,36 @@ int main(int argc, char *argv[])
                     RenderAssetInCameraSpace(&right_cursor_asset, 
                                              game_command_menu_items.slots[game_command_menu_items.index].model.x - 10, 
                                              game_command_menu_items.slots[game_command_menu_items.index].model.y + 1);
+                    
+                    // Render only if slot is occupied
+                    if (game_command_menu_items.slots[game_command_menu_items.index].occupied)
+                        RenderAssetInCameraSpace(&item_menu_description_box,
+                                             SCREEN_CENTER_X - 112, SCREEN_CENTER_Y + 48);
 
+                    if (item_slot_option)
+                    {
+                        RenderAssetInCameraSpace(&item_slot_asset, 
+                                                 game_command_menu_items.slots[game_command_menu_items.index].model.x + 10, 
+                                                 game_command_menu_items.slots[game_command_menu_items.index].model.y - 2);
+                        
+                        RenderText(SDLWindow.Renderer, font_atlas,
+                                       game_command_menu_items.slots[game_command_menu_items.index].model.x + 24,
+                                       game_command_menu_items.slots[game_command_menu_items.index].model.y + 4, 
+                                       item_slot_options[0].text,
+                                       white);
+
+                        RenderText(SDLWindow.Renderer, font_atlas,
+                                       game_command_menu_items.slots[game_command_menu_items.index].model.x + 21,
+                                       game_command_menu_items.slots[game_command_menu_items.index].model.y + 16, 
+                                       item_slot_options[1].text,
+                                       white);
+
+                        CursorForItems(&item_slot_options[item_slot_option_index], &right_cursor_asset, 0, 0);
+                        RenderAssetInCameraSpace(&right_cursor_asset, 
+                                                 item_slot_options[item_slot_option_index].x, 
+                                                 item_slot_options[item_slot_option_index].y);
+                    }
                 }
-
-
             }
 
             for (i32 i = 0; i < ArraySize(walls); ++i)
