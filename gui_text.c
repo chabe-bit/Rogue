@@ -204,7 +204,7 @@ SDL_Texture* CreateFontAtlas(SDL_Renderer *renderer) {
         // For our font, each glyph is GLYPH_HEIGHT rows and GLYPH_WIDTH columns.
         // We assume the most significant 6 bits in each byte represent the 6 columns.
         for (int y = 0; y < GLYPH_HEIGHT; y++) {
-            u1 rowData = GUIFontData[glyphIndex][y];
+            u8 rowData = GUIFontData[glyphIndex][y];
             for (int x = 0; x < GLYPH_WIDTH; x++) {
                 // Check the bit corresponding to this column.
                 if (rowData & (0x80 >> x)) {
@@ -238,10 +238,10 @@ void RenderText(SDL_Renderer *renderer, SDL_Texture *fontAtlas, int x, int y,
 
     // For each character in the text:
     for (const char *p = text; *p != '\0'; p++) {
-        u1 ascii = (u1)*p;
+        u8 ascii = (u8)*p;
         // Look up the corresponding glyph index.
         // (Assuming ASCII2Font is defined for your ASCII range.)
-        u1 glyphIndex = ASCII2Font[ascii];
+        u8 glyphIndex = ASCII2Font[ascii];
 
         // Compute source rectangle in the atlas.
         SDL_Rect src;
