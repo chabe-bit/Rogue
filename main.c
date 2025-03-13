@@ -1886,7 +1886,8 @@ int main(int argc, char *argv[])
     character_data_t character_data = {0};
 
     bool init_name = true;
-    const char *dst_txt = "Name:                      "; // Just to specify we're working with a str of size 27, for now
+    const char *dst_txt = "                           "; // Just to specify we're working with a str of size 27, for now
+    char int_buffer[10][28]; 
     class_status_overview_t class_status_overview[12] = {
         // Box 1 - Info
         { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 96},    "Name:                      " },
@@ -2396,13 +2397,6 @@ int main(int argc, char *argv[])
     game_command_menu.options[2].x = CENTER_TEXT_X("Status", 72),
     game_command_menu.options[2].y = SCREEN_CENTER_Y - 32;
 
-
-    int prev_slot = 0;
-
-
-
-
-    char int_buffer[10][28]; 
     while (Running) 
     {
         // Poll events
@@ -3869,11 +3863,6 @@ int main(int argc, char *argv[])
                                                     item_slot_option = true;
                                                     item_slot_option_is_movable = true;
 
-                                                    if (!item_slot_option)
-                                                        prev_slot = game_command_menu_items.index;
-                                                    
-                                                    printf("prev_slot: %d\n", prev_slot);
-
                                                     game_command_menu_items.is_movable = false;
                                                     game_command_menu_items.is_active = false;
                                                     game_command_menu.is_active = false;
@@ -3907,11 +3896,6 @@ int main(int argc, char *argv[])
                                                         game_command_menu.is_active = true;
                                                         game_command_menu_items.is_movable = true;
                                                         game_command_menu_items.is_active = true;
-
-                                                        int prev = prev_slot;
-                                                        int curr = game_command_menu_items.index;
-                                                        printf("prev: %d\n", prev);
-                                                        printf("curr: %d\n", curr);
 
                                                         item_slot_option_is_movable = false;
                                                         item_slot_option = false;
@@ -5783,7 +5767,6 @@ int main(int argc, char *argv[])
             RenderAssetInWorldSpace(&room_asset[0]);
             RenderAssetInWorldSpace(&down_stairs_asset);
             RenderAssetInWorldSpace(&character_data.model);
-            RenderAssetInWorldSpace(&game_items[0].asset);
 
             if (game_command_menu.is_opened)
             {
@@ -5821,7 +5804,6 @@ int main(int argc, char *argv[])
                         }
 
                         inventory_count = counter;
-                        //printf("inventory_count: %d\n", inventory_count);
 
                         for (int i = 0; i < COMMAND_MENU_ITEMS_SLOT_COUNT; ++i)
                         {
@@ -5833,7 +5815,6 @@ int main(int argc, char *argv[])
                         // Render asset(s) inside slot
                         // TODO: Iterate over a current count of items in inventory that updates on add or removal
                         // of an item on a slot, stacking does not count towards it
-                        
                         for (int i = 0; i < inventory_count; ++i)
                         {
                             RenderAssetInCameraSpace(&game_items[i].asset,
