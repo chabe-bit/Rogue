@@ -555,17 +555,17 @@ void RenderAssetInCameraSpace(asset_t *asset, i32 x, int y)
     }
 }
 
-void RenderAssetInCameraSpaceDIMENSION(asset_t *asset, i32 x, int y, int w, int h)
+void RenderAssetInCameraSpaceDIMENSION(asset_t asset, i32 x, int y, int w, int h)
 {
-    asset->body.x = x;
-    asset->body.y = y;
-    asset->body.w = w;
-    asset->body.h = h;
+    asset.body.x = x;
+    asset.body.y = y;
+    asset.body.w = w;
+    asset.body.h = h;
 
-    if (asset->texture)
+    if (asset.texture)
     {
-        SDL_SetTextureBlendMode(asset->texture, SDL_BLENDMODE_BLEND);
-        if (SDL_RenderCopy(SDLWindow.Renderer, asset->texture, NULL, &asset->body) < 0)
+        SDL_SetTextureBlendMode(asset.texture, SDL_BLENDMODE_BLEND);
+        if (SDL_RenderCopy(SDLWindow.Renderer, asset.texture, NULL, &asset.body) < 0)
         {
             fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
             return;
@@ -834,25 +834,22 @@ void Personality_MoveDownScenario(test_personality_scenario_t *personality)
 typedef struct
 {
     vec2_t pos;
-    char text[28];
+    char text[32];
 } class_status_overview_t;
 
 
-void StatOverview_Init(char *buffer, class_status_overview_t *dst, char *src)
+void StatOverview_Init(char *buffer, char *dst, char *src, size_t total_width)
 {
-    size_t total_width = 27;
     size_t append_len = strlen(src);
     size_t insert_index = total_width - append_len;
 
-    strncpy(buffer, dst->text, total_width);
+    strncpy(buffer, dst, total_width);
     buffer[total_width] = '\0';
 
     strncpy(buffer + insert_index, src, append_len);
     buffer[total_width] = '\0';
 
-    strncpy(dst->text, buffer, total_width + 1);
-
-    printf("hey: %s\n", dst->text);
+    strncpy(dst, buffer, total_width + 1);
 }
 
 typedef struct
@@ -1901,7 +1898,32 @@ int main(int argc, char *argv[])
         { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 34},                  "Attack:                   " },
         { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 44},                  "Defense:                  " },
     };
+   
+    bool game_init_stats = false;
+    const char *test_txt = "              ";
+    size_t test_txt_size = strlen(test_txt);
+    printf("test_txt_size: %d\n", test_txt_size); 
     
+    char game_int_buffer[8][17];
+    class_status_overview_t in_game_class_status_overview[13] = {
+        // Box 1 - Info
+        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 64},    "Name:                " }, // name
+        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 54},    "Lv:                  " },
+        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 44},    "Class:               " }, // class
+        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 34},    "Ego:                 " }, // personality
+        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 24},    "Exp_to_next:         " },
+
+        // Box 2 - Stats
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y - 4},                   "Str:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 6},                   "Res:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 16},                  "Agi:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 26},                  "Sta:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 36},                  "Wis:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 46},                  "Lck:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 56},                  "Atk:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 66},                  "Def:                 " },
+    };
+
 
     typedef struct
     {
@@ -2030,6 +2052,14 @@ int main(int argc, char *argv[])
     game_item_description.box = IdealLoadAsset("assets/ui/item_description_box.png");
 
     // Example use of item creation below
+    
+    typedef enum
+    {
+        ITEM_NONE,
+        ITEM_HP_POTION,
+        ITEM_MP_POTION
+    } item_type;
+
 #define ITEM_COUNT 2
 #define ITEM_HEALTH_POTION 0
 #define ITEM_MANA_POTION   1 
@@ -2045,6 +2075,10 @@ int main(int argc, char *argv[])
     game_items[ITEM_HEALTH_POTION].name = "Health Potion";
     game_items[ITEM_HEALTH_POTION].description = "Recovers 20 HP";
     game_items[ITEM_HEALTH_POTION].asset = IdealLoadAsset("assets/items/health_potion.png");
+    game_items[ITEM_HEALTH_POTION].asset.body.x = 16 * 11;
+    game_items[ITEM_HEALTH_POTION].asset.body.y = 24 * 16;
+    game_items[ITEM_HEALTH_POTION].asset.conditions.is_collidable = true;
+    SetAssetAdjacentHitBoxes(&game_items[ITEM_HEALTH_POTION].asset);
 
     game_items[ITEM_MANA_POTION].id = 1;
     game_items[ITEM_MANA_POTION].in_inventory = true;
@@ -2152,9 +2186,11 @@ int main(int argc, char *argv[])
     #define ITEMS_SLOT_GRID_COLS  5
     #define ITEMS_SLOT_GRID_ROWS  5
     #define COMMAND_MENU_ITEMS_SLOT_COUNT 25     
+    #define COMMAND_MENU_EQUIP_SLOT_COUNT 15     
     typedef struct
     {
-        i32 index;
+        u32 index;
+        u32 selected_index;
         bool is_active;
         bool is_movable;
 
@@ -2335,8 +2371,11 @@ int main(int argc, char *argv[])
 
     game_command_menu_t game_command_menu = {0};
     game_command_menu.box = IdealLoadAsset("assets/ui/command_menu_box.png");
-        
+    
     game_command_menu.option_box[0] = IdealLoadAsset("assets/ui/command_menu_options_box.png");
+    game_command_menu.option_box[1] = IdealLoadAsset("assets/ui/command_menu_options_box.png");
+    game_command_menu.option_box[2] = IdealLoadAsset("assets/ui/command_menu_options_box - Copy.png");
+
     game_command_menu.options[0].text = "Items",
     game_command_menu.options[0].x = CENTER_TEXT_X("Items", 72),
     game_command_menu.options[0].y = SCREEN_CENTER_Y - 64;
@@ -2350,6 +2389,12 @@ int main(int argc, char *argv[])
     game_command_menu.options[2].y = SCREEN_CENTER_Y - 32;
 
 
+    int prev_slot = 0;
+
+
+
+
+    char int_buffer[10][28]; 
     while (Running) 
     {
         // Poll events
@@ -2821,15 +2866,6 @@ int main(int argc, char *argv[])
                                     volume_settings_state = VOL_SETTINGS_BACK;
                                 }
                                
-                                if (is_game_running && game_command_menu.is_opened)
-                                {
-                                    game_command_menu.is_opened = false;
-                                    game_command_menu.index = 0; // Set the cursor back to the top of the list, items
-
-                                    // Player can now move
-                                    character_data.model.conditions.is_movable = true;
-                                    printf("menu closed\n");
-                                }
                             } break;
                             case SDLK_TAB:
                             {
@@ -3825,9 +3861,13 @@ int main(int argc, char *argv[])
                                                     item_slot_option = true;
                                                     item_slot_option_is_movable = true;
 
+                                                    if (!item_slot_option)
+                                                        prev_slot = game_command_menu_items.index;
+                                                    
+                                                    printf("prev_slot: %d\n", prev_slot);
+
                                                     game_command_menu_items.is_movable = false;
                                                     game_command_menu_items.is_active = false;
-
                                                     game_command_menu.is_active = false;
                                                     printf("opening slot\n");
                                                     break;
@@ -3841,20 +3881,47 @@ int main(int argc, char *argv[])
                                                     case 0:
                                                     {
                                                         // Apply item then close item option
+                                                        /*for (int i = 0; i < 2; ++i)
+                                                        {
+                                                            if (game_items[i].count > 0 &&
+                                                                game_items[i].type == ITEM_TYPE)
+                                                            {
+                                                                game_counti].count--;
+                                                            }
+                                                        }*/
+
+
                                                         printf("Use\n");
                                                     } break;
                                                     case 1:
                                                     {
                                                         // Toss item then close item option
+                                                        game_command_menu.is_active = true;
+                                                        game_command_menu_items.is_movable = true;
+                                                        game_command_menu_items.is_active = true;
+
+                                                        int prev = prev_slot;
+                                                        int curr = game_command_menu_items.index;
+                                                        printf("prev: %d\n", prev);
+                                                        printf("curr: %d\n", curr);
+
+                                                        item_slot_option_is_movable = false;
+                                                        item_slot_option = false;
+                                                    
                                                         printf("Move\n");
                                                     } break;
                                                     case 2:
                                                     {
-                                                        if (game_items[ITEM_HEALTH_POTION].count > 0)
-                                                            game_items[ITEM_HEALTH_POTION].count--;
+                                                        if (game_command_menu_items.slots[game_command_menu_items.index].occupied)
+                                                        {
+                                                            if (game_items[ITEM_HEALTH_POTION].count > 0)
+                                                                game_items[ITEM_HEALTH_POTION].count--;
+                                                            
+                                                            if (game_items[ITEM_MANA_POTION].count > 0)
+                                                                game_items[ITEM_MANA_POTION].count--;
 
-                                                        // Toss item then close item option
-                                                        printf("Toss\n");
+                                                            printf("Toss\n");
+                                                        }
                                                     } break;
                                                     default:
                                                     {
@@ -3878,6 +3945,7 @@ int main(int argc, char *argv[])
                                             case 1:
                                             {
                                                 printf("EQUIP\n");
+                                                game_command_menu.is_movable = false;
                                             } break;
                                             case 2:
                                             {
@@ -3895,7 +3963,7 @@ int main(int argc, char *argv[])
                             } break;
                             case SDLK_r:
                             {
-                                if (game_command_menu.is_opened && game_command_menu.is_active)
+                                //if (game_command_menu.is_opened && game_command_menu.is_active)
                                 {
                                     if (game_command_menu_items.slots[game_command_menu_items.index].occupied)
                                     {
@@ -5587,16 +5655,15 @@ int main(int argc, char *argv[])
             static i32 base_y_arr[10];
             static i32 offset_x_arr[10];
 
-            static char int_buffer[10][28]; // Enough to hold any 32-bit integer string representation.
             if (init_name)
             {
                 char buffer[28];
                 char *name = NameEntry_GetName(&name_entry);
                 char *class_name = character_data.class.name;
                 char *class_personality = test_scenarios.personality;
-                StatOverview_Init(buffer, &class_status_overview[0], name);
-                StatOverview_Init(buffer, &class_status_overview[2], class_name);
-                StatOverview_Init(buffer, &class_status_overview[3], class_personality);
+                StatOverview_Init(buffer, class_status_overview[0].text, name, 27);
+                StatOverview_Init(buffer, class_status_overview[2].text, class_name, 27);
+                StatOverview_Init(buffer, class_status_overview[3].text, class_personality, 27);
 
                 sprintf(int_buffer[0], "%d", character_data.base_stats.strength);
                 sprintf(int_buffer[1], "%d", character_data.base_stats.resilience);
@@ -5609,16 +5676,16 @@ int main(int argc, char *argv[])
                 sprintf(int_buffer[8], "%d", character_data.base_stats.attack);
                 sprintf(int_buffer[9], "%d", character_data.base_stats.defense);
                 
-                StatOverview_Init(buffer, &class_status_overview[4], int_buffer[0]);
-                StatOverview_Init(buffer, &class_status_overview[5], int_buffer[1]);
-                StatOverview_Init(buffer, &class_status_overview[6], int_buffer[2]);
-                StatOverview_Init(buffer, &class_status_overview[7], int_buffer[3]);
-                StatOverview_Init(buffer, &class_status_overview[8], int_buffer[4]);
-                StatOverview_Init(buffer, &class_status_overview[9], int_buffer[5]);
-                StatOverview_Init(buffer, &class_status_overview[10], int_buffer[6]);
-                StatOverview_Init(buffer, &class_status_overview[11], int_buffer[7]);
-                StatOverview_Init(buffer, &class_status_overview[12], int_buffer[8]);
-                StatOverview_Init(buffer, &class_status_overview[13], int_buffer[9]);
+                StatOverview_Init(buffer, class_status_overview[4].text, int_buffer[0], 27);
+                StatOverview_Init(buffer, class_status_overview[5].text, int_buffer[1], 27);
+                StatOverview_Init(buffer, class_status_overview[6].text, int_buffer[2], 27);
+                StatOverview_Init(buffer, class_status_overview[7].text, int_buffer[3], 27);
+                StatOverview_Init(buffer, class_status_overview[8].text, int_buffer[4], 27);
+                StatOverview_Init(buffer, class_status_overview[9].text, int_buffer[5], 27);
+                StatOverview_Init(buffer, class_status_overview[10].text, int_buffer[6], 27);
+                StatOverview_Init(buffer, class_status_overview[11].text, int_buffer[7], 27);
+                StatOverview_Init(buffer, class_status_overview[12].text, int_buffer[8], 27);
+                StatOverview_Init(buffer, class_status_overview[13].text, int_buffer[9], 27);
      
                 full_len = strlen(class_status_overview[4].text);
                 color_count = 3;
@@ -5640,7 +5707,6 @@ int main(int argc, char *argv[])
             }
 
             SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                            
             CursorForItems(&next_button.button[next_button.index], &right_cursor_asset, 4, 1);
             RenderAssetInWorldSpace(&right_cursor_asset);
             for (i32 i = 0; i < ArraySize(next_button.button); ++i)
@@ -5652,7 +5718,6 @@ int main(int argc, char *argv[])
                            white);
             }
 
-                
             if (!next_button.is_active)
             {
                 switch (next_button.index)
@@ -5664,7 +5729,6 @@ int main(int argc, char *argv[])
                 }
             }
             
-
             for (i32 i = 0; i < ArraySize(class_status_overview); ++i)
             {
                 RenderText(SDLWindow.Renderer, font_atlas,
@@ -5683,7 +5747,6 @@ int main(int argc, char *argv[])
                            stat_overview_color[i]);
             }
             
-
             RenderAsset(&character_creation_screen.info[character_creation_screen.index].asset, 
                          (SCREEN_CENTER_X - (32/2)) + 32, SCREEN_CENTER_Y, 
                          32, 48);
@@ -5696,6 +5759,16 @@ int main(int argc, char *argv[])
             for (i32 i = 0; i < ArraySize(walls); ++i)
                 AABB_Resolution(&character_data.model, &walls[i]);
 
+            AABB_Resolution(&character_data.model, &game_items[0].asset);
+
+            for (i32 i = 0; i < ArraySize(game_items[0].asset.adjacent_hitboxes); ++i)
+            {
+                if (AABB_Detection(&character_data.model.body, &game_items[0].asset.adjacent_hitboxes[i]))
+                {
+                    printf("touching health pot\n");
+                }
+            }
+
             AttachCameraToPlayer(&character_data.model, &room_asset[0]);
             SDL_SetRenderTarget(SDLWindow.Renderer, SDLCamera.TargetTexture);
             SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
@@ -5704,7 +5777,8 @@ int main(int argc, char *argv[])
             RenderAssetInWorldSpace(&room_asset[0]);
             RenderAssetInWorldSpace(&down_stairs_asset);
             RenderAssetInWorldSpace(&character_data.model);
-                
+            RenderAssetInWorldSpace(&game_items[0].asset);
+
             if (game_command_menu.is_opened)
             {
                 RenderAssetInCameraSpace(&game_command_menu.box, 
@@ -5741,7 +5815,7 @@ int main(int argc, char *argv[])
                         }
 
                         inventory_count = counter;
-                        printf("inventory_count: %d\n", inventory_count);
+                        //printf("inventory_count: %d\n", inventory_count);
 
                         for (int i = 0; i < COMMAND_MENU_ITEMS_SLOT_COUNT; ++i)
                         {
@@ -5753,6 +5827,7 @@ int main(int argc, char *argv[])
                         // Render asset(s) inside slot
                         // TODO: Iterate over a current count of items in inventory that updates on add or removal
                         // of an item on a slot, stacking does not count towards it
+                        
                         for (int i = 0; i < inventory_count; ++i)
                         {
                             RenderAssetInCameraSpace(&game_items[i].asset,
@@ -5772,6 +5847,73 @@ int main(int argc, char *argv[])
                                            white);
                             }
                         }
+                    } break;
+                    case 1: // Equip
+                    {
+                        for (int i = 0; i < COMMAND_MENU_EQUIP_SLOT_COUNT; ++i)
+                        {
+                            RenderAssetInCameraSpace(&game_command_menu_items.slots[i].model, 
+                                                     game_command_menu_items.slots[i].model.x, 
+                                                     game_command_menu_items.slots[i].model.y);
+                        }
+                    } break;
+                    case 2: // Status
+                    {
+                        if (!game_init_stats)
+                        {
+                            char buffer[15];
+                            char *name = NameEntry_GetName(&name_entry);
+                            char *lvl = "1";
+                            char *class_name = character_data.class.name;
+                            char *class_personality = test_scenarios.personality;
+                            char *exp = "91";
+
+                            StatOverview_Init(buffer, in_game_class_status_overview[0].text, name, 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[1].text, lvl, 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[2].text, class_name, 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[3].text, class_personality, 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[4].text, exp, 17);
+
+                            sprintf(game_int_buffer[0], "%d", character_data.base_stats.strength);
+                            sprintf(game_int_buffer[1], "%d", character_data.base_stats.resilience);
+                            sprintf(game_int_buffer[2], "%d", character_data.base_stats.agility);
+                            sprintf(game_int_buffer[3], "%d", character_data.base_stats.stamina);
+                            sprintf(game_int_buffer[4], "%d", character_data.base_stats.wisdom);
+                            sprintf(game_int_buffer[5], "%d", character_data.base_stats.luck);
+                            sprintf(game_int_buffer[6], "%d", character_data.base_stats.attack);
+                            sprintf(game_int_buffer[7], "%d", character_data.base_stats.defense);
+                            
+                            StatOverview_Init(buffer, in_game_class_status_overview[5].text, game_int_buffer[0], 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[6].text, game_int_buffer[1], 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[7].text, game_int_buffer[2], 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[8].text, game_int_buffer[3], 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[9].text, game_int_buffer[4], 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[10].text, game_int_buffer[5], 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[11].text, game_int_buffer[6], 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[12].text, game_int_buffer[6], 17);
+
+                            printf("name: %s\n", game_int_buffer[0]);
+                            game_init_stats = true;
+                        }
+
+                        RenderAssetInCameraSpaceDIMENSION(character_data.model,
+                                                          SCREEN_CENTER_X - 44,
+                                                          SCREEN_CENTER_Y - 96,
+                                                          character_data.model.w,
+                                                          character_data.model.h);
+
+                        for (i32 i = 0; i < ArraySize(in_game_class_status_overview); ++i)
+                        {
+                            RenderText(SDLWindow.Renderer, font_atlas,
+                                       in_game_class_status_overview[i].pos.x,
+                                       in_game_class_status_overview[i].pos.y,
+                                       in_game_class_status_overview[i].text,
+                                       white);
+                        }
+                    } break;
+                    default:
+                    {
+
                     } break;
                 }
 
@@ -5825,7 +5967,6 @@ int main(int argc, char *argv[])
                                SCREEN_CENTER_Y + 92, 
                                "Sell Value: 1",
                                white);
-
 
 
                         if (item_slot_option)
