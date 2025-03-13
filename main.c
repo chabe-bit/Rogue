@@ -47,7 +47,7 @@ typedef struct
     i32 x, y;
     i32 w, h;
     asset_direction_t direction;
-    union 
+    struct 
     {
         bool is_movable;
         bool is_under_attack;
@@ -517,6 +517,22 @@ void RenderAssetInWorldSpace(asset_t *asset)
   
     asset->body.x = asset->x;
     asset->body.y = asset->y;
+}
+
+void RenderSDLRectInWorldSpace(SDL_Rect *rect)
+{
+    int x = rect->x;
+    int y = rect->y;
+
+    rect->x -= SDLCamera.X;
+    rect->y -= SDLCamera.Y;
+
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
+    SDL_RenderDrawRect(SDLWindow.Renderer, rect);
+
+    rect->x = x;
+    rect->y = y;
+    
 }
 
 // Render any asset anywhere in world space
@@ -1042,32 +1058,6 @@ int main(int argc, char *argv[])
     LoadAsset(&room_asset[1], "assets/map2.png");
     InitializeAssetToRender(&room_asset[0], CameraX, CameraY, room_asset[0].w, room_asset[0].h);
     InitializeAssetToRender(&room_asset[1], CameraX, CameraY, room_asset[1].w, room_asset[1].h);
-    
-    asset_t walls[4] = {0};
-    walls[0].body.x = 0;
-    walls[0].body.y = 0;
-    walls[0].body.w = room_asset[0].w;
-    walls[0].body.h = 24;
-    walls[0].conditions.is_collidable = true;
-
-    walls[1].body.x = 0;
-    walls[1].body.y = room_asset[0].h - 24;
-    walls[1].body.w = room_asset[0].w;
-    walls[1].body.h = 24;
-    walls[1].conditions.is_collidable = true;
-
-    walls[2].body.x = 0;
-    walls[2].body.y = 0;
-    walls[2].body.w = 16;
-    walls[2].body.h = room_asset[0].h;
-    walls[2].conditions.is_collidable = true;
-
-    walls[3].body.x = room_asset[0].w - 16;
-    walls[3].body.y = 0; 
-    walls[3].body.w = 16;
-    walls[3].body.h = room_asset[0].h;
-    walls[3].conditions.is_collidable = true;
-
 
     asset_t down_stairs_asset = {0};
     LoadAsset(&down_stairs_asset, "assets/down_stairs.png");
@@ -1085,7 +1075,6 @@ int main(int argc, char *argv[])
     
     player_asset.conditions.is_collidable = true;
     player_asset.conditions.is_movable = true;
-
 
     const char *enemy_filenames[2] = {
         "assets/sprites/enemy1.png",
@@ -2419,9 +2408,17 @@ int main(int argc, char *argv[])
         int rows, cols;
         // variables to handle items ...
 
+        //SDL_Rect sub_tiles;
+
         asset_t collison_tiles[580];
         asset_t item_tiles[580]; 
     } floor_tile_t;
+
+    typedef struct
+    {
+        asset_t collision_tiles;
+        asset_t item_tiles;
+    } test_floor_tile_t;
 
     #define TILE_WIDTH 16
     #define TILE_HEIGHT 24
@@ -2435,20 +2432,21 @@ int main(int argc, char *argv[])
     int total_floor_tiles = main_room.rows * main_room.cols;
     printf("total tiles: %d\n", total_floor_tiles);
 
+    test_floor_tile_t floor_tiles[580] = {0};
     for (int i = 0; i < main_room.rows; ++i)
     {
         for (int j = 0; j < main_room.cols; ++j)
         {
             int index = i * main_room.cols + j;
-            main_room.collison_tiles[index].body.x = (j * TILE_WIDTH);
-            main_room.collison_tiles[index].body.y = (i * TILE_HEIGHT);
-            main_room.collison_tiles[index].body.w = TILE_WIDTH;
-            main_room.collison_tiles[index].body.h = TILE_HEIGHT;
+            floor_tiles[index].collision_tiles.body.x = (j * TILE_WIDTH);
+            floor_tiles[index].collision_tiles.body.y = (i * TILE_HEIGHT);
+            floor_tiles[index].collision_tiles.body.w = TILE_WIDTH;
+            floor_tiles[index].collision_tiles.body.h = TILE_HEIGHT;
 
-            main_room.item_tiles[index].body.x = (main_room.collison_tiles[index].body.x + (TILE_WIDTH - SUB_TILE_WIDTH) / 2);
-            main_room.item_tiles[index].body.y = (main_room.collison_tiles[index].body.y + (TILE_HEIGHT - SUB_TILE_HEIGHT) / 2); 
-            main_room.item_tiles[index].body.w = SUB_TILE_WIDTH;
-            main_room.item_tiles[index].body.h = SUB_TILE_HEIGHT;
+            floor_tiles[index].item_tiles.body.x = (floor_tiles[index].collision_tiles.body.x + (TILE_WIDTH - SUB_TILE_WIDTH) / 2);
+            floor_tiles[index].item_tiles.body.y = (floor_tiles[index].collision_tiles.body.y + (TILE_HEIGHT - SUB_TILE_HEIGHT) / 2); 
+            floor_tiles[index].item_tiles.body.w = SUB_TILE_WIDTH;
+            floor_tiles[index].item_tiles.body.h = SUB_TILE_HEIGHT;
         }
     }
 
@@ -2456,63 +2454,70 @@ int main(int argc, char *argv[])
     int col_start_index = 0;
     for (int i = col_start_index; i < main_room.cols; ++i)
     {
-        main_room.collison_tiles[i].conditions.is_collidable = true;
+        floor_tiles[i].collision_tiles.conditions.is_collidable = true;
     }
     // Bottom Wall
     int col_end_index = (main_room.rows - 1) * main_room.cols;
     for (int i = col_end_index; i < total_floor_tiles; ++i)
     {
-        main_room.collison_tiles[i].conditions.is_collidable = true;
+        floor_tiles[i].collision_tiles.conditions.is_collidable = true;
     }
     // Left Wall
     for (int i = 0; i < main_room.rows; ++i)
     {
         int index = i * main_room.cols;
-        main_room.collison_tiles[index].conditions.is_collidable = true;
+        floor_tiles[index].collision_tiles.conditions.is_collidable = true;
     }
     // Right Wall
     for (int i = 0; i < main_room.rows; ++i) 
     {
         int index = i * main_room.cols + main_room.cols - 1;
-        main_room.collison_tiles[index].conditions.is_collidable = true;
+        floor_tiles[index].collision_tiles.conditions.is_collidable = true;
     }
 
-    
     // Main room -> Left Room
-    main_room.collison_tiles[117].conditions.is_collidable = true;
-    main_room.collison_tiles[118].conditions.is_collidable = true;
-    main_room.collison_tiles[119].conditions.is_collidable = true;
-    main_room.collison_tiles[120].conditions.is_collidable = true;
-    main_room.collison_tiles[121].conditions.is_collidable = true;
-  
-    main_room.collison_tiles[123].conditions.is_collidable = true;
-    main_room.collison_tiles[124].conditions.is_collidable = true;
-    main_room.collison_tiles[125].conditions.is_collidable = true;
-    main_room.collison_tiles[126].conditions.is_collidable = true;
-    main_room.collison_tiles[127].conditions.is_collidable = true;  
+    floor_tiles[117].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[118].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[119].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[120].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[121].collision_tiles.conditions.is_collidable = true;
 
-    main_room.collison_tiles[128].conditions.is_collidable = true;  
-    main_room.collison_tiles[41].conditions.is_collidable = true;
-    main_room.collison_tiles[70].conditions.is_collidable = true;
-    main_room.collison_tiles[99].conditions.is_collidable = true;  
+    floor_tiles[123].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[124].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[125].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[126].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[127].collision_tiles.conditions.is_collidable = true;
+
+    floor_tiles[128].collision_tiles.conditions.is_collidable = true;  
+    floor_tiles[41].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[70].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[99].collision_tiles.conditions.is_collidable = true;  
 
     // Main room -> Right Room
-    main_room.collison_tiles[45].conditions.is_collidable = true;
-    main_room.collison_tiles[74].conditions.is_collidable = true;
-    main_room.collison_tiles[103].conditions.is_collidable = true;  
-    main_room.collison_tiles[132].conditions.is_collidable = true;
+    floor_tiles[45].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[74].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[103].collision_tiles.conditions.is_collidable = true;  
+    floor_tiles[132].collision_tiles.conditions.is_collidable = true;
     
-    main_room.collison_tiles[133].conditions.is_collidable = true;
-    main_room.collison_tiles[134].conditions.is_collidable = true;
-    main_room.collison_tiles[135].conditions.is_collidable = true;
-    main_room.collison_tiles[136].conditions.is_collidable = true; 
-    main_room.collison_tiles[137].conditions.is_collidable = true; 
+    floor_tiles[133].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[134].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[135].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[136].collision_tiles.conditions.is_collidable = true; 
+    floor_tiles[137].collision_tiles.conditions.is_collidable = true; 
 
-    main_room.collison_tiles[139].conditions.is_collidable = true;
-    main_room.collison_tiles[140].conditions.is_collidable = true;
-    main_room.collison_tiles[141].conditions.is_collidable = true;
-    main_room.collison_tiles[142].conditions.is_collidable = true; 
-    main_room.collison_tiles[143].conditions.is_collidable = true; 
+    floor_tiles[139].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[140].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[141].collision_tiles.conditions.is_collidable = true;
+    floor_tiles[142].collision_tiles.conditions.is_collidable = true; 
+    floor_tiles[143].collision_tiles.conditions.is_collidable = true;
+
+    // Floor has an item test
+    int player_position_on_map = 0;
+    floor_tiles[443].collision_tiles.conditions.is_occupied = true;
+        
+    printf("floor tile x: %d\n", floor_tiles[443].collision_tiles.body.x);
+    printf("floor tile y: %d\n", floor_tiles[443].collision_tiles.body.y);
+    
 
     while (Running) 
     {
@@ -3968,6 +3973,20 @@ int main(int argc, char *argv[])
 
                                 if (is_game_running)
                                 {
+                                    for (int i = 0; i < total_floor_tiles; ++i)
+                                    {
+
+                                        if (floor_tiles[i].collision_tiles.conditions.is_occupied)
+                                        {
+                                            if (character_data.model.body.x == floor_tiles[i].collision_tiles.body.x)
+                                            {
+                                                printf("Floor has item!\n");
+                                            }
+                                        }
+
+                                    }
+
+
                                     if (game_command_menu_items.is_opened)
                                     {
                                         if (game_command_menu_items.slots[game_command_menu_items.index].occupied)
@@ -5863,27 +5882,16 @@ int main(int argc, char *argv[])
         if (is_game_running)
         {
             UpdatePlayer(&character_data.model, &sfx_move);
-            for (i32 i = 0; i < ArraySize(walls); ++i)
-                //AABB_Resolution(&character_data.model, &walls[i]);
 
-            AABB_Resolution(&character_data.model, &game_items[0].asset);
-           
             for (int i = 0; i < total_floor_tiles; ++i)
-                AABB_Resolution(&character_data.model, &main_room.collison_tiles[i]);
+               AABB_Resolution(&character_data.model, &floor_tiles[i].collision_tiles);
 
             for (int i = 0; i < total_floor_tiles; ++i)
             {
-                if (AABB_Detection(&character_data.model.body, &main_room.item_tiles[i].body))
+                if (AABB_Detection(&character_data.model.body, &floor_tiles[i].collision_tiles.body))
                 {
-                    printf("tile index: %d\n", i);
-                }
-            }
-
-            for (i32 i = 0; i < ArraySize(game_items[0].asset.adjacent_hitboxes); ++i)
-            {
-                if (AABB_Detection(&character_data.model.body, &game_items[0].asset.adjacent_hitboxes[i]))
-                {
-                    printf("touching health pot\n");
+                    printf("tile x: %d\n", floor_tiles[i].collision_tiles.body.x);
+                    printf("tile y: %d\n", floor_tiles[i].collision_tiles.body.y);
                 }
             }
 
@@ -5896,17 +5904,11 @@ int main(int argc, char *argv[])
             RenderAssetInWorldSpace(&down_stairs_asset);
             RenderAssetInWorldSpace(&character_data.model);
 
-            for (i32 i = 0; i < ArraySize(walls); ++i)
-                RenderAssetInWorldSpace(&walls[i]);
-
             for (int i = 0; i < total_floor_tiles; ++i)
             {
-                if (!main_room.collison_tiles[i].conditions.is_collidable)
-                {
-                    RenderAssetInWorldSpace(&main_room.item_tiles[i]);
-                }
+                RenderAssetInWorldSpace(&floor_tiles[i].collision_tiles);
             }
-          
+
 
             if (game_command_menu.is_opened)
             {
