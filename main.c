@@ -1629,9 +1629,11 @@ int main(int argc, char *argv[])
     class_base_stats[KNIGHT_ID].hp = class_base_stats[KNIGHT_ID].max_hp; // 
     class_base_stats[KNIGHT_ID].max_mp = class_base_stats[KNIGHT_ID].wisdom; // MP == Wisdom
     class_base_stats[KNIGHT_ID].hp = class_base_stats[KNIGHT_ID].max_mp; // 
+    class_base_stats[KNIGHT_ID].attack = class_base_stats[KNIGHT_ID].strength + 0; // strength + weapon power
+    class_base_stats[KNIGHT_ID].defense = class_base_stats[KNIGHT_ID].resilience + 0; // resilience + armor 
 
     class_base_stats[PALADIN_ID].strength = 7;
-    class_base_stats[PALADIN_ID].resilience = 14;
+    class_base_stats[PALADIN_ID].resilience = 16;
     class_base_stats[PALADIN_ID].agility = 5;
     class_base_stats[PALADIN_ID].stamina = 17;
     class_base_stats[PALADIN_ID].wisdom = 8;
@@ -1640,6 +1642,8 @@ int main(int argc, char *argv[])
     class_base_stats[PALADIN_ID].hp = class_base_stats[PALADIN_ID].max_hp; // 
     class_base_stats[PALADIN_ID].max_mp = class_base_stats[PALADIN_ID].wisdom; // MP == Wisdom
     class_base_stats[PALADIN_ID].hp = class_base_stats[PALADIN_ID].max_mp; // 
+    class_base_stats[PALADIN_ID].attack = class_base_stats[PALADIN_ID].strength + 0; // strength + weapon power
+    class_base_stats[PALADIN_ID].defense = class_base_stats[PALADIN_ID].resilience + 0; // resilience + armor 
 
     class_base_stats[WIZARD_ID].strength = 4;
     class_base_stats[WIZARD_ID].resilience = 8;
@@ -1651,6 +1655,8 @@ int main(int argc, char *argv[])
     class_base_stats[WIZARD_ID].hp = class_base_stats[WIZARD_ID].max_hp; // 
     class_base_stats[WIZARD_ID].max_mp = class_base_stats[WIZARD_ID].wisdom; // MP == Wisdom
     class_base_stats[WIZARD_ID].hp = class_base_stats[WIZARD_ID].max_mp; // 
+    class_base_stats[WIZARD_ID].attack = class_base_stats[WIZARD_ID].strength + 0; // strength + weapon power
+    class_base_stats[WIZARD_ID].defense = class_base_stats[WIZARD_ID].resilience + 0; // resilience + armor 
 
     class_base_stats[ARCHER_ID].strength = 5;
     class_base_stats[ARCHER_ID].resilience = 8;
@@ -1662,6 +1668,8 @@ int main(int argc, char *argv[])
     class_base_stats[ARCHER_ID].hp = class_base_stats[ARCHER_ID].max_hp; // 
     class_base_stats[ARCHER_ID].max_mp = class_base_stats[ARCHER_ID].wisdom; // MP == Wisdom
     class_base_stats[ARCHER_ID].hp = class_base_stats[ARCHER_ID].max_mp; // 
+    class_base_stats[ARCHER_ID].attack = class_base_stats[ARCHER_ID].strength + 0; // strength + weapon power
+    class_base_stats[ARCHER_ID].defense = class_base_stats[ARCHER_ID].resilience + 0; // resilience + armor 
 
     printf("Max HP: %d\n", class_base_stats[KNIGHT_ID].max_hp);
 
@@ -1879,10 +1887,10 @@ int main(int argc, char *argv[])
 
     bool init_name = true;
     const char *dst_txt = "Name:                      "; // Just to specify we're working with a str of size 27, for now
-    class_status_overview_t class_status_overview[14] = {
+    class_status_overview_t class_status_overview[12] = {
         // Box 1 - Info
         { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 96},    "Name:                      " },
-        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 86},    "Lv:                       1" },
+        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 86},    "Lv:                        " },
         { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 76},    "Class:                     " },
         { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 66},    "Personality:               " },
 
@@ -1893,10 +1901,8 @@ int main(int argc, char *argv[])
         { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 16},                  "Stamina:                  " },
         { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 6},                   "Wisdom:                   " },
         { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 4},                   "Luck:                     " },
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 14},                  "Max HP:                   " },
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 24},                  "Max MP:                   " },
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 34},                  "Attack:                   " },
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 44},                  "Defense:                  " },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 14},                  "Max HP:                  " },
+        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 24},                  "Max MP:                  " },
     };
    
     bool game_init_stats = false;
@@ -1904,24 +1910,26 @@ int main(int argc, char *argv[])
     size_t test_txt_size = strlen(test_txt);
     printf("test_txt_size: %d\n", test_txt_size); 
     
-    char game_int_buffer[8][17];
-    class_status_overview_t in_game_class_status_overview[13] = {
+    char game_int_buffer[10][17];
+    class_status_overview_t in_game_class_status_overview[15] = {
         // Box 1 - Info
-        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 64},    "Name:                " }, // name
-        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 54},    "Lv:                  " },
-        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 44},    "Class:               " }, // class
-        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 34},    "Ego:                 " }, // personality
-        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 24},    "Exp_to_next:         " },
+        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 94},    "Name:                " }, // name
+        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 84},    "Lv:                  " },
+        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 74},    "Class:               " }, // class
+        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 64},    "Ego:                 " }, // personality
+        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 54},    "Exp_to_next:         " },
 
         // Box 2 - Stats
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y - 4},                   "Str:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 6},                   "Res:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 16},                  "Agi:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 26},                  "Sta:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 36},                  "Wis:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 46},                  "Lck:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 56},                  "Atk:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 66},                  "Def:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y - 34},                  "Str:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y - 24},                  "Res:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y - 14},                  "Agi:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y - 4},                   "Sta:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 6},                   "Wis:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 16},                  "Lck:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 26},                  "Max HP:              " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 36},                  "Max MP:              " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 46},                  "Atk:                 " },
+        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 56},                  "Def:                 " },
     };
 
 
@@ -1993,7 +2001,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    SDL_Color stat_overview_color[10] = {0};
+    SDL_Color stat_overview_color[8] = {0};
   
     // -------- In-game menus --------
     
@@ -5659,9 +5667,11 @@ int main(int argc, char *argv[])
             {
                 char buffer[28];
                 char *name = NameEntry_GetName(&name_entry);
+                char *lvl = "1";
                 char *class_name = character_data.class.name;
                 char *class_personality = test_scenarios.personality;
                 StatOverview_Init(buffer, class_status_overview[0].text, name, 27);
+                StatOverview_Init(buffer, class_status_overview[1].text, lvl, 27);
                 StatOverview_Init(buffer, class_status_overview[2].text, class_name, 27);
                 StatOverview_Init(buffer, class_status_overview[3].text, class_personality, 27);
 
@@ -5673,8 +5683,6 @@ int main(int argc, char *argv[])
                 sprintf(int_buffer[5], "%d", character_data.base_stats.luck);
                 sprintf(int_buffer[6], "%d", character_data.base_stats.max_hp);
                 sprintf(int_buffer[7], "%d", character_data.base_stats.max_mp);
-                sprintf(int_buffer[8], "%d", character_data.base_stats.attack);
-                sprintf(int_buffer[9], "%d", character_data.base_stats.defense);
                 
                 StatOverview_Init(buffer, class_status_overview[4].text, int_buffer[0], 27);
                 StatOverview_Init(buffer, class_status_overview[5].text, int_buffer[1], 27);
@@ -5684,8 +5692,6 @@ int main(int argc, char *argv[])
                 StatOverview_Init(buffer, class_status_overview[9].text, int_buffer[5], 27);
                 StatOverview_Init(buffer, class_status_overview[10].text, int_buffer[6], 27);
                 StatOverview_Init(buffer, class_status_overview[11].text, int_buffer[7], 27);
-                StatOverview_Init(buffer, class_status_overview[12].text, int_buffer[8], 27);
-                StatOverview_Init(buffer, class_status_overview[13].text, int_buffer[9], 27);
      
                 full_len = strlen(class_status_overview[4].text);
                 color_count = 3;
@@ -5693,7 +5699,7 @@ int main(int argc, char *argv[])
                 if (non_colored_len < 0)
                     non_colored_len = 0;     
 
-                for (i32 i = 0, j = 4; i < 10 && j < 14; ++i, ++j)
+                for (i32 i = 0, j = 4; i < 8 && j < 14; ++i, ++j)
                 {
                     PushString(full_text[i], class_status_overview[j].text);
 
@@ -5859,6 +5865,15 @@ int main(int argc, char *argv[])
                     } break;
                     case 2: // Status
                     {
+                                    
+                        static char full_text[10][28];
+                        static i32 full_len;
+                        static i32 color_count;
+                        static i32 non_colored_len;
+                        static i32 base_x_arr[10];
+                        static i32 base_y_arr[10];
+                        static i32 offset_x_arr[10];
+
                         if (!game_init_stats)
                         {
                             char buffer[15];
@@ -5880,8 +5895,10 @@ int main(int argc, char *argv[])
                             sprintf(game_int_buffer[3], "%d", character_data.base_stats.stamina);
                             sprintf(game_int_buffer[4], "%d", character_data.base_stats.wisdom);
                             sprintf(game_int_buffer[5], "%d", character_data.base_stats.luck);
-                            sprintf(game_int_buffer[6], "%d", character_data.base_stats.attack);
-                            sprintf(game_int_buffer[7], "%d", character_data.base_stats.defense);
+                            sprintf(game_int_buffer[6], "%d", character_data.base_stats.max_hp);
+                            sprintf(game_int_buffer[7], "%d", character_data.base_stats.max_mp);
+                            sprintf(game_int_buffer[8], "%d", character_data.base_stats.attack);
+                            sprintf(game_int_buffer[9], "%d", character_data.base_stats.defense);
                             
                             StatOverview_Init(buffer, in_game_class_status_overview[5].text, game_int_buffer[0], 17);
                             StatOverview_Init(buffer, in_game_class_status_overview[6].text, game_int_buffer[1], 17);
@@ -5890,17 +5907,36 @@ int main(int argc, char *argv[])
                             StatOverview_Init(buffer, in_game_class_status_overview[9].text, game_int_buffer[4], 17);
                             StatOverview_Init(buffer, in_game_class_status_overview[10].text, game_int_buffer[5], 17);
                             StatOverview_Init(buffer, in_game_class_status_overview[11].text, game_int_buffer[6], 17);
-                            StatOverview_Init(buffer, in_game_class_status_overview[12].text, game_int_buffer[6], 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[12].text, game_int_buffer[7], 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[13].text, game_int_buffer[8], 17);
+                            StatOverview_Init(buffer, in_game_class_status_overview[14].text, game_int_buffer[9], 17);
 
-                            printf("name: %s\n", game_int_buffer[0]);
+                                            
+                            full_len = strlen(in_game_class_status_overview[0].text);
+                            color_count = 3;
+                            non_colored_len = full_len - color_count;
+                            if (non_colored_len < 0)
+                                non_colored_len = 0;     
+
+                            for (i32 i = 0, j = 5; i < 10 && j < 15; ++i, ++j)
+                            {
+                                PushString(full_text[i], in_game_class_status_overview[j].text);
+
+                                base_x_arr[i] = in_game_class_status_overview[j].pos.x;
+                                base_y_arr[i] = in_game_class_status_overview[j].pos.y;
+
+                                offset_x_arr[i] = base_x_arr[i] + non_colored_len * GLYPH_WIDTH;
+                            }
+
                             game_init_stats = true;
                         }
-
+/*
                         RenderAssetInCameraSpaceDIMENSION(character_data.model,
                                                           SCREEN_CENTER_X - 44,
                                                           SCREEN_CENTER_Y - 96,
                                                           character_data.model.w,
                                                           character_data.model.h);
+*/
 
                         for (i32 i = 0; i < ArraySize(in_game_class_status_overview); ++i)
                         {
@@ -5909,6 +5945,15 @@ int main(int argc, char *argv[])
                                        in_game_class_status_overview[i].pos.y,
                                        in_game_class_status_overview[i].text,
                                        white);
+                        }
+
+                        for (i32 i = 0; i < 13; ++i)
+                        {
+                            RenderText(SDLWindow.Renderer, font_atlas,
+                                       offset_x_arr[i],
+                                       base_y_arr[i],
+                                       full_text[i] + non_colored_len,
+                                       stat_overview_color[i]);
                         }
                     } break;
                     default:
