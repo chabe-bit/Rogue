@@ -540,90 +540,6 @@ void DestroyAssets(asset_t *assets)
     SDL_DestroyTexture(assets->texture);
 }
 
-
-typedef struct
-{
-    i32 index;
-    bool is_active;
-    SDL_Rect box;
-    SDL_Rect box_border;
-
-    struct
-    {
-        menu_item_t buttons[2];
-    } info;
-
-} confirm_buttons_t;
-
-typedef struct
-{
-    vec2_t pos;
-    const char *text;
-} button_t;
-
-typedef struct
-{
-    i32 index;
-    bool is_active;
-    SDL_Rect box;
-    SDL_Rect box_border;
-
-    button_t button[2];
-} test_confirm_buttons_t;
-
-void CursorInit(asset_t *cursor, i32 x, i32 y, i32 x_offset, int y_offset)
-{
-    cursor->body.x = x - cursor->w + x_offset;
-    cursor->body.y = y + (GLYPH_HEIGHT / 2) - (cursor->h / 2) + y_offset; 
-}
-
-void RenderCursor(asset_t *cursor)
-{
-    if (cursor->texture)
-    {
-        SDL_SetTextureBlendMode(cursor->texture, SDL_BLENDMODE_BLEND);
-        if (SDL_RenderCopy(SDLWindow.Renderer, cursor->texture, NULL, &cursor->body) < 0)
-        {
-            fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
-            return;
-        }
-    }   
-}
-
-void ConfirmationButtons_Init(test_confirm_buttons_t *confirm)
-{
-    confirm->button[0].text = "Yes";
-    confirm->button[0].pos.x = CENTER_TEXT_X("Yes", 0);
-    confirm->button[0].pos.y = SCREEN_CENTER_Y;
-
-    confirm->button[1].text = "No";
-    confirm->button[1].pos.x = CENTER_TEXT_X("No", 0);
-    confirm->button[1].pos.y = SCREEN_CENTER_Y + 16;
-
-    confirm->box.x = SCREEN_CENTER_X - (48 / 2);
-    confirm->box.y = SCREEN_CENTER_Y - 20;
-    confirm->box.w = 48;
-    confirm->box.h = 56;
-
-    confirm->box_border.x = SCREEN_CENTER_X - (50 / 2);
-    confirm->box_border.y = SCREEN_CENTER_Y - 21;
-    confirm->box_border.w = 50;
-    confirm->box_border.h = 58;
-}
-
-void ConfirmationButtons_RenderBox(test_confirm_buttons_t *confirm)
-{
-    // Box border
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
-    SDL_RenderDrawRect(SDLWindow.Renderer, &confirm->box_border);
-    
-    // Border
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
-    SDL_RenderFillRect(SDLWindow.Renderer, &confirm->box_border);
-}
-
-
-
 typedef struct
 {
     SDL_Color color[MAX_COLOR];
@@ -649,6 +565,87 @@ void Font_Init(font_t *font)
     font->color[5] = color.orange;
 }
 
+typedef struct
+{
+    vec2_t pos;
+    const char *text;
+} button_t;
+
+typedef struct
+{
+    i32 index;
+    bool is_active;
+    SDL_Rect box;
+    SDL_Rect box_border;
+
+    font_t *font;
+    button_t button[2];
+} confirm_buttons_t;
+
+void GUI_UpdateCursor(asset_t *cursor, i32 x, i32 y, i32 x_offset, int y_offset)
+{
+    cursor->body.x = x - cursor->w + x_offset;
+    cursor->body.y = y + (GLYPH_HEIGHT / 2) - (cursor->h / 2) + y_offset; 
+}
+
+void GUI_RenderCursor(asset_t *cursor)
+{
+    if (cursor->texture)
+    {
+        SDL_SetTextureBlendMode(cursor->texture, SDL_BLENDMODE_BLEND);
+        if (SDL_RenderCopy(SDLWindow.Renderer, cursor->texture, NULL, &cursor->body) < 0)
+        {
+            fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
+            return;
+        }
+    }   
+}
+
+void ConfirmationButtons_Init(confirm_buttons_t *confirm, font_t *font)
+{
+    confirm->font = font;
+
+    confirm->button[0].text = "Yes";
+    confirm->button[0].pos.x = CENTER_TEXT_X("Yes", 0);
+    confirm->button[0].pos.y = SCREEN_CENTER_Y;
+
+    confirm->button[1].text = "No";
+    confirm->button[1].pos.x = CENTER_TEXT_X("No", 0);
+    confirm->button[1].pos.y = SCREEN_CENTER_Y + 16;
+
+    confirm->box.x = SCREEN_CENTER_X - (48 / 2);
+    confirm->box.y = SCREEN_CENTER_Y - 20;
+    confirm->box.w = 48;
+    confirm->box.h = 56;
+
+    confirm->box_border.x = SCREEN_CENTER_X - (50 / 2);
+    confirm->box_border.y = SCREEN_CENTER_Y - 20;
+    confirm->box_border.w = 50;
+    confirm->box_border.h = 58;
+}
+
+void ConfirmationButtons_RenderBox(confirm_buttons_t *confirm)
+{
+    // Box border
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
+    SDL_RenderDrawRect(SDLWindow.Renderer, &confirm->box_border);
+    
+    // Border
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
+    SDL_RenderFillRect(SDLWindow.Renderer, &confirm->box_border);
+}
+
+void ConfirmationButtons_RenderText(confirm_buttons_t *confirm)
+{
+    for (i32 i = 0; i < ArraySize(confirm->button); ++i) 
+    {
+        RenderText(SDLWindow.Renderer, confirm->font->atlas,
+                   confirm->button[i].pos.x, 
+                   confirm->button[i].pos.y,
+                   confirm->button[i].text, 
+                   confirm->font->color[COLOR_WHITE]);
+    }
+}
 
 // ----------------------- EXPERIEMENTAL --------------------------
 typedef struct
@@ -989,6 +986,10 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Failed to create window: %s\n", SDL_GetError());
         return 1;
     }
+        
+    // Only call once rather than every frame, caused an issue of the screen to flicker on startup.
+    SDL_RenderSetLogicalSize(SDLWindow.Renderer, ASPECT_WIDTH, ASPECT_HEIGHT);    
+
 
     SDLWindow.Texture = SDL_CreateTexture(SDLWindow.Renderer, SDL_TEXTUREACCESS_STATIC, SDL_PIXELFORMAT_RGBA8888, WINDOW_WIDTH, WINDOW_HEIGHT);
     if (SDLWindow.Texture == NULL)
@@ -1108,29 +1109,20 @@ int main(int argc, char *argv[])
     InitializeAssetToRender(&enemy_arr2[2], 9 * 16, 17 * 24, enemy_arr2[2].w, enemy_arr2[2].h);
 
 
-    asset_t forest_scenario_map = {0};
-    LoadAsset(&forest_scenario_map, "assets/forest_scenario.png");
-    InitializeAssetToRender(&forest_scenario_map, CameraX, CameraY, forest_scenario_map.w, forest_scenario_map.h);
-    
-    asset_t oldman_asset = {0};
-    LoadAsset(&oldman_asset, "assets/sprites/oldman.png");
-    InitializeAssetToRender(&oldman_asset, CameraX, CameraY, oldman_asset.w, oldman_asset.h);
+    asset_t forest_scenario_map = IdealLoadAsset("assets/forest_scenario.png");
+    asset_t oldman_asset = IdealLoadAsset("assets/sprites/oldman.png");
     oldman_asset.conditions.is_collidable = true;
 
     i32 boulder_count = 0;
-    asset_t boulder_asset = {0};
-    LoadAsset(&boulder_asset, "assets/sprites/boulder.png");
-    InitializeAssetToRender(&boulder_asset, CameraX, CameraY, boulder_asset.w, boulder_asset.h);
+    asset_t boulder_asset = IdealLoadAsset("assets/sprites/boulder.png");
     boulder_asset.conditions.is_collidable = true;
     boulder_asset.conditions.is_movable = true;
  
     asset_t boulder_wall_asset[5] = {0};
     for (i32 i = 0; i < ArraySize(boulder_wall_asset); ++i)
     {
-        LoadAsset(&boulder_wall_asset[i], "assets/sprites/boulder.png");
-        InitializeAssetToRender(&boulder_wall_asset[i], CameraX, CameraY, boulder_wall_asset[i].w, boulder_wall_asset[i].h);
+        boulder_wall_asset[i] = IdealLoadAsset("assets/sprites/boulder.png");
         boulder_wall_asset[i].conditions.is_collidable = true;
-
     }
 
     asset_t forest_scenario_walls[2] = {0};
@@ -1174,15 +1166,7 @@ int main(int argc, char *argv[])
     font_t font = {0};
     Font_Init(&font);
 
-    SDL_Texture *font_atlas = font.atlas;
-    if (!font_atlas)
-    {
-        SDL_DestroyRenderer(SDLWindow.Renderer);
-        SDL_DestroyWindow(SDLWindow.Window);
-        SDL_Quit();
-        return 1;
-    }
-
+    
     i32 option_index = 0;
     menu_item_t title_screen_options[4] = {
         { "New Game", CENTER_TEXT_X("New Game", 0), SCREEN_CENTER_Y},
@@ -1345,28 +1329,12 @@ int main(int argc, char *argv[])
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    test_confirm_buttons_t test_confirm_buttons = {0};
-    ConfirmationButtons_Init(&test_confirm_buttons);
-
     confirm_buttons_t confirmation = {0};
-    confirmation.info.buttons[0].text = "Yes";
-    confirmation.info.buttons[0].x = SCREEN_CENTER_X - 4;
-    confirmation.info.buttons[0].y = SCREEN_CENTER_Y;
+    ConfirmationButtons_Init(&confirmation, &font);
 
-    confirmation.info.buttons[1].text = "No";
-    confirmation.info.buttons[1].x = SCREEN_CENTER_X - 2;
-    confirmation.info.buttons[1].y = SCREEN_CENTER_Y + 16;
-
-    confirmation.box.x = SCREEN_CENTER_X - 20; // x render pos
-    confirmation.box.y = SCREEN_CENTER_Y - 20; // y render pos
-    confirmation.box.w = 48;
-    confirmation.box.h = 56;
-
-    confirmation.box_border.x = SCREEN_CENTER_X - 21; // shift the x render pos 1 pixel back
-    confirmation.box_border.y = SCREEN_CENTER_Y - 21; // shift the y render pos 1 pixel up
-    confirmation.box_border.w = 50; // padding of 1px per side for x 
-    confirmation.box_border.h = 58; // padding of 1px per side for y
-
+    printf("r: %d\n", confirmation.font->color[COLOR_RED].r);
+    printf("g: %d\n", confirmation.font->color[COLOR_RED].g);
+    printf("b: %d\n", confirmation.font->color[COLOR_RED].b);
 
     personality_scenario_t personality_scenario[1] = {0};
     const char *scenario_name = '\0';
@@ -1460,31 +1428,7 @@ int main(int argc, char *argv[])
     test_scenarios.scenario[THEATER_INDEX].options[3].x = CENTER_TEXT_X(test_scenarios.scenario[THEATER_INDEX].options[3].text, 72);
     test_scenarios.scenario[THEATER_INDEX].options[3].y = SCREEN_CENTER_Y + 42;
 
-    bool is_village = false;
-    bool is_monster = false;
-    bool is_forest = false;
-    bool is_cave = false;
-    bool is_desert = false;
-    bool is_tower = false;
-    bool is_theater = false;
-    bool is_castle = false;
-
-
-
     //////////////////////////////////////////////////////////////////////////////////////
-
-
-    i32 button_select = 0;
-    i32 confirmation_select = 0;
-    menu_item_t confirmation_buttons[2] = {
-        { "Yes", SCREEN_CENTER_X - 2, SCREEN_CENTER_Y },
-        { "No", SCREEN_CENTER_X, SCREEN_CENTER_Y + 16 },
-    };
-  
-    const char *back_or_next_cursor_files[2] = {
-        "assets/left_cursor.png",
-        "assets/right_cursor.png"
-    };
 
     sound_settings_t sound_settings = {0};
     Sound_InitSettings(&sound_settings); 
@@ -1499,28 +1443,6 @@ int main(int argc, char *argv[])
     ////////////// Enter name grid 
     name_entry_t name_entry = {0};
     NameEntry_Init(&name_entry);
-
-
-    /////////////////////////////////////////////////////////////////////////
-    // Time to store player data from character creation now that we have the creation process done
-   
-    /*typedef struct base_abilities_t
-    {
-        struct {   
-            i32 strength, dexterity, constitution;
-        } physical;
-
-        struct {
-            i32 intelligense, wisdom, charisma;
-        } mental;
-    } base_abilities_t;
-
-    typedef struct stats_t
-    {
-        i32 hp, atk, def, exp;
-        SDL_Rect health_bar;
-    } stats_t;
-    */
 
     typedef struct
     {
@@ -1941,7 +1863,6 @@ int main(int argc, char *argv[])
     bool boulder_has_reached_end = false;
 
     // Start event
-    is_title_screen = true;
     Running = true;
 
     SDL_Color hold_my_color = {0};
@@ -2598,27 +2519,12 @@ int main(int argc, char *argv[])
                                         option_index = ArraySize(title_screen_options) - 1;
                                     Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                 }
-                                
-                                if (is_new_game)
-                                {
-                                    button_select--;
-                                    if (button_select < 0)
-                                        button_select = ArraySize(confirmation_buttons) - 1;
-                                }
-                                
+
                                 if (confirmation.is_active)
                                 {
                                     confirmation.index--;
                                     if (confirmation.index < 0)
-                                        confirmation.index = ArraySize(confirmation.info.buttons) - 1;
-                                    //Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                                }
-
-                                if (test_confirm_buttons.is_active)
-                                {
-                                    test_confirm_buttons.index--;
-                                    if (test_confirm_buttons.index < 0)
-                                        test_confirm_buttons.index = ArraySize(test_confirm_buttons.button) - 1;
+                                        confirmation.index = ArraySize(confirmation.button) - 1;
                                     //Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                 }
 
@@ -2634,13 +2540,6 @@ int main(int argc, char *argv[])
                                 }
 
                                 Personality_MoveUpScenario(&test_scenarios);
-                                
-                                if (personality_scenario[0].is_active)
-                                {
-                                    personality_scenario[0].index--;
-                                    if (personality_scenario[0].index < 0)
-                                        personality_scenario[0].index = ArraySize(personality_scenario[0].info.monster_options) - 1;
-                                }
 
                                 if (is_game_running && game_command_menu.is_opened && game_command_menu.is_movable)
                                 {
@@ -2686,26 +2585,11 @@ int main(int argc, char *argv[])
                                     Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                 }
 
-                                if (is_new_game)
-                                {
-                                    button_select++;
-                                    if (button_select >= ArraySize(confirmation_buttons))
-                                        button_select = 0;
-                                }
-        
                                 if (confirmation.is_active)
                                 {
                                     confirmation.index++;
-                                    if (confirmation.index >= ArraySize(confirmation.info.buttons))
+                                    if (confirmation.index >= ArraySize(confirmation.button))
                                         confirmation.index = 0;
-                                    //Sound_PlaySFX(&master_volume.sfx[0]->wav);
-                                }
-
-                                if (test_confirm_buttons.is_active)
-                                {
-                                    test_confirm_buttons.index++;
-                                    if (test_confirm_buttons.index >= ArraySize(test_confirm_buttons.button))
-                                        test_confirm_buttons.index = 0;
                                     //Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                 }
 
@@ -2721,13 +2605,6 @@ int main(int argc, char *argv[])
                                 }  
 
                                 Personality_MoveDownScenario(&test_scenarios);
-
-                                if (personality_scenario[0].is_active)
-                                {
-                                    personality_scenario[0].index++;
-                                    if (personality_scenario[0].index >= ArraySize(personality_scenario[0].info.monster_options))
-                                        personality_scenario[0].index = 0;
-                                }
 
                                 if (is_game_running && game_command_menu.is_opened && game_command_menu.is_movable)
                                 {
@@ -3673,6 +3550,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[VILLAGE_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_VILLAGE);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 1:
@@ -3684,6 +3563,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[VILLAGE_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_VILLAGE);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 2:
@@ -3695,6 +3576,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[VILLAGE_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_VILLAGE);
+
                                                 personality_results_screen = true;
                                             } break;
                                         }
@@ -3714,6 +3597,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[MONSTER_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_MONSTER);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 1: 
@@ -3722,8 +3607,11 @@ int main(int argc, char *argv[])
                                                 personality_types_state = PERSONALITY_WIMP;
                                                 PushString(test_scenarios.personality, "Wimp");
                                                 loading_results = true;
+                                                
                                                 test_scenarios.scenario[MONSTER_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_MONSTER);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 2: 
@@ -3735,6 +3623,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[MONSTER_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_MONSTER);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 3: 
@@ -3746,6 +3636,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[MONSTER_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_MONSTER);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 4: 
@@ -3757,6 +3649,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[MONSTER_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_MONSTER);
+
                                                 personality_results_screen = true;
                                             } break;
                                         } 
@@ -3775,6 +3669,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[CAVE_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_CAVE);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 1: 
@@ -3786,6 +3682,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[CAVE_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_CAVE);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 2: 
@@ -3797,6 +3695,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[CAVE_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_CAVE);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 3: 
@@ -3808,6 +3708,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[CAVE_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_CAVE);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 4: 
@@ -3819,6 +3721,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[CAVE_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_CAVE);
+
                                                 personality_results_screen = true;
                                             } break;
                                         } 
@@ -3836,6 +3740,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[DESERT_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_DESERT);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 1: 
@@ -3847,6 +3753,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[DESERT_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_DESERT);
+
                                                 personality_results_screen = true;
                                             } break;
                                             case 2: 
@@ -3858,6 +3766,8 @@ int main(int argc, char *argv[])
                                                 
                                                 test_scenarios.scenario[DESERT_INDEX].is_active = false;
                                                 is_personality_test = false;
+                                                test_scenarios.result &= ~(SCENARIO_DESERT);
+
                                                 personality_results_screen = true;
                                             } break;
                                         } 
@@ -3877,6 +3787,8 @@ int main(int argc, char *argv[])
                                             
                                             test_scenarios.scenario[TOWER_INDEX].is_active = false;
                                             is_personality_test = false;
+                                            test_scenarios.result &= ~(SCENARIO_TOWER);
+
                                             personality_results_screen = true;
                                         } break;
                                         case 1: 
@@ -3888,6 +3800,8 @@ int main(int argc, char *argv[])
                                             
                                             test_scenarios.scenario[TOWER_INDEX].is_active = false;
                                             is_personality_test = false;
+                                            test_scenarios.result &= ~(SCENARIO_TOWER);
+
                                             personality_results_screen = true;
                                         } break;
                                     }
@@ -3905,6 +3819,8 @@ int main(int argc, char *argv[])
                                             
                                             test_scenarios.scenario[THEATER_INDEX].is_active = false;
                                             is_personality_test = false;
+                                            test_scenarios.result &= ~(SCENARIO_THEATER);
+
                                             personality_results_screen = true;
                                         } break;
                                         case 1: 
@@ -3915,6 +3831,8 @@ int main(int argc, char *argv[])
                                             
                                             test_scenarios.scenario[THEATER_INDEX].is_active = false;
                                             is_personality_test = false;
+                                            test_scenarios.result &= ~(SCENARIO_THEATER);
+
                                             personality_results_screen = true;
                                         } break;
                                         case 2: 
@@ -3925,6 +3843,8 @@ int main(int argc, char *argv[])
                                             
                                             test_scenarios.scenario[THEATER_INDEX].is_active = false;
                                             is_personality_test = false;
+                                            test_scenarios.result &= ~(SCENARIO_THEATER);
+
                                             personality_results_screen = true;
                                         } break;
                                         case 3: 
@@ -3935,6 +3855,8 @@ int main(int argc, char *argv[])
                                             
                                             test_scenarios.scenario[THEATER_INDEX].is_active = false;
                                             is_personality_test = false;
+                                            test_scenarios.result &= ~(SCENARIO_THEATER);
+
                                             personality_results_screen = true;
                                         } break;
                                     }
@@ -3983,11 +3905,11 @@ int main(int argc, char *argv[])
                                         {
                                             case 0: // next
                                             {
-                                                printf("next\n");
+                                                printf("personality next\n");
                                                 Sound_PlaySFX(&master_volume.sfx[1]->wav);
                                                 personality_results_screen = false;
-                                                is_name_submission = true;
                                                 next_button.is_active = false;
+                                                is_name_submission = true;
                                             } break;
                                         }
                                     }
@@ -4001,11 +3923,11 @@ int main(int argc, char *argv[])
                                         {
                                             case 0: // next
                                             {
-                                                printf("next\n");
+                                                printf("overview next\n");
                                                 Sound_PlaySFX(&master_volume.sfx[1]->wav);
                                                 is_class_overview_screen = false;
-                                                is_game_running = true;
                                                 next_button.is_active = false;
+                                                is_game_running = true;
                                             } break;
                                         }
                                     }
@@ -4157,11 +4079,15 @@ int main(int argc, char *argv[])
                 } break;
             }
         }
+
        
         if (is_title_screen)
         {
             Sound_PlayMusic(&master_volume.music[0]->wav);
-
+            GUI_UpdateCursor(&cursor[RIGHT_CURSOR].model,
+                             title_screen_options[option_index].x,
+                             title_screen_options[option_index].y,
+                             -4, -1);
             switch (title_screen_state)
             {
                 case TITLE_NONE:
@@ -4176,8 +4102,6 @@ int main(int argc, char *argv[])
                 } break;
                 case TITLE_LOAD_GAME:
                 {
-                    is_title_screen = false;
-                    is_game_running = true; 
                 } break;
                 case TITLE_SETTINGS:
                 {
@@ -4195,26 +4119,27 @@ int main(int argc, char *argv[])
                 } break;
             }      
 
-   
+            SDL_RenderClear(SDLWindow.Renderer);
             SDL_RenderCopy(SDLWindow.Renderer, title_screen_asset.texture, NULL, &title_screen_asset.body);
-            CursorForItems(&title_screen_options[option_index], &cursor[RIGHT_CURSOR].model, 4, 1);
-            RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
+            GUI_RenderCursor(&cursor[RIGHT_CURSOR].model);
             for (i32 i = 0; i < ArraySize(title_screen_options); ++i)
             {
-                RenderText(SDLWindow.Renderer, font_atlas, 
+                RenderText(SDLWindow.Renderer, font.atlas, 
                            title_screen_options[i].x, 
                            title_screen_options[i].y,
-                           title_screen_options[i].text, color.white);
+                           title_screen_options[i].text, 
+                           color.white);
             }
         }
     
         if (is_settings) 
         {
+            SDL_RenderClear(SDLWindow.Renderer);
             SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
             CursorForItems(&sound_settings.options[sound_settings.index], &cursor[RIGHT_CURSOR].model, 6, 1);
             RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
            
-            RenderText(SDLWindow.Renderer, font_atlas,
+            RenderText(SDLWindow.Renderer, font.atlas,
                            CENTER_TEXT_X("Sound Settings", 0), 
                            SCREEN_CENTER_Y - 64,
                            "Sound Settings", 
@@ -4223,7 +4148,7 @@ int main(int argc, char *argv[])
 
             for (i32 i = 0; i < ArraySize(sound_settings.options); ++i) // Ignore rendering the apply button 
             {
-                RenderText(SDLWindow.Renderer, font_atlas,
+                RenderText(SDLWindow.Renderer, font.atlas,
                            sound_settings.options[i].x, 
                            sound_settings.options[i].y,
                            sound_settings.options[i].text, 
@@ -4339,15 +4264,16 @@ int main(int argc, char *argv[])
         {
             if (character_creation_screen.is_active)
             {
+                SDL_RenderClear(SDLWindow.Renderer);
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
 
-                RenderText(SDLWindow.Renderer, font_atlas, 
+                RenderText(SDLWindow.Renderer, font.atlas, 
                            CENTER_TEXT_X("Back", -94),
                            SCREEN_CENTER_Y - 96,
                            "Back",
                            color.white);
 
-                RenderText(SDLWindow.Renderer, font_atlas, 
+                RenderText(SDLWindow.Renderer, font.atlas, 
                            CENTER_TEXT_X("[ESC]", -64),
                            SCREEN_CENTER_Y - 96,
                            "[ESC]",
@@ -4355,9 +4281,9 @@ int main(int argc, char *argv[])
 
                 for (i32 i = 0; i < ArraySize(character_creation_screen.info); ++i)
                 {
-                    RenderText(SDLWindow.Renderer, font_atlas, character_creation_screen.info[i].asset.x - 8, character_creation_screen.info[i].asset.y - 16, 
+                    RenderText(SDLWindow.Renderer, font.atlas, character_creation_screen.info[i].asset.x - 8, character_creation_screen.info[i].asset.y - 16, 
                                character_creation_screen.info[i].name, color.white);
-                    RenderWrappedText(SDLWindow.Renderer, font_atlas, 
+                    RenderWrappedText(SDLWindow.Renderer, font.atlas, 
                                               character_creation_screen.info[character_creation_screen.index].description, color.white, 
                                               character_creation_screen.description_box.x + 2,
                                               character_creation_screen.description_box.y + 8, // containerX, containerY
@@ -4390,28 +4316,28 @@ int main(int argc, char *argv[])
                             character_data.model.direction.right = false;
 
                             character_data.base_stats = class_base_stats[KNIGHT_ID];
-                            test_confirm_buttons.is_active = true; 
+                            confirmation.is_active = true; 
                         } break;
                         case CLASS_SELECT_PALADIN:
                         {
                             PushString(character_data.class.name, "Paladin");
                             character_data.model = character_creation_screen.info[PALADIN_ID].asset;
                             character_data.base_stats = class_base_stats[PALADIN_ID];
-                            test_confirm_buttons.is_active = true; 
+                            confirmation.is_active = true; 
                         } break;
                         case CLASS_SELECT_WIZARD:
                         {
                             PushString(character_data.class.name, "Wizard");
                             character_data.model = character_creation_screen.info[WIZARD_ID].asset;
                             character_data.base_stats = class_base_stats[WIZARD_ID];
-                            test_confirm_buttons.is_active = true; 
+                            confirmation.is_active = true; 
                         } break;
                         case CLASS_SELECT_ARCHER:
                         {
                             PushString(character_data.class.name, "Archer");
                             character_data.model = character_creation_screen.info[ARCHER_ID].asset;
                             character_data.base_stats = class_base_stats[ARCHER_ID];
-                            test_confirm_buttons.is_active = true; 
+                            confirmation.is_active = true; 
                         } break;
                         case CLASS_SELECT_BACK:
                         {
@@ -4423,78 +4349,24 @@ int main(int argc, char *argv[])
                     }
                 }
         
-                if (test_confirm_buttons.is_active)
+                if (confirmation.is_active)
                 {
-                    ConfirmationButtons_RenderBox(&test_confirm_buttons);
-                   
-                    CursorInit(&cursor[RIGHT_CURSOR].model, 
-                                  test_confirm_buttons.button[test_confirm_buttons.index].pos.x,
-                                  test_confirm_buttons.button[test_confirm_buttons.index].pos.y, 
+                    GUI_UpdateCursor(&cursor[RIGHT_CURSOR].model, 
+                                  confirmation.button[confirmation.index].pos.x,
+                                  confirmation.button[confirmation.index].pos.y, 
                                   -4, -1);
-                    RenderCursor(&cursor[RIGHT_CURSOR].model);
-                    for (i32 i = 0; i < ArraySize(test_confirm_buttons.button); ++i) 
-                    {
-                        RenderText(SDLWindow.Renderer, font.atlas,
-                                   test_confirm_buttons.button[i].pos.x, 
-                                   test_confirm_buttons.button[i].pos.y,
-                                   test_confirm_buttons.button[i].text, 
-                                   font.color[COLOR_WHITE]);
-                    }
+                    ConfirmationButtons_RenderBox(&confirmation);
+                    ConfirmationButtons_RenderText(&confirmation);
+                    GUI_RenderCursor(&cursor[RIGHT_CURSOR].model);
                 }
 
             }
 
             if (character_allocation_select_screen.is_active)
             {
+                SDL_RenderClear(SDLWindow.Renderer);
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                RenderText(SDLWindow.Renderer, font_atlas, 
-                           CENTER_TEXT_X("Back", -94),
-                           SCREEN_CENTER_Y - 96,
-                           "Back",
-                           color.white);
-                RenderText(SDLWindow.Renderer, font_atlas, 
-                           CENTER_TEXT_X("[ESC]", -64),
-                           SCREEN_CENTER_Y - 96,
-                           "[ESC]",
-                           color.orange);
-
-                RenderText(SDLWindow.Renderer, font_atlas,
-                           CENTER_TEXT_X("How will you allocate your", 0),
-                           SCREEN_CENTER_Y - 48,
-                           "How will you allocate your",
-                           color.white);
-                RenderText(SDLWindow.Renderer, font_atlas,
-                           CENTER_TEXT_X("points for your character?", 0),
-                           SCREEN_CENTER_Y - 40,
-                           "points for your character?",
-                           color.white);
-    
-                for (i32 i = 0; i < ArraySize(character_allocation_select_screen.info); ++i)
-                {
-                    RenderAssetInWorldSpace(&character_allocation_select_screen.info[i].asset);
-                    RenderTextWithNewlines(SDLWindow.Renderer, font_atlas, 
-                               character_allocation_select_screen.info[i].asset.x, 
-                               character_allocation_select_screen.info[i].asset.y, 
-                               character_allocation_select_screen.info[i].name, 
-                               color.white, 
-                               2);
-    
-                    RenderWrappedText(SDLWindow.Renderer, font_atlas, 
-                                      character_allocation_select_screen.info[character_allocation_select_screen.index].description, color.white, 
-                                      character_allocation_select_screen.description_box.x + 2,
-                                      character_allocation_select_screen.description_box.y + 8, // containerX, containerY
-                                      character_allocation_select_screen.description_box.w, 
-                                      character_allocation_select_screen.description_box.h,    // containerW, containerH
-                                      4);          // lineSpacing
-
-                }
-                  
-                CursorForAssets(&character_allocation_select_screen.info[character_allocation_select_screen.index].asset, &cursor[UP_CURSOR].model, 24, 20);
-                RenderAssetInWorldSpace(&cursor[UP_CURSOR].model);
-                
-                SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
-                SDL_RenderDrawRect(SDLWindow.Renderer, &character_allocation_select_screen.description_box);
-           
+                          
                 if (!confirmation.is_active)
                 {
                     switch (class_allocation_state)
@@ -4519,23 +4391,68 @@ int main(int argc, char *argv[])
                             class_select_state = CLASS_SELECT_NONE;
                         } break;
                     };
-                    
                 }
+
+                RenderText(SDLWindow.Renderer, font.atlas, 
+                           CENTER_TEXT_X("Back", -94),
+                           SCREEN_CENTER_Y - 96,
+                           "Back",
+                           color.white);
+                RenderText(SDLWindow.Renderer, font.atlas, 
+                           CENTER_TEXT_X("[ESC]", -64),
+                           SCREEN_CENTER_Y - 96,
+                           "[ESC]",
+                           color.orange);
+
+                RenderText(SDLWindow.Renderer, font.atlas,
+                           CENTER_TEXT_X("How will you allocate your", 0),
+                           SCREEN_CENTER_Y - 48,
+                           "How will you allocate your",
+                           color.white);
+                RenderText(SDLWindow.Renderer, font.atlas,
+                           CENTER_TEXT_X("points for your character?", 0),
+                           SCREEN_CENTER_Y - 40,
+                           "points for your character?",
+                           color.white);
+    
+                for (i32 i = 0; i < ArraySize(character_allocation_select_screen.info); ++i)
+                {
+                    RenderAssetInWorldSpace(&character_allocation_select_screen.info[i].asset);
+                    RenderTextWithNewlines(SDLWindow.Renderer, font.atlas, 
+                               character_allocation_select_screen.info[i].asset.x, 
+                               character_allocation_select_screen.info[i].asset.y, 
+                               character_allocation_select_screen.info[i].name, 
+                               color.white, 
+                               2);
+    
+                    RenderWrappedText(SDLWindow.Renderer, font.atlas, 
+                                      character_allocation_select_screen.info[character_allocation_select_screen.index].description, color.white, 
+                                      character_allocation_select_screen.description_box.x + 2,
+                                      character_allocation_select_screen.description_box.y + 8, // containerX, containerY
+                                      character_allocation_select_screen.description_box.w, 
+                                      character_allocation_select_screen.description_box.h,    // containerW, containerH
+                                      4);          // lineSpacing
+
+                }
+                  
+                CursorForAssets(&character_allocation_select_screen.info[character_allocation_select_screen.index].asset, &cursor[UP_CURSOR].model, 24, 20);
+                RenderAssetInWorldSpace(&cursor[UP_CURSOR].model);
+                
+                SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
+                SDL_RenderDrawRect(SDLWindow.Renderer, &character_allocation_select_screen.description_box);
 
                 if (confirmation.is_active)
                 {
-                    // TODO: Above the confirmation modal, prompt what the player is confirming for, ex: "You selected X, are you sure?"
+                
+                    GUI_UpdateCursor(&cursor[RIGHT_CURSOR].model, 
+                                  confirmation.button[confirmation.index].pos.x,
+                                  confirmation.button[confirmation.index].pos.y, 
+                                  -4, -1);
+                    ConfirmationButtons_RenderBox(&confirmation);
+                    ConfirmationButtons_RenderText(&confirmation);
+                    GUI_RenderCursor(&cursor[RIGHT_CURSOR].model);
 
-                    // Box border
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
-                    SDL_RenderDrawRect(SDLWindow.Renderer, &confirmation.box_border);
-                    // Border
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &confirmation.box);
-                    
-                    CursorForItems(&confirmation.info.buttons[confirmation.index], &cursor[RIGHT_CURSOR].model, 4, 1);
-                    RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
-                    for (i32 i = 0; i < ArraySize(confirmation.info.buttons); ++i) 
+                    for (i32 i = 0; i < ArraySize(confirmation.button); ++i) 
                     {
                         if (is_settings)
                             {
@@ -4559,10 +4476,10 @@ int main(int argc, char *argv[])
                                 }
                             }
                         
-                        RenderText(SDLWindow.Renderer, font_atlas,
-                                   confirmation.info.buttons[i].x, 
-                                   confirmation.info.buttons[i].y,
-                                   confirmation.info.buttons[i].text, 
+                        RenderText(SDLWindow.Renderer, font.atlas,
+                                   confirmation.button[i].pos.x, 
+                                   confirmation.button[i].pos.y,
+                                   confirmation.button[i].text, 
                                    color.white);
                     }
                 }
@@ -4572,21 +4489,8 @@ int main(int argc, char *argv[])
             // Character name is the last screen where input will be entering it in letter by letter like FF8 or pokemon   
             if (is_personality_test)
             {
-                Personality_BeginQuestions(&personality_test); 
-
+                SDL_RenderClear(SDLWindow.Renderer);
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-/*               RenderText(SDLWindow.Renderer, font.atlas, 
-                           CENTER_TEXT_X(personality_test.table[personality_test.index], 0), 
-                           SCREEN_CENTER_Y,
-                           personality_test.table[personality_test.index],
-                           font.color[COLOR_WHITE]);
-*/
-
-                RenderWrappedTextCentered(SDLWindow.Renderer, font_atlas, 
-                                      personality_test.table[personality_test.index], color.white, 
-                                      0, -32,        // containerX, containerY
-                                      256, 240,    // containerW, containerH
-                                      2);          // lineSpacing
 
                 if (personality_test.is_active)
                 {
@@ -4672,42 +4576,47 @@ int main(int argc, char *argv[])
                     }
                 }
 
+                Personality_BeginQuestions(&personality_test); 
+                RenderWrappedTextCentered(SDLWindow.Renderer, font.atlas, 
+                                      personality_test.table[personality_test.index], color.white, 
+                                      0, -32,        // containerX, containerY
+                                      256, 240,    // containerW, containerH
+                                      2);          // lineSpacing
+
+
                 if (confirmation.is_active)
                 {
-                    CursorForItems(&confirmation.info.buttons[confirmation.index], &cursor[RIGHT_CURSOR].model, 4, 1);
-                    RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
-                    for (i32 i = 0; i < ArraySize(confirmation.info.buttons); ++i) 
-                    {
-                        RenderText(SDLWindow.Renderer, font_atlas,
-                                   confirmation.info.buttons[i].x, 
-                                   confirmation.info.buttons[i].y,
-                                   confirmation.info.buttons[i].text, 
-                                   color.white);
-
-                    }
+                    GUI_UpdateCursor(&cursor[RIGHT_CURSOR].model, 
+                                  confirmation.button[confirmation.index].pos.x,
+                                  confirmation.button[confirmation.index].pos.y, 
+                                  -4, -1);
+                    ConfirmationButtons_RenderBox(&confirmation);
+                    ConfirmationButtons_RenderText(&confirmation);
+                    GUI_RenderCursor(&cursor[RIGHT_CURSOR].model);
                 }
 
                 if (test_scenarios.scenario[VILLAGE_INDEX].is_active)
                 {
+                    SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    color.white);
 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("Silver coins drop from the hanging bag", 0), 
                                SCREEN_CENTER_Y - 88,
                                "Silver coins drop from the hanging bag", 
                                color.white); 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X(" of an elderly man's pocket as he walks", 0), 
                                SCREEN_CENTER_Y - 80,
                                " of an elderly man's pocket as he walks", 
                                color.white);
 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X(" through the market. What do you do?", 0), 
                                SCREEN_CENTER_Y - 72,
                                " through the market. What do you do?", 
@@ -4718,7 +4627,7 @@ int main(int argc, char *argv[])
 
                     for (i32 i = 0; i < VILLAGE_OPTION_COUNT; ++i)
                     {
-                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                        RenderTextWithNewlines(SDLWindow.Renderer, font.atlas,
                                                test_scenarios.scenario[VILLAGE_INDEX].options[i].x,
                                                test_scenarios.scenario[VILLAGE_INDEX].options[i].y,
                                                test_scenarios.scenario[VILLAGE_INDEX].options[i].text,
@@ -4731,51 +4640,54 @@ int main(int argc, char *argv[])
 
                 if (test_scenarios.scenario[MONSTER_INDEX].is_active)
                 {
+                    SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    color.white);
 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X("You are a man by day and a beast by", 0), 
                                    SCREEN_CENTER_Y - 88,
                                    "You are a man by day and a beast by", 
                                    color.white);                   
 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X("night. You prey off human flesh and blood", 0), 
                                    SCREEN_CENTER_Y - 80,
                                    "night. You prey off human flesh and blood", 
                                    color.white);  
 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X(" to survive. You come across a small and", 0), 
                                    SCREEN_CENTER_Y - 72,
                                    " to survive. You come across a small and", 
                                    color.white);
 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X(" quiet village. What do you do?", 0), 
                                    SCREEN_CENTER_Y - 64,
                                    " quiet village. What do you do?", 
                                    color.white);
-
-                    personality_scenario[MONSTER_INDEX].scenario_box.x = SCREEN_CENTER_X - 124; 
-                    personality_scenario[MONSTER_INDEX].scenario_box.y = SCREEN_CENTER_Y - 96; 
-                    personality_scenario[MONSTER_INDEX].scenario_box.w = 240; 
-                    personality_scenario[MONSTER_INDEX].scenario_box.h = 64; 
+ 
+                    test_scenarios.scenario[MONSTER_INDEX].box.x = SCREEN_CENTER_X - 124;
+                    test_scenarios.scenario[MONSTER_INDEX].box.y = SCREEN_CENTER_Y - 96;
+                    test_scenarios.scenario[MONSTER_INDEX].box.w = 240;
+                    test_scenarios.scenario[MONSTER_INDEX].box.h = 64;
 
                     SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
-                    SDL_RenderDrawRect(SDLWindow.Renderer, &personality_scenario[MONSTER_INDEX].scenario_box);
-                    
+                    SDL_RenderDrawRect(SDLWindow.Renderer, &test_scenarios.scenario[MONSTER_INDEX].box);
+
+
+
                     CursorForItems(&test_scenarios.scenario[MONSTER_INDEX].options[test_scenarios.scenario[MONSTER_INDEX].index], &cursor[RIGHT_CURSOR].model, 4, 1);
                     RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
 
                     for (i32 i = 0; i < MONSTER_OPTION_COUNT; ++i)
                     {
-                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                        RenderTextWithNewlines(SDLWindow.Renderer, font.atlas,
                                                test_scenarios.scenario[MONSTER_INDEX].options[i].x,
                                                test_scenarios.scenario[MONSTER_INDEX].options[i].y,
                                                test_scenarios.scenario[MONSTER_INDEX].options[i].text,
@@ -4842,6 +4754,9 @@ int main(int argc, char *argv[])
                                     personality_types_state = PERSONALITY_SHOW_OFF;
                                     PushString(test_scenarios.personality, "Show-Off");
                                     loading_results = true;
+                                    
+                                    character_data.model.body.x = 10 * 16;
+                                    character_data.model.body.y = 16 * 24;
                                     
                                     test_scenarios.scenario[FOREST_INDEX].is_active = false;
                                     is_personality_test = false;
@@ -4952,7 +4867,7 @@ int main(int argc, char *argv[])
                         RenderAssetInCameraSpace(&gold_coin_count_bg_asset, 
                                              SCREEN_CENTER_X + 88, SCREEN_CENTER_Y - 105); 
 
-                        RenderText(SDLWindow.Renderer, font_atlas, 
+                        RenderText(SDLWindow.Renderer, font.atlas, 
                                CENTER_TEXT_X(gold_coins, 104), SCREEN_CENTER_Y - 95,
                                gold_coins,
                                color.green);
@@ -4964,7 +4879,7 @@ int main(int argc, char *argv[])
                         character_data.model.conditions.is_movable = false; 
                         RenderAssetInCameraSpace(&dialogue_box_asset, 
                                              SCREEN_CENTER_X - (128 - 32), SCREEN_CENTER_Y + 32); 
-                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                        RenderTextWithNewlines(SDLWindow.Renderer, font.atlas,
                                    SCREEN_CENTER_X - (128 - 56), 
                                    SCREEN_CENTER_Y + 56,
                                    forest_scenario_dialogue_intro[dialogue_index], 
@@ -4986,7 +4901,7 @@ int main(int argc, char *argv[])
                         RenderAssetInCameraSpace(&dialogue_box_asset, 
                                              SCREEN_CENTER_X - (128 - 32), SCREEN_CENTER_Y + 32); 
                             
-                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                        RenderTextWithNewlines(SDLWindow.Renderer, font.atlas,
                                    SCREEN_CENTER_X - (128 - 56), 
                                    SCREEN_CENTER_Y + 56,
                                    forest_scenario_dialogue_return_the_boulder[dialogue_index_2], 
@@ -5006,39 +4921,40 @@ int main(int argc, char *argv[])
 
                 if (test_scenarios.scenario[CAVE_INDEX].is_active)
                 {
+                    SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    color.white);
 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X("You are near the end of your quest in", 0), 
                                    SCREEN_CENTER_Y - 88,
                                    "You are near the end of your quest in ", 
                                    color.white); 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X("saving the princess, where the entrance", 0), 
                                    SCREEN_CENTER_Y - 80,
                                    "saving the princess, where the entrance ", 
                                    color.white); 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X("to her prison is in front of you. But two", 0), 
                                    SCREEN_CENTER_Y - 72,
                                    "to her prison is in front of you. But two doors", 
                                    color.white); 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X("doors fork to the left and right, a", 0), 
                                    SCREEN_CENTER_Y - 64,
                                    "doors fork to the left and right, a", 
                                    color.white); 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X("door to take you deeper in and a door to", 0), 
                                    SCREEN_CENTER_Y - 56,
                                    "door to take you deeper in and a door to", 
                                    color.white); 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X("a room of treasures. What do you do?", 0), 
                                    SCREEN_CENTER_Y - 48,
                                    "a room of treasures. What do you do?", 
@@ -5059,7 +4975,7 @@ int main(int argc, char *argv[])
 
                     for (i32 i = 0; i < CAVE_OPTION_COUNT; ++i)
                     {
-                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                        RenderTextWithNewlines(SDLWindow.Renderer, font.atlas,
                                                test_scenarios.scenario[CAVE_INDEX].options[i].x,
                                                test_scenarios.scenario[CAVE_INDEX].options[i].y,
                                                test_scenarios.scenario[CAVE_INDEX].options[i].text,
@@ -5070,39 +4986,40 @@ int main(int argc, char *argv[])
 
                 if (test_scenarios.scenario[DESERT_INDEX].is_active)
                 {
+                    SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    color.white);
 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("You carry with yourself a canteen of", 0), 
                                SCREEN_CENTER_Y - 88,
                                "You carry with yourself a canteen of", 
                                color.white);           
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("water with only a few sips worth left.", 0), 
                                SCREEN_CENTER_Y - 80,
                                "water with only a few sips worth left.", 
                                color.white);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("In the harsh and unforgiving desert,", 0), 
                                SCREEN_CENTER_Y - 72,
                                "In the harsh and unforgiving desert", 
                                color.white);           
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("you come across two men stranded, where", 0), 
                                SCREEN_CENTER_Y - 64,
                                "you come across two men stranded, where", 
                                color.white);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("one is near death from thirst.", 0), 
                                SCREEN_CENTER_Y - 56,
                                "one is near death from thirst.", 
                                color.white);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("What do you do?", 0), 
                                SCREEN_CENTER_Y - 48,
                                "What do you do?", 
@@ -5121,7 +5038,7 @@ int main(int argc, char *argv[])
 
                     for (i32 i = 0; i < DESERT_OPTION_COUNT; ++i)
                     {
-                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                        RenderTextWithNewlines(SDLWindow.Renderer, font.atlas,
                                                test_scenarios.scenario[DESERT_INDEX].options[i].x,
                                                test_scenarios.scenario[DESERT_INDEX].options[i].y,
                                                test_scenarios.scenario[DESERT_INDEX].options[i].text,
@@ -5132,29 +5049,30 @@ int main(int argc, char *argv[])
 
                 if (test_scenarios.scenario[TOWER_INDEX].is_active)
                 {
+                    SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    color.white);
 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("You are disoriented and awake at", 0), 
                                SCREEN_CENTER_Y - 88,
                                "You are disoriented and awake at", 
                                color.white);           
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("the top of a seemingly endless tower.", 0), 
                                SCREEN_CENTER_Y - 80,
                                "the top of a seemingly endless tower.", 
                                color.white);  
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("You see a staircase besides you that leads", 0), 
                                SCREEN_CENTER_Y - 72,
                                "You see a staircase besides you that leads", 
                                color.white);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("down to the unknown. What do you do?", 0), 
                                SCREEN_CENTER_Y - 64,
                                "down to the unknown. What do you do?", 
@@ -5173,7 +5091,7 @@ int main(int argc, char *argv[])
 
                     for (i32 i = 0; i < TOWER_OPTION_COUNT; ++i)
                     {
-                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                        RenderTextWithNewlines(SDLWindow.Renderer, font.atlas,
                                                test_scenarios.scenario[TOWER_INDEX].options[i].x,
                                                test_scenarios.scenario[TOWER_INDEX].options[i].y,
                                                test_scenarios.scenario[TOWER_INDEX].options[i].text,
@@ -5184,8 +5102,9 @@ int main(int argc, char *argv[])
 
                 if (test_scenarios.scenario[THEATER_INDEX].is_active)
                 {
+                    SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
@@ -5193,42 +5112,42 @@ int main(int argc, char *argv[])
              
 
                     // TODO: Corny scenario I think, edit later
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("You are a priest, and dressed for", 0), 
                                SCREEN_CENTER_Y - 88,
                                "You are a priest, and dressed for", 
                                color.white); 
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("night's stage show. You walk into", 0), 
                                SCREEN_CENTER_Y - 80,
                                "night's stage show. You walk into", 
                                color.white);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("the theater and a man recognizes you", 0), 
                                SCREEN_CENTER_Y - 72,
                                "the theater and a man recognizes you", 
                                color.white);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("as the town's priest. He immediately", 0), 
                                SCREEN_CENTER_Y - 64,
                                "as the town's priest. He immediately", 
                                color.white);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("begs you to marry the women of life, of", 0), 
                                SCREEN_CENTER_Y - 56,
                                "begs you to marry the women of life, of", 
                                color.white);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("life, of which they had only just met", 0), 
                                SCREEN_CENTER_Y - 48,
                                "life, of which they had only just met", 
                                color.white);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("and he claims is love at first sight.", 0), 
                                SCREEN_CENTER_Y - 40,
                                "and he claims is love at first sight.", 
                                color.white);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X(" What do you do?", 0), 
                                SCREEN_CENTER_Y - 32,
                                "What do you do?", 
@@ -5247,7 +5166,7 @@ int main(int argc, char *argv[])
 
                     for (i32 i = 0; i < THEATER_OPTION_COUNT; ++i)
                     {
-                        RenderTextWithNewlines(SDLWindow.Renderer, font_atlas,
+                        RenderTextWithNewlines(SDLWindow.Renderer, font.atlas,
                                                test_scenarios.scenario[THEATER_INDEX].options[i].x,
                                                test_scenarios.scenario[THEATER_INDEX].options[i].y,
                                                test_scenarios.scenario[THEATER_INDEX].options[i].text,
@@ -5259,8 +5178,9 @@ int main(int argc, char *argv[])
 
                 if (test_scenarios.scenario[CASTLE_INDEX].is_active)
                 {
+                    SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
@@ -5270,8 +5190,9 @@ int main(int argc, char *argv[])
     
             if (personality_results_screen)
             {
+                SDL_RenderClear(SDLWindow.Renderer);
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-                RenderText(SDLWindow.Renderer, font_atlas,
+                RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("Personality:", 0), 
                                SCREEN_CENTER_Y - 88,
                                "Personality:", 
@@ -5709,7 +5630,7 @@ int main(int argc, char *argv[])
                 RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
                 for (i32 i = 0; i < ArraySize(next_button.button); ++i)
                 {
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                next_button.button[i].x,
                                next_button.button[i].y,
                                next_button.button[i].text,
@@ -5759,14 +5680,15 @@ int main(int argc, char *argv[])
                 NameEntry_DeleteGlyph(&name_entry, name_entry_bar);
                 NameEntry_ConfirmName(&name_entry, name_entry_bar);
 
+                SDL_RenderClear(SDLWindow.Renderer);
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                 
-                NameEntry_RenderNameUnderline(name_entry_bar, SDLWindow.Renderer, font_atlas, color.white);
-                NameEntry_RenderName(name_entry_bar, SDLWindow.Renderer, font_atlas, color.white);
+                NameEntry_RenderNameUnderline(name_entry_bar, SDLWindow.Renderer, font.atlas, color.white);
+                NameEntry_RenderName(name_entry_bar, SDLWindow.Renderer, font.atlas, color.white);
             
                 for (i32 i = 0; i < ArraySize(glyph_grid); ++i)
                 {
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                             glyph_grid[i].pos.x, 
                             glyph_grid[i].pos.y,
                             glyph_grid[i].glyph, 
@@ -5774,7 +5696,7 @@ int main(int argc, char *argv[])
 
                 }    
                 
-                RenderText(SDLWindow.Renderer, font_atlas,
+                RenderText(SDLWindow.Renderer, font.atlas,
                            CENTER_TEXT_X("Enter your name", 0), 
                            SCREEN_CENTER_Y - 96,
                            "Enter your name", 
@@ -5850,12 +5772,13 @@ int main(int argc, char *argv[])
                 init_name = false;
             }
 
+            SDL_RenderClear(SDLWindow.Renderer);
             SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
             CursorForItems(&next_button.button[next_button.index], &cursor[RIGHT_CURSOR].model, 4, 1);
             RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
             for (i32 i = 0; i < ArraySize(next_button.button); ++i)
             {
-                RenderText(SDLWindow.Renderer, font_atlas,
+                RenderText(SDLWindow.Renderer, font.atlas,
                            next_button.button[i].x,
                            next_button.button[i].y,
                            next_button.button[i].text,
@@ -5875,7 +5798,7 @@ int main(int argc, char *argv[])
             
             for (i32 i = 0; i < ArraySize(class_status_overview); ++i)
             {
-                RenderText(SDLWindow.Renderer, font_atlas,
+                RenderText(SDLWindow.Renderer, font.atlas,
                            class_status_overview[i].pos.x,
                            class_status_overview[i].pos.y,
                            class_status_overview[i].text,
@@ -5884,7 +5807,7 @@ int main(int argc, char *argv[])
 
             for (i32 i = 0; i < 10; ++i)
             {
-                RenderText(SDLWindow.Renderer, font_atlas,
+                RenderText(SDLWindow.Renderer, font.atlas,
                            offset_x_arr[i],
                            base_y_arr[i],
                            full_text[i] + non_colored_len,
@@ -5899,6 +5822,8 @@ int main(int argc, char *argv[])
         
         if (is_game_running)
         {
+            SDL_RenderClear(SDLWindow.Renderer);
+
             UpdatePlayer(&character_data.model, &sfx_move);
 
             for (int i = 0; i < total_floor_tiles; ++i)
@@ -5995,7 +5920,7 @@ int main(int argc, char *argv[])
                             if (game_command_menu_items.slots[i].occupied)
                             {
                                 sprintf(game_items[i].count_buffer, "%d", game_items[i].count); 
-                                RenderText(SDLWindow.Renderer, font_atlas,
+                                RenderText(SDLWindow.Renderer, font.atlas,
                                            game_command_menu_items.slots[i].model.x + 10,
                                            game_command_menu_items.slots[i].model.y + 8, 
                                            game_items[i].count_buffer,
@@ -6090,7 +6015,7 @@ int main(int argc, char *argv[])
 
                         for (i32 i = 0; i < ArraySize(in_game_class_status_overview); ++i)
                         {
-                            RenderText(SDLWindow.Renderer, font_atlas,
+                            RenderText(SDLWindow.Renderer, font.atlas,
                                        in_game_class_status_overview[i].pos.x,
                                        in_game_class_status_overview[i].pos.y,
                                        in_game_class_status_overview[i].text,
@@ -6099,7 +6024,7 @@ int main(int argc, char *argv[])
 
                         for (i32 i = 0; i < 13; ++i)
                         {
-                            RenderText(SDLWindow.Renderer, font_atlas,
+                            RenderText(SDLWindow.Renderer, font.atlas,
                                        offset_x_arr[i],
                                        base_y_arr[i],
                                        full_text[i] + non_colored_len,
@@ -6118,7 +6043,7 @@ int main(int argc, char *argv[])
                                          game_command_menu.options[game_command_menu.index].y - 2);     
                 for (i32 i = 0; i < ArraySize(game_command_menu.options); ++i)
                 {
-                    RenderText(SDLWindow.Renderer, font_atlas,
+                    RenderText(SDLWindow.Renderer, font.atlas,
                                game_command_menu.options[i].x,
                                game_command_menu.options[i].y, 
                                game_command_menu.options[i].text,
@@ -6145,19 +6070,19 @@ int main(int argc, char *argv[])
                                                           SCREEN_CENTER_X - 96, SCREEN_CENTER_Y + 80,
                                                           (game_items[0].asset.w*2), (game_items[0].asset.h*2));*/
 
-                        RenderText(SDLWindow.Renderer, font_atlas,
+                        RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X(game_items[game_command_menu_items.index].name, -56),
                                SCREEN_CENTER_Y + 68, 
                                game_items[game_command_menu_items.index].name,
                                color.white);
 
-                        RenderText(SDLWindow.Renderer, font_atlas,
+                        RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X(game_items[game_command_menu_items.index].description, -50),
                                SCREEN_CENTER_Y + 80, 
                                game_items[game_command_menu_items.index].description,
                                color.white);
 
-                        RenderText(SDLWindow.Renderer, font_atlas,
+                        RenderText(SDLWindow.Renderer, font.atlas,
                                CENTER_TEXT_X("Sell Value: 1", 56),
                                SCREEN_CENTER_Y + 92, 
                                "Sell Value: 1",
@@ -6170,19 +6095,19 @@ int main(int argc, char *argv[])
                                                      game_command_menu_items.slots[game_command_menu_items.index].model.x + 20, 
                                                      game_command_menu_items.slots[game_command_menu_items.index].model.y - 3);
                             
-                            RenderText(SDLWindow.Renderer, font_atlas,
+                            RenderText(SDLWindow.Renderer, font.atlas,
                                            game_command_menu_items.slots[game_command_menu_items.index].model.x + 36,
                                            game_command_menu_items.slots[game_command_menu_items.index].model.y + 4, 
                                            item_slot_options[0].text,
                                            color.white);
 
-                            RenderText(SDLWindow.Renderer, font_atlas,
+                            RenderText(SDLWindow.Renderer, font.atlas,
                                            game_command_menu_items.slots[game_command_menu_items.index].model.x + 33,
                                            game_command_menu_items.slots[game_command_menu_items.index].model.y + 16, 
                                            item_slot_options[1].text,
                                            color.white);
 
-                            RenderText(SDLWindow.Renderer, font_atlas,
+                            RenderText(SDLWindow.Renderer, font.atlas,
                                            game_command_menu_items.slots[game_command_menu_items.index].model.x + 33,
                                            game_command_menu_items.slots[game_command_menu_items.index].model.y + 28, 
                                            item_slot_options[2].text,
@@ -6206,7 +6131,6 @@ int main(int argc, char *argv[])
             SDL_RenderCopy(SDLWindow.Renderer, SDLCamera.TargetTexture, NULL, NULL);
         }
 
-        SDL_RenderSetLogicalSize(SDLWindow.Renderer, ASPECT_WIDTH, ASPECT_HEIGHT);    
         SDL_RenderPresent(SDLWindow.Renderer);
     }
 
@@ -6219,7 +6143,7 @@ int main(int argc, char *argv[])
     DestroyAssets(&room_asset[0]);
     DestroyAssets(&player_asset);
     DestroyAssets(&cursor[RIGHT_CURSOR].model);
-    SDL_DestroyTexture(font_atlas);
+    SDL_DestroyTexture(font.atlas);
 
 
     SDL_CloseAudioDevice(title_screen_theme.device_id);
