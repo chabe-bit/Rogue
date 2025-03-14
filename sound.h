@@ -67,7 +67,7 @@ typedef struct
         int index;
         int volume_size_bars;
         int volume;
-        color_t colors;
+        rgba_t colors;
         SDL_Rect blocks[5];
     } info[3];
     
@@ -76,7 +76,7 @@ typedef struct
     int index;
     int volume_size_bars;
     int volume;
-    color_t colors;
+    rgba_t colors;
     SDL_Rect blocks[5];
 } sound_volume_controller_t;
 

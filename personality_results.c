@@ -1,11 +1,11 @@
-#include "personality.h"
+#include "personality_results.h"
 
 // https://dragon-quest.org/wiki/List_of_personality_types_in_Dragon_Quest_III#Personalities_and_stat_effects
 // https://gamefaqs.gamespot.com/boards/450388-dragon-warrior-iii/54986793
 
 personality_types personality_types_state = PERSONALITY_UNUSED;
 
-test_personality_test_results_t clown  = {
+personality_results_t clown  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Castle Scenario",
     .name = "Clown",
@@ -38,7 +38,7 @@ test_personality_test_results_t clown  = {
     }
 };
 
-test_personality_test_results_t crybaby = {
+personality_results_t crybaby = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Crybaby",
@@ -72,7 +72,7 @@ test_personality_test_results_t crybaby = {
 };
 
 
-test_personality_test_results_t daredevil  = {
+personality_results_t daredevil  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Daredevil",
@@ -104,7 +104,7 @@ test_personality_test_results_t daredevil  = {
     }
 };
 
-test_personality_test_results_t daydreamer  = {
+personality_results_t daydreamer  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Daydreamer",
@@ -137,7 +137,7 @@ test_personality_test_results_t daydreamer  = {
     }
 };
 
-test_personality_test_results_t drudge  = {
+personality_results_t drudge  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Drudge",
@@ -169,7 +169,7 @@ test_personality_test_results_t drudge  = {
     }
 };
 
-test_personality_test_results_t egghead  = {
+personality_results_t egghead  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Monster Scenario",
     .name = "Egghead",
@@ -201,7 +201,7 @@ test_personality_test_results_t egghead  = {
     }
 };
 
-test_personality_test_results_t free_spirit = {
+personality_results_t free_spirit = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Free Spirit",
@@ -233,7 +233,7 @@ test_personality_test_results_t free_spirit = {
          "LCK (+)"
     }
 };
-test_personality_test_results_t good_egg  = {
+personality_results_t good_egg  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Good Egg",
@@ -266,7 +266,7 @@ test_personality_test_results_t good_egg  = {
     }
 };
 
-test_personality_test_results_t happy_camper  = {
+personality_results_t happy_camper  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Happy Camper",
@@ -299,7 +299,7 @@ test_personality_test_results_t happy_camper  = {
     }
 };
 
-test_personality_test_results_t idealist  = {
+personality_results_t idealist  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Idealist",
@@ -332,7 +332,7 @@ test_personality_test_results_t idealist  = {
     }
 };
 
-test_personality_test_results_t klutz  = {
+personality_results_t klutz  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Klutz Scenario",
     .name = "Klutz",
@@ -365,7 +365,7 @@ test_personality_test_results_t klutz  = {
     }
 };
 
-test_personality_test_results_t lazybones  = {
+personality_results_t lazybones  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Lazybones",
@@ -398,7 +398,7 @@ test_personality_test_results_t lazybones  = {
     }
 };
 
-test_personality_test_results_t lone_wolf  = {
+personality_results_t lone_wolf  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Lone Wolf",
@@ -433,7 +433,7 @@ test_personality_test_results_t lone_wolf  = {
 
 // Male -> Lothario
 // Female -> Vamp
-test_personality_test_results_t lothario  = {
+personality_results_t lothario  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Lothario",
@@ -466,7 +466,7 @@ test_personality_test_results_t lothario  = {
     }
 };
 
-test_personality_test_results_t lout  = {
+personality_results_t lout  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Lout",
@@ -500,7 +500,7 @@ test_personality_test_results_t lout  = {
 };
 
 
-test_personality_test_results_t mule  = {
+personality_results_t mule  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Cave Scenario",
     .name = "Mule",
@@ -533,7 +533,7 @@ test_personality_test_results_t mule  = {
     }
 };
 
-test_personality_test_results_t narcissist  = {
+personality_results_t narcissist  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Cave Scenario",
     .name = "Narcissist",
@@ -566,7 +566,7 @@ test_personality_test_results_t narcissist  = {
     }
 };
 
-test_personality_test_results_t paragon  = {
+personality_results_t paragon  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Monster Scenario",
     .name = "Paragon",
@@ -599,7 +599,7 @@ test_personality_test_results_t paragon  = {
     }
 };
 
-test_personality_test_results_t plugger  = {
+personality_results_t plugger  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Plugger",
@@ -632,7 +632,7 @@ test_personality_test_results_t plugger  = {
     }
 };
 
-test_personality_test_results_t scatterbrain  = {
+personality_results_t scatterbrain  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Scatterbrain",
@@ -665,7 +665,7 @@ test_personality_test_results_t scatterbrain  = {
     }
 };
 
-test_personality_test_results_t show_off  = {
+personality_results_t show_off  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Village Scenario",
     .name = "Show-Off",
@@ -698,7 +698,7 @@ test_personality_test_results_t show_off  = {
     }
 };
 
-test_personality_test_results_t shrinking_violet  = {
+personality_results_t shrinking_violet  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Village Scenario",
     .name = "Shrinking Violet",
@@ -731,7 +731,7 @@ test_personality_test_results_t shrinking_violet  = {
     }
 };
 
-test_personality_test_results_t slippery_devil  = {
+personality_results_t slippery_devil  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Village Scenario",
     .name = "Slippery Devil",
@@ -763,7 +763,7 @@ test_personality_test_results_t slippery_devil  = {
          "LCK ( )"
     }
 };
-test_personality_test_results_t socialite  = {
+personality_results_t socialite  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Tower Scenario",
     .name = "Socialite",
@@ -796,7 +796,7 @@ test_personality_test_results_t socialite  = {
     }
 };
 
-test_personality_test_results_t sore_loser  = {
+personality_results_t sore_loser  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Cave Scenario",
     .name = "Sore Loser",
@@ -829,7 +829,7 @@ test_personality_test_results_t sore_loser  = {
     }
 };
 
-test_personality_test_results_t spoilt_brat  = {
+personality_results_t spoilt_brat  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Monster Scenario",
     .name = "Spoilt Brat",
@@ -863,7 +863,7 @@ test_personality_test_results_t spoilt_brat  = {
 };
 
 
-test_personality_test_results_t straight_arrow  = {
+personality_results_t straight_arrow  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Cave Scenario",
     .name = "Straight Arrow",
@@ -897,7 +897,7 @@ test_personality_test_results_t straight_arrow  = {
 };
 
 
-test_personality_test_results_t thug = {
+personality_results_t thug = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Thug",
@@ -930,7 +930,7 @@ test_personality_test_results_t thug = {
     }
 };
 
-test_personality_test_results_t tough_cookie = {
+personality_results_t tough_cookie = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Tough Cookie",
@@ -965,7 +965,7 @@ test_personality_test_results_t tough_cookie = {
 
 // Male -> Lothario
 // Female -> Vamp
-test_personality_test_results_t vamp  = {
+personality_results_t vamp  = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Vamp",
@@ -998,7 +998,7 @@ test_personality_test_results_t vamp  = {
     }
 };
 
-test_personality_test_results_t wimp = {
+personality_results_t wimp = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Monster Scenario",
     .name = "Wimp",
@@ -1030,7 +1030,7 @@ test_personality_test_results_t wimp = {
     }
 };
 
-test_personality_test_results_t wit = {
+personality_results_t wit = {
     .x_coords = { -64, -56, -48, -40, -32, -24, -16, -8, 16, 24, 32, 40, 48 },
     .scenario = "Desert Scenario",
     .name = "Wit",

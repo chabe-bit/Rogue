@@ -1,10 +1,12 @@
 #include "common.h"
 #include "helper_funcs.h"
-
 #include "global_states.h"
+#include "colors.h"
 
-#include "sdl_colors.h"
-#include "personality.h"
+#include "personality_test.h"
+#include "personality_results.h"
+#include "personality_scenario.h"
+
 #include "sound.h"
 #include "name_entry.h"
 #include "gui_text.h"
@@ -44,189 +46,27 @@ typedef struct
 
 typedef struct
 {
+    bool is_movable;
+    bool is_under_attack;
+    bool is_attacking;
+    bool is_defending;
+    bool is_using_item;
+    bool is_collidable;
+    bool is_occupied;
+} asset_conditions_t; // temp 
+
+typedef struct
+{
     i32 x, y;
     i32 w, h;
+    
     asset_direction_t direction;
-    struct 
-    {
-        bool is_movable;
-        bool is_under_attack;
-        bool is_attacking;
-        bool is_defending;
-        bool is_using_item;
-        bool is_collidable;
-        bool is_occupied;
-    } conditions;
+    asset_conditions_t conditions;
+   
     SDL_Rect body;
     SDL_Rect adjacent_hitboxes[4];
     SDL_Texture *texture;
 } asset_t;
-
-typedef struct
-{
-    i32 index;
-    bool is_active;
-    const char *table[50]; 
-} personality_test_t; 
-
-#define PERSONALITY_TEST_QUESTIONS 50
-
-// Personality Test inspired by DQ3 Remake
-// https://game8.co/games/Dragon-Quest-3/archives/464271
-const char *question_table[50] = 
-{
-    // Starting questions 
-    "",
-    "Do you find life boring?",
-    "Do you believe that the sun in the sky above is the king of all nature...?",
-    "Is adventuring a hardship?",
-    "Does victory come in battle?",
-    "Do you feel more confident with strong equipment as opposed to taking allies?",
-        
-    // Follow up questions
-    "Do you enjoy talking with town people?",
-    "You see a cave. Do you have an urge to explore it?",
-    "Do you spend more on weapons than armor?",
-    "Do you help people in trouble?",
-    "Rather than an expensive nearby inn, would you go to a cheap inn that's far away?",
-    "Do you have trouble sleeping because you are thinking too much?",
-    "Do you prefer the mountains to the sea?",
-    "Do you find bordem annoying?",
-    "Do you dream often?",
-    "Do you prefer magic to a sword?",
-    "Do you wonder what it's like to fly?",
-    "Do you think birds are free?",
-    "Do you ever dream of being pursued?",
-    "Do you find the company of unfamiliar people tiresome...?",
-    "Do you trust in the words of those who tell fortunes...?",
-    "If you could be rebord, would it be as a prince or a princess?",
-    "Do you find it difficult to turn down others' request?",
-    "Are you able to prevent failure from preying upon your mind...?",
-    "Do you find yourself unable to argue with others, even if you disagree with them strongly...?",
-    "Do you enjoy physical activity?",
-    "Are cats cuter than dogs?",
-    "Is it wrong to be attracted to a friend's lover?",
-    "Do you get embarrassed by other's praise?",
-    "Do you worry about what others think of the way you dress?",
-    "Do you enjoy physical activity?",
-    "Do little things bother you?",
-    "Do you put your thoughts into action right away?",
-    "Do you have confidence in your beliefs no matter what?",
-    "Do you believe that a promise, once made, can under no circumstances be broken...?",
-    "Do you believe in Gods?",
-    "Do you get busy with one thing and lose sight of other goals?",
-    "Do you save your favorite food for last?",
-    "Do you daydream to amuse yourself?",
-    "If there were one wish in the world you could have come true, could you say that wish right now?",
-    "Do you have many friends?",
-    "Do you dwell on the past often?",
-    "Are you bothered by gossip?",
-    "Do you think the world has more sadness than happiness?",
-    "If you're conned, do you share some of the responsibility?",
-    "Do you want to grow up quickly?", 
-    "If something is unattainable, do you only want it more?",
-    "If you hold onto a dream long enough, will it come true?",
-    "Do you hold anything precious?",
-    "Do you trip on a boulder and blame youself?"
-};
-
-void PersonalityTest_Init(personality_test_t *personality_test)
-{
-    personality_test->index = 1; // Starting question begins at 1
-    personality_test->is_active = false;
-
-    for (i32 i = 0; i < PERSONALITY_TEST_QUESTIONS; ++i)
-    {
-        personality_test->table[i] = question_table[i]; 
-    }
-}
-
-
-const char *village_scenario[1] = {
-    "Silver coins drop from the hanging bag of an elderly man's pocket\n as he walks through the market. What do you do?"
-    // Steal the coins openly with pride. -> Show-off
-    // Steal the coins sneakily. -> Slippery Devil
-    // Don't steal the coins and return them. -> Shrinking Violet
-};
-
-const char *desert_scenario[1] = {
-    "You carry with yourself a canteen of water with only a few sips worth left. In the harsh and unforgiving desert terrain, you come across two men stranded, where one is near death from thirst. What do you do?"
-    // Finish the canteen and leave -> Thug
-    // Give the man the canteen and head to town -> Daredevil
-    // Carry the man to town -> Idealist
-};
-
-const char *monster_scenario[1] = {
-    "You are a man by day and a beast by night. You prey off human flesh and blood to survive. You come across a small and quiet village. What do you do?"
-    // Kill fewer than three people -> Paragon
-    // Kill three or more people, including women and the elderly, but don't kill the children -> Wimpy
-    // Kill three or more people, but don't kill the women, the elderly, or children -> Spoilt Brat
-    // Kill three or more poeple, including children -> Egghead
-    // Kill nine or more people, but don't kill the man by the inn -> Klutz (did you know? the lore is so they accuse the man of missing people, because they're the only ones at night to see people)
-};
-
-const char *tower_scenario[1] = {
-    "You are disoriented and awake at the top of a seemingly endless tower. You see a staircase besides you that leads down to the unknown. What do you do?"
-    // Take the stairs -> Socialite
-    // Jump -> Daydreamer
-};
-
-const char *cave_scenario[1] = {
-    "You are near the end of your quest in saving the princess, where the entrance to her prison is in front of you. But two doors fork to the left and right, a door to take you deeper in and a door to a room of treasures. What do you do?"
-    // Save the princess -> Straight Arrow 
-    // Take the door to go deeper -> Mule 
-    // Take the door to the room of treasures then go deeper -> Scatterbrain
-    // Take the door to the room of treasures then leave -> Narcissist
-    // Ignore everything and leave -> Sore Loser
-};
-
-const char *forest_scenario[1] = {
-    // Idea of doing a repetivie and menial task, something not fun. This is idea similar to pushing a rock, so the player will be given a set of inputs to follow and complete, something simple. Then asked to repeat. Number of times they repeat is their result.
-    
-};
-
-const char *theater_scenario[1] = {
-    "You are a priest, and dressed nicely for the night's stage show. You walk into the theater and a man recognizes you as the town's priest. He immediately begs you to marry the women of life, of which they had only just met and he claims is love at first sight. What do you do?"
-    // Ignore the man the leave -> Free spirit 
-    // Say yes -> Crybaby
-    // Say no -> Lone Wolf
-    // Play dumb and say you're not the town's priest -> Lout
-};
-
-const char *castle_scenario[] = {
-    "You are a soldier, who overhears the newly crowned queen in her room discussing her plan to assasinate the king once he announces to open the lands' borders. Soon later that night you are pulled over by a man, who asks you two simple questions.",
-    
-    // (1) He asks...
-    "The orders of a king must be obeyed, even if they are misguided, correct?",
-    
-    // (1) if yes 
-    "You truly believe the orders of a king are to be set in stone?",
-        // (1) if yes 
-        "I see...then I know what I must do.", // Ends
-        // (1) if no
-        "You really think so? So you believe that misguided orders need not to be followed?",
-            // (1) if yes
-                // Returns to -> "I see...then I know what I must do.", // Ends
-            // (1) if no
-            "...So you think even the orders of a king, if mistaken, need not to be followed?",
-                // (1) if yes
-                "Then I suppose what one's idea of what is a mistake or correct is entirely personal...",
-                    // (1) if yes
-                    "So you believe it's better to do what you see fit than blindly follow orders of the king?",
-                        // (1) if yes
-                        // (1) if no
-                        "So at times such as this, I must have faith in my king, and follow his orders?",
-                            // (1) if yes
-                                // Returns to the start of (1) -> You truly believe...
-                            // (1) if no
-                // (1) if no 
-                "What silliness is this? Are you even listening to me?",
-                    // (1) if yes
-                    "...Your answers are wilful...But perhaps those are necessary sometimes, then I know what I must do.", // End
-                    // (1) if no
-    // (1) if no
-    "...So you think even the orders of a king, if mistaken, need not to be followed?",
-};
 
 void CursorForItems(menu_item_t *title_screen_options, asset_t *cursor, i32 x_offset, int y_offset)
 {
@@ -502,8 +342,8 @@ void RenderAssetInWorldSpace(asset_t *asset)
     asset->body.x -= SDLCamera.X;
     asset->body.y -= SDLCamera.Y;
   
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-    SDL_RenderDrawRect(SDLWindow.Renderer, &asset->body);
+    //SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+    //SDL_RenderDrawRect(SDLWindow.Renderer, &asset->body);
 
     if (asset->texture)
     {
@@ -517,6 +357,31 @@ void RenderAssetInWorldSpace(asset_t *asset)
   
     asset->body.x = asset->x;
     asset->body.y = asset->y;
+}
+
+// temp
+void RenderAssetInWorldSpaceWithCoords(asset_t *asset, int x, int y)
+{
+    asset->x = x;
+    asset->y = y;
+    asset->body.x -= SDLCamera.X;
+    asset->body.y -= SDLCamera.Y;
+  
+    //SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+    //SDL_RenderDrawRect(SDLWindow.Renderer, &asset->body);
+
+    if (asset->texture)
+    {
+        SDL_SetTextureBlendMode(asset->texture, SDL_BLENDMODE_BLEND);
+        if (SDL_RenderCopy(SDLWindow.Renderer, asset->texture, NULL, &asset->body) < 0)
+        {
+            fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
+            return;
+        }
+    }
+  
+    asset->body.x = x;
+    asset->body.y = y;
 }
 
 void RenderSDLRectInWorldSpace(SDL_Rect *rect)
@@ -676,6 +541,114 @@ void DestroyAssets(asset_t *assets)
 }
 
 
+typedef struct
+{
+    i32 index;
+    bool is_active;
+    SDL_Rect box;
+    SDL_Rect box_border;
+
+    struct
+    {
+        menu_item_t buttons[2];
+    } info;
+
+} confirm_buttons_t;
+
+typedef struct
+{
+    vec2_t pos;
+    const char *text;
+} button_t;
+
+typedef struct
+{
+    i32 index;
+    bool is_active;
+    SDL_Rect box;
+    SDL_Rect box_border;
+
+    button_t button[2];
+} test_confirm_buttons_t;
+
+void CursorInit(asset_t *cursor, i32 x, i32 y, i32 x_offset, int y_offset)
+{
+    cursor->body.x = x - cursor->w + x_offset;
+    cursor->body.y = y + (GLYPH_HEIGHT / 2) - (cursor->h / 2) + y_offset; 
+}
+
+void RenderCursor(asset_t *cursor)
+{
+    if (cursor->texture)
+    {
+        SDL_SetTextureBlendMode(cursor->texture, SDL_BLENDMODE_BLEND);
+        if (SDL_RenderCopy(SDLWindow.Renderer, cursor->texture, NULL, &cursor->body) < 0)
+        {
+            fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
+            return;
+        }
+    }   
+}
+
+void ConfirmationButtons_Init(test_confirm_buttons_t *confirm)
+{
+    confirm->button[0].text = "Yes";
+    confirm->button[0].pos.x = CENTER_TEXT_X("Yes", 0);
+    confirm->button[0].pos.y = SCREEN_CENTER_Y;
+
+    confirm->button[1].text = "No";
+    confirm->button[1].pos.x = CENTER_TEXT_X("No", 0);
+    confirm->button[1].pos.y = SCREEN_CENTER_Y + 16;
+
+    confirm->box.x = SCREEN_CENTER_X - (48 / 2);
+    confirm->box.y = SCREEN_CENTER_Y - 20;
+    confirm->box.w = 48;
+    confirm->box.h = 56;
+
+    confirm->box_border.x = SCREEN_CENTER_X - (50 / 2);
+    confirm->box_border.y = SCREEN_CENTER_Y - 21;
+    confirm->box_border.w = 50;
+    confirm->box_border.h = 58;
+}
+
+void ConfirmationButtons_RenderBox(test_confirm_buttons_t *confirm)
+{
+    // Box border
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
+    SDL_RenderDrawRect(SDLWindow.Renderer, &confirm->box_border);
+    
+    // Border
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
+    SDL_RenderFillRect(SDLWindow.Renderer, &confirm->box_border);
+}
+
+
+
+typedef struct
+{
+    SDL_Color color[MAX_COLOR];
+    SDL_Texture *atlas;
+} font_t;
+
+void Font_Init(font_t *font)
+{
+    font->atlas = CreateFontAtlas(SDLWindow.Renderer);
+    if (!font->atlas)
+    {
+        SDL_DestroyRenderer(SDLWindow.Renderer);
+        SDL_DestroyWindow(SDLWindow.Window);
+        SDL_Quit();
+        return;
+    }
+
+    font->color[0] = color.red;
+    font->color[1] = color.green;
+    font->color[2] = color.blue;
+    font->color[3] = color.white;
+    font->color[4] = color.black;
+    font->color[5] = color.orange;
+}
+
 
 // ----------------------- EXPERIEMENTAL --------------------------
 typedef struct
@@ -716,7 +689,7 @@ typedef struct
     i32 index; 
     bool is_active;
     SDL_Rect box;
-    test_personality_test_results_t results;
+    personality_results_t results;
     menu_item_t options[5];
 } scenario_t;
 
@@ -727,7 +700,28 @@ typedef struct
     scenario_t scenario[8];
 } test_personality_scenario_t; 
 
-void PersonalityTest_InitResults(test_personality_scenario_t *personality, test_personality_test_results_t *results, i32 SCENARIO, int description_size)
+typedef struct
+{
+    i32 index;
+    bool is_active;
+    const char *table[50]; 
+} personality_test_t; 
+
+
+// Personality Test inspired by DQ3 Remake
+// https://game8.co/games/Dragon-Quest-3/archives/464271
+void Personality_InitQuestions(personality_test_t *personality_test)
+{
+    personality_test->index = 1; // Starting question begins at 1
+    personality_test->is_active = false;
+
+    for (i32 i = 0; i < PERSONALITY_TEST_QUESTIONS; ++i)
+    {
+        personality_test->table[i] = personality_questions[i]; 
+    }
+}
+
+void Personality_InitResults(test_personality_scenario_t *personality, personality_results_t *results, i32 SCENARIO, int description_size)
 {
     personality->scenario[SCENARIO].results.name = results->name;
     personality->scenario[SCENARIO].results.scenario = results->scenario;
@@ -741,55 +735,75 @@ void PersonalityTest_InitResults(test_personality_scenario_t *personality, test_
 
 }
 
-void PersonalityTest_RenderResults(test_personality_scenario_t *personality, SDL_Texture *font_atlas, i32 SCENARIO, int description_size)
+void Personality_BeginQuestions(personality_test_t *personality_test)
 {
-    RenderText(SDLWindow.Renderer, font_atlas,
+    // This function randomizes between the first five questions on starting the 
+    // quiz. From there the quiz will follow based on the player's input. 
+
+    static i32 rand_index = 0;
+
+    // Only the starting 5 questions
+    static bool first_question_selected = false;
+    if (!first_question_selected)
+    {
+        i32 total = ArraySize(personality_test->table);
+        rand_index = 1 + rand() % 5;
+        personality_test->index = rand_index;
+
+        printf("rand_index: %d\n", rand_index);
+        first_question_selected = true;
+    }
+}
+
+void Personality_RenderResults(test_personality_scenario_t *personality, font_t *font, i32 SCENARIO, int description_size)
+{
+    RenderText(SDLWindow.Renderer, font->atlas,
                CENTER_TEXT_X(personality->scenario[SCENARIO].results.name, 0),
                SCREEN_CENTER_Y - 80,
                personality->scenario[SCENARIO].results.name,
-               white);
+               font->color[COLOR_WHITE]);
 
     for (i32 i = 0; i < description_size; ++i)
     {
-        RenderText(SDLWindow.Renderer, font_atlas,
+        RenderText(SDLWindow.Renderer, font->atlas,
                    CENTER_TEXT_X(personality->scenario[SCENARIO].results.description[i], 0),
                    SCREEN_CENTER_Y + personality->scenario[SCENARIO].results.x_coords[i],
                    personality->scenario[SCENARIO].results.description[i],
-                   white);
+                   font->color[COLOR_WHITE]);
     }
 }
 
 i32 Personality_GetScenarioOptionCount(test_personality_scenario_t *scenario)
 {
-    i32 option_count = 0;
+    i32 result = 0;
   
     if (scenario->result & SCENARIO_VILLAGE)
-        option_count = VILLAGE_OPTION_COUNT;
+        result = VILLAGE_OPTION_COUNT;
 
     if (scenario->result & SCENARIO_MONSTER)
-        option_count = MONSTER_OPTION_COUNT;
+        result = MONSTER_OPTION_COUNT;
    
     if (scenario->result & SCENARIO_FOREST)
-        option_count = FOREST_INDEX;
+        result = FOREST_INDEX;
 
     if (scenario->result & SCENARIO_CAVE)
-        option_count = CAVE_OPTION_COUNT;
+        result = CAVE_OPTION_COUNT;
    
     if (scenario->result & SCENARIO_DESERT)
-        option_count = DESERT_OPTION_COUNT;
+        result = DESERT_OPTION_COUNT;
 
     if (scenario->result & SCENARIO_TOWER)
-        option_count = TOWER_INDEX;
+        result = TOWER_INDEX;
    
     if (scenario->result & SCENARIO_THEATER)
-        option_count = THEATER_INDEX;
+        result = THEATER_INDEX;
 
     if (scenario->result & SCENARIO_CASTLE)
-        option_count = CASTLE_INDEX;
+        result = CASTLE_INDEX;
 
-
-    return option_count;
+    return result;
 }
+
 i32 Personality_GetScenario(test_personality_scenario_t *scenario)
 {
     i32 result = 0;
@@ -817,7 +831,6 @@ i32 Personality_GetScenario(test_personality_scenario_t *scenario)
 
     if (scenario->result & SCENARIO_CASTLE)
         result = CASTLE_INDEX;
-
 
     return result;
 }
@@ -849,12 +862,16 @@ void Personality_MoveDownScenario(test_personality_scenario_t *personality)
     }
 }
 
+void Personality_TakingTest(personality_test_t *personality_test)
+{
+
+}
+
 typedef struct
 {
     vec2_t pos;
     char text[32];
 } class_status_overview_t;
-
 
 void StatOverview_Init(char *buffer, char *dst, char *src, size_t total_width)
 {
@@ -886,7 +903,7 @@ game_rarity_roller_t Game_RarityRoller(asset_t rarity_types[])
 {
     // The color of the slots will change upon the rarity of the
     // item; weapons, armor and items such as potions.
-    // Default color is common -> white (maybe)
+    // Default color is common -> color.white (maybe)
 
     u32 rarity_roller = rand() % 99;
     game_rarity_roller_t rarity_agent = {0}; // Agent because why not
@@ -941,10 +958,6 @@ game_rarity_roller_t Game_RarityRoller(asset_t rarity_types[])
     return rarity_agent;
 }
 
-void Game_InventorySlotColorManager()
-{
-
-}
 
 // ------------------------------------------------------------------------------
 
@@ -1008,12 +1021,9 @@ int main(int argc, char *argv[])
     Sound_InitMaster(&master_volume, music_volume, sfx_volume);
 
     personality_test_t personality_test = {0};
-    PersonalityTest_Init(&personality_test);
-
-
+    Personality_InitQuestions(&personality_test);
 
     bool updated_sound = false;
-
     bool is_title_screen = true;
     bool is_new_game = false;
     bool is_class_select = false;
@@ -1028,7 +1038,7 @@ int main(int argc, char *argv[])
     bool is_game_running = false;
     bool class_has_been_selected = false;
     bool is_personality_test = false;
-    bool question_confirmation = false;
+    //bool question_confirmation = false;
 
     bool is_name_submission = false;
     bool is_class_overview_screen = false;
@@ -1161,7 +1171,10 @@ int main(int argc, char *argv[])
     dialogue_box.body.w = 224;
     dialogue_box.body.h = 64;
 
-    SDL_Texture *font_atlas = CreateFontAtlas(SDLWindow.Renderer);
+    font_t font = {0};
+    Font_Init(&font);
+
+    SDL_Texture *font_atlas = font.atlas;
     if (!font_atlas)
     {
         SDL_DestroyRenderer(SDLWindow.Renderer);
@@ -1169,7 +1182,6 @@ int main(int argc, char *argv[])
         SDL_Quit();
         return 1;
     }
-
 
     i32 option_index = 0;
     menu_item_t title_screen_options[4] = {
@@ -1179,22 +1191,6 @@ int main(int argc, char *argv[])
         { "Exit", CENTER_TEXT_X("Exit", 0), SCREEN_CENTER_Y + 48 },
     };
 
-    asset_t up_cursor_asset = {0};
-    LoadAsset(&up_cursor_asset, "assets/ui/up_cursor.png");
-    InitializeAssetToRender(&up_cursor_asset, 0, 0, up_cursor_asset.w, up_cursor_asset.h);
-    
-    asset_t down_cursor_asset = {0};
-    LoadAsset(&down_cursor_asset, "assets/ui/down_cursor.png");
-    InitializeAssetToRender(&down_cursor_asset, 0, 0, down_cursor_asset.w, down_cursor_asset.h);
-    
-    asset_t right_cursor_asset = {0};
-    LoadAsset(&right_cursor_asset, "assets/ui/right_cursor.png");
-    InitializeAssetToRender(&right_cursor_asset, 0, 0, right_cursor_asset.w, right_cursor_asset.h);
-       
-    asset_t left_cursor_asset = {0};
-    LoadAsset(&left_cursor_asset, "assets/ui/left_cursor.png");
-    InitializeAssetToRender(&left_cursor_asset, 0, 0, left_cursor_asset.w, left_cursor_asset.h);
-       
     asset_t new_game_asset = {0};
     LoadAsset(&new_game_asset, "assets/new_game_screen.png");
     InitializeAssetToRender(&new_game_asset, 0, 0, new_game_asset.w, new_game_asset.h); 
@@ -1203,10 +1199,26 @@ int main(int argc, char *argv[])
     LoadAsset(&dialogue_box_asset, "assets/ui/dialogue_box.png");
     InitializeAssetToRender(&dialogue_box_asset, 0, 0, dialogue_box_asset.w, dialogue_box_asset.h);
    
+    typedef struct
+    {
+        asset_t model;
+    } cursor_t;
+
+#define MAX_CURSOR      4
+#define UP_CURSOR       0
+#define DOWN_CURSOR     1
+#define LEFT_CURSOR     2
+#define RIGHT_CURSOR    3
+
+    cursor_t cursor[MAX_CURSOR] = {0};
+    cursor[UP_CURSOR].model = IdealLoadAsset("assets/ui/up_cursor.png");
+    cursor[DOWN_CURSOR].model = IdealLoadAsset("assets/ui/down_cursor.png");
+    cursor[LEFT_CURSOR].model = IdealLoadAsset("assets/ui/left_cursor.png");
+    cursor[RIGHT_CURSOR].model = IdealLoadAsset("assets/ui/right_cursor.png");
+
     asset_t gold_coin_count_bg_asset = {0};
     LoadAsset(&gold_coin_count_bg_asset, "assets/ui/gold_coin_count_background.png");
     InitializeAssetToRender(&gold_coin_count_bg_asset, 0, 0, gold_coin_count_bg_asset.w, gold_coin_count_bg_asset.h);
-
 
     typedef struct class_select_t
     {       
@@ -1333,22 +1345,10 @@ int main(int argc, char *argv[])
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    typedef struct
-    {
-        i32 index;
-        bool is_active;
-        SDL_Rect box;
-        SDL_Rect box_border;
+    test_confirm_buttons_t test_confirm_buttons = {0};
+    ConfirmationButtons_Init(&test_confirm_buttons);
 
-        struct
-        {
-            menu_item_t buttons[2];
-        } info;
-
-    } confirmation_buttons_t;
-
-
-    confirmation_buttons_t confirmation = {0};
+    confirm_buttons_t confirmation = {0};
     confirmation.info.buttons[0].text = "Yes";
     confirmation.info.buttons[0].x = SCREEN_CENTER_X - 4;
     confirmation.info.buttons[0].y = SCREEN_CENTER_Y;
@@ -1955,6 +1955,17 @@ int main(int argc, char *argv[])
     bool next_text = false;
     bool display_player_gold_count = false;
 
+    typedef struct
+    {
+        // personality_screen_t personality_screen;
+        // personality_screen.is_active;
+        // personality_screen.is_complete;
+        bool is_active;
+        bool is_complete;
+
+    } personality_screen_t;
+
+    
     i32 dialogue_index = 0;
     const char *forest_scenario_dialogue_intro[32] = {
         {"Whoa-whoa-whoa!\nI see you're lost. Go"},
@@ -2121,7 +2132,7 @@ int main(int argc, char *argv[])
         char *name;
         char *effect; // may have different effects from its rarity 
         
-        // white -> common -> 61% 
+        // color.white -> common -> 61% 
         // blue -> rare -> 25%
         // purple -> epic -> 8%
         // yellow -> legendary -> 5%
@@ -2176,13 +2187,6 @@ int main(int argc, char *argv[])
         asset_t model;
         game_rarity_roller_t rarity;
     } game_command_menu_slots_t;
-
-    typedef struct
-    {
-        i32 index;
-        bool is_active;
-        bool is_movable;
-    } cursor_t;
 
     #define ITEMS_SLOT_GRID_COLS  5
     #define ITEMS_SLOT_GRID_ROWS  5
@@ -2420,104 +2424,117 @@ int main(int argc, char *argv[])
         asset_t item_tiles;
     } test_floor_tile_t;
 
+    typedef struct
+    {
+        test_floor_tile_t floor_tiles[580];
+    } rooms_t;
+
     #define TILE_WIDTH 16
     #define TILE_HEIGHT 24
+
     #define SUB_TILE_WIDTH 10
     #define SUB_TILE_HEIGHT 18
 
-    floor_tile_t main_room = {0};
-    main_room.rows = room_asset[0].h / TILE_HEIGHT;
-    main_room.cols = room_asset[0].w / TILE_WIDTH;
+    int main_room_rows = room_asset[0].h / TILE_HEIGHT;
+    int main_room_cols = room_asset[0].w / TILE_WIDTH;
 
-    int total_floor_tiles = main_room.rows * main_room.cols;
+    int total_floor_tiles = main_room_rows * main_room_cols;
     printf("total tiles: %d\n", total_floor_tiles);
 
-    test_floor_tile_t floor_tiles[580] = {0};
-    for (int i = 0; i < main_room.rows; ++i)
+    rooms_t map_rooms[1] = {0};
+    for (int i = 0; i < main_room_rows; ++i)
     {
-        for (int j = 0; j < main_room.cols; ++j)
+        for (int j = 0; j < main_room_cols; ++j)
         {
-            int index = i * main_room.cols + j;
-            floor_tiles[index].collision_tiles.body.x = (j * TILE_WIDTH);
-            floor_tiles[index].collision_tiles.body.y = (i * TILE_HEIGHT);
-            floor_tiles[index].collision_tiles.body.w = TILE_WIDTH;
-            floor_tiles[index].collision_tiles.body.h = TILE_HEIGHT;
+            int index = i * main_room_cols + j;
+            map_rooms[0].floor_tiles[index].collision_tiles.body.x = (j * TILE_WIDTH);
+            map_rooms[0].floor_tiles[index].collision_tiles.body.y = (i * TILE_HEIGHT);
+            map_rooms[0].floor_tiles[index].collision_tiles.body.w = TILE_WIDTH;
+            map_rooms[0].floor_tiles[index].collision_tiles.body.h = TILE_HEIGHT;
 
-            floor_tiles[index].item_tiles.body.x = (floor_tiles[index].collision_tiles.body.x + (TILE_WIDTH - SUB_TILE_WIDTH) / 2);
-            floor_tiles[index].item_tiles.body.y = (floor_tiles[index].collision_tiles.body.y + (TILE_HEIGHT - SUB_TILE_HEIGHT) / 2); 
-            floor_tiles[index].item_tiles.body.w = SUB_TILE_WIDTH;
-            floor_tiles[index].item_tiles.body.h = SUB_TILE_HEIGHT;
+            map_rooms[0].floor_tiles[index].item_tiles.body.x = (map_rooms[0].floor_tiles[index].collision_tiles.body.x + (TILE_WIDTH - SUB_TILE_WIDTH) / 2);
+            map_rooms[0].floor_tiles[index].item_tiles.body.y = (map_rooms[0].floor_tiles[index].collision_tiles.body.y + (TILE_HEIGHT - SUB_TILE_HEIGHT) / 2); 
+            map_rooms[0].floor_tiles[index].item_tiles.body.w = SUB_TILE_WIDTH;
+            map_rooms[0].floor_tiles[index].item_tiles.body.h = SUB_TILE_HEIGHT;
         }
     }
 
     // Top Wall
     int col_start_index = 0;
-    for (int i = col_start_index; i < main_room.cols; ++i)
+    for (int i = col_start_index; i < main_room_cols; ++i)
     {
-        floor_tiles[i].collision_tiles.conditions.is_collidable = true;
+        map_rooms[0].floor_tiles[i].collision_tiles.conditions.is_collidable = true;
     }
     // Bottom Wall
-    int col_end_index = (main_room.rows - 1) * main_room.cols;
+    int col_end_index = (main_room_rows - 1) * main_room_cols;
     for (int i = col_end_index; i < total_floor_tiles; ++i)
     {
-        floor_tiles[i].collision_tiles.conditions.is_collidable = true;
+        map_rooms[0].floor_tiles[i].collision_tiles.conditions.is_collidable = true;
     }
     // Left Wall
-    for (int i = 0; i < main_room.rows; ++i)
+    for (int i = 0; i < main_room_rows; ++i)
     {
-        int index = i * main_room.cols;
-        floor_tiles[index].collision_tiles.conditions.is_collidable = true;
+        int index = i * main_room_cols;
+        map_rooms[0].floor_tiles[index].collision_tiles.conditions.is_collidable = true;
     }
     // Right Wall
-    for (int i = 0; i < main_room.rows; ++i) 
+    for (int i = 0; i < main_room_rows; ++i) 
     {
-        int index = i * main_room.cols + main_room.cols - 1;
-        floor_tiles[index].collision_tiles.conditions.is_collidable = true;
+        int index = i * main_room_cols + main_room_cols - 1;
+        map_rooms[0].floor_tiles[index].collision_tiles.conditions.is_collidable = true;
     }
 
     // Main room -> Left Room
-    floor_tiles[117].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[118].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[119].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[120].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[121].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[117].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[118].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[119].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[120].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[121].collision_tiles.conditions.is_collidable = true;
 
-    floor_tiles[123].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[124].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[125].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[126].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[127].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[123].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[124].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[125].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[126].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[127].collision_tiles.conditions.is_collidable = true;
 
-    floor_tiles[128].collision_tiles.conditions.is_collidable = true;  
-    floor_tiles[41].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[70].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[99].collision_tiles.conditions.is_collidable = true;  
+    map_rooms[0].floor_tiles[128].collision_tiles.conditions.is_collidable = true;  
+    map_rooms[0].floor_tiles[41].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[70].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[99].collision_tiles.conditions.is_collidable = true;  
 
     // Main room -> Right Room
-    floor_tiles[45].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[74].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[103].collision_tiles.conditions.is_collidable = true;  
-    floor_tiles[132].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[45].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[74].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[103].collision_tiles.conditions.is_collidable = true;  
+    map_rooms[0].floor_tiles[132].collision_tiles.conditions.is_collidable = true;
     
-    floor_tiles[133].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[134].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[135].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[136].collision_tiles.conditions.is_collidable = true; 
-    floor_tiles[137].collision_tiles.conditions.is_collidable = true; 
+    map_rooms[0].floor_tiles[133].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[134].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[135].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[136].collision_tiles.conditions.is_collidable = true; 
+    map_rooms[0].floor_tiles[137].collision_tiles.conditions.is_collidable = true; 
 
-    floor_tiles[139].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[140].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[141].collision_tiles.conditions.is_collidable = true;
-    floor_tiles[142].collision_tiles.conditions.is_collidable = true; 
-    floor_tiles[143].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[139].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[140].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[141].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[142].collision_tiles.conditions.is_collidable = true; 
+    map_rooms[0].floor_tiles[143].collision_tiles.conditions.is_collidable = true;
+    
+    asset_t tile_sparkle = IdealLoadAsset("assets/rooms/sparkle.png");
+    asset_t loot_box = IdealLoadAsset("assets/chest_box.png");
 
     // Floor has an item test
+    // TODO: Walking on a tile with an item should prompt the user on the bottom left
+    // or right of the screen to press the confirm button to pick up item, otherwise
+    // it's just something shiny on the ground. It won't be intuitive on first impression.
+    bool touch_item_on_floor = false;
+
     int player_position_on_map = 0;
-    floor_tiles[443].collision_tiles.conditions.is_occupied = true;
-        
-    printf("floor tile x: %d\n", floor_tiles[443].collision_tiles.body.x);
-    printf("floor tile y: %d\n", floor_tiles[443].collision_tiles.body.y);
-    
+    map_rooms[0].floor_tiles[443].collision_tiles.conditions.is_occupied = true;
+    map_rooms[0].floor_tiles[442].collision_tiles.conditions.is_occupied = true;
+    map_rooms[0].floor_tiles[441].collision_tiles.conditions.is_occupied = true;
+    printf("floor tile x: %d\n", map_rooms[0].floor_tiles[443].collision_tiles.body.x);
+    printf("floor tile y: %d\n", map_rooms[0].floor_tiles[443].collision_tiles.body.y);
 
     while (Running) 
     {
@@ -2597,6 +2614,14 @@ int main(int argc, char *argv[])
                                     //Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                 }
 
+                                if (test_confirm_buttons.is_active)
+                                {
+                                    test_confirm_buttons.index--;
+                                    if (test_confirm_buttons.index < 0)
+                                        test_confirm_buttons.index = ArraySize(test_confirm_buttons.button) - 1;
+                                    //Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                }
+
                                 if (is_settings)
                                 {
                                     Sound_MoveUpSettings(&sound_settings); 
@@ -2673,6 +2698,14 @@ int main(int argc, char *argv[])
                                     confirmation.index++;
                                     if (confirmation.index >= ArraySize(confirmation.info.buttons))
                                         confirmation.index = 0;
+                                    //Sound_PlaySFX(&master_volume.sfx[0]->wav);
+                                }
+
+                                if (test_confirm_buttons.is_active)
+                                {
+                                    test_confirm_buttons.index++;
+                                    if (test_confirm_buttons.index >= ArraySize(test_confirm_buttons.button))
+                                        test_confirm_buttons.index = 0;
                                     //Sound_PlaySFX(&master_volume.sfx[0]->wav);
                                 }
 
@@ -3020,15 +3053,13 @@ int main(int argc, char *argv[])
                                     printf("menu closed\n");
                                 }
 
-                                // NOTE: Use a UNION for toggling between the menus from command menu
-
-
                                 // Deactivate the item menu
                                 if (is_game_running && game_command_menu_items.is_active)
                                 {
                                     game_command_menu_items.is_opened = false;
                                     game_command_menu.is_movable = true;
                                 }
+
                                 if (is_game_running && item_slot_option)
                                 {
                                     game_command_menu_items.is_movable = true;
@@ -3037,7 +3068,16 @@ int main(int argc, char *argv[])
                                     item_slot_option = false;
                                     item_slot_option_is_movable = false;
                                 }
-    
+
+                                if (is_game_running && touch_item_on_floor)
+                                {
+                                    game_command_menu.is_opened = false;
+                                    game_command_menu.is_active = false;
+                                    game_command_menu.is_movable = false;
+                                    character_data.model.conditions.is_movable = true;
+                                    
+                                    touch_item_on_floor = false;
+                                }
                             } break;
                             case SDLK_RETURN:
                             {
@@ -3975,17 +4015,17 @@ int main(int argc, char *argv[])
                                 {
                                     for (int i = 0; i < total_floor_tiles; ++i)
                                     {
-
-                                        if (floor_tiles[i].collision_tiles.conditions.is_occupied)
+                                        if (map_rooms[0].floor_tiles[i].collision_tiles.conditions.is_occupied)
                                         {
-                                            if (character_data.model.body.x == floor_tiles[i].collision_tiles.body.x)
+                                            if (AABB_Detection(&character_data.model.body, &map_rooms[0].floor_tiles[i].collision_tiles.body))
                                             {
-                                                printf("Floor has item!\n");
+                                                printf("Item!\n");
+                                                touch_item_on_floor = true;
                                             }
                                         }
-
                                     }
 
+                                    
 
                                     if (game_command_menu_items.is_opened)
                                     {
@@ -4157,28 +4197,28 @@ int main(int argc, char *argv[])
 
    
             SDL_RenderCopy(SDLWindow.Renderer, title_screen_asset.texture, NULL, &title_screen_asset.body);
-            CursorForItems(&title_screen_options[option_index], &right_cursor_asset, 4, 1);
-            RenderAssetInWorldSpace(&right_cursor_asset);
+            CursorForItems(&title_screen_options[option_index], &cursor[RIGHT_CURSOR].model, 4, 1);
+            RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
             for (i32 i = 0; i < ArraySize(title_screen_options); ++i)
             {
                 RenderText(SDLWindow.Renderer, font_atlas, 
                            title_screen_options[i].x, 
                            title_screen_options[i].y,
-                           title_screen_options[i].text, white);
+                           title_screen_options[i].text, color.white);
             }
         }
     
         if (is_settings) 
         {
             SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-            CursorForItems(&sound_settings.options[sound_settings.index], &right_cursor_asset, 6, 1);
-            RenderAssetInWorldSpace(&right_cursor_asset);
+            CursorForItems(&sound_settings.options[sound_settings.index], &cursor[RIGHT_CURSOR].model, 6, 1);
+            RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
            
             RenderText(SDLWindow.Renderer, font_atlas,
                            CENTER_TEXT_X("Sound Settings", 0), 
                            SCREEN_CENTER_Y - 64,
                            "Sound Settings", 
-                           white);
+                           color.white);
 
 
             for (i32 i = 0; i < ArraySize(sound_settings.options); ++i) // Ignore rendering the apply button 
@@ -4187,7 +4227,7 @@ int main(int argc, char *argv[])
                            sound_settings.options[i].x, 
                            sound_settings.options[i].y,
                            sound_settings.options[i].text, 
-                           white);
+                           color.white);
             }
 
             SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
@@ -4305,20 +4345,20 @@ int main(int argc, char *argv[])
                            CENTER_TEXT_X("Back", -94),
                            SCREEN_CENTER_Y - 96,
                            "Back",
-                           white);
+                           color.white);
 
                 RenderText(SDLWindow.Renderer, font_atlas, 
                            CENTER_TEXT_X("[ESC]", -64),
                            SCREEN_CENTER_Y - 96,
                            "[ESC]",
-                           orange);
+                           color.orange);
 
                 for (i32 i = 0; i < ArraySize(character_creation_screen.info); ++i)
                 {
                     RenderText(SDLWindow.Renderer, font_atlas, character_creation_screen.info[i].asset.x - 8, character_creation_screen.info[i].asset.y - 16, 
-                               character_creation_screen.info[i].name, white);
+                               character_creation_screen.info[i].name, color.white);
                     RenderWrappedText(SDLWindow.Renderer, font_atlas, 
-                                              character_creation_screen.info[character_creation_screen.index].description, white, 
+                                              character_creation_screen.info[character_creation_screen.index].description, color.white, 
                                               character_creation_screen.description_box.x + 2,
                                               character_creation_screen.description_box.y + 8, // containerX, containerY
                                               character_creation_screen.description_box.w, 
@@ -4328,8 +4368,8 @@ int main(int argc, char *argv[])
                     RenderAssetInWorldSpace(&character_creation_screen.info[i].asset);
                 }
                 
-                CursorForAssets(&character_creation_screen.info[character_creation_screen.index].asset, &up_cursor_asset, 4, 16);
-                RenderAssetInWorldSpace(&up_cursor_asset);
+                CursorForAssets(&character_creation_screen.info[character_creation_screen.index].asset, &cursor[UP_CURSOR].model, 4, 16);
+                RenderAssetInWorldSpace(&cursor[UP_CURSOR].model);
 
                 SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
                 SDL_RenderDrawRect(SDLWindow.Renderer, &character_creation_screen.description_box);
@@ -4350,28 +4390,28 @@ int main(int argc, char *argv[])
                             character_data.model.direction.right = false;
 
                             character_data.base_stats = class_base_stats[KNIGHT_ID];
-                            confirmation.is_active = true; 
+                            test_confirm_buttons.is_active = true; 
                         } break;
                         case CLASS_SELECT_PALADIN:
                         {
                             PushString(character_data.class.name, "Paladin");
                             character_data.model = character_creation_screen.info[PALADIN_ID].asset;
                             character_data.base_stats = class_base_stats[PALADIN_ID];
-                            confirmation.is_active = true; 
+                            test_confirm_buttons.is_active = true; 
                         } break;
                         case CLASS_SELECT_WIZARD:
                         {
                             PushString(character_data.class.name, "Wizard");
                             character_data.model = character_creation_screen.info[WIZARD_ID].asset;
                             character_data.base_stats = class_base_stats[WIZARD_ID];
-                            confirmation.is_active = true; 
+                            test_confirm_buttons.is_active = true; 
                         } break;
                         case CLASS_SELECT_ARCHER:
                         {
                             PushString(character_data.class.name, "Archer");
                             character_data.model = character_creation_screen.info[ARCHER_ID].asset;
                             character_data.base_stats = class_base_stats[ARCHER_ID];
-                            confirmation.is_active = true; 
+                            test_confirm_buttons.is_active = true; 
                         } break;
                         case CLASS_SELECT_BACK:
                         {
@@ -4383,24 +4423,22 @@ int main(int argc, char *argv[])
                     }
                 }
         
-                if (confirmation.is_active)
+                if (test_confirm_buttons.is_active)
                 {
-                    // Box border
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
-                    SDL_RenderDrawRect(SDLWindow.Renderer, &confirmation.box_border);
-                    // Border
-                    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
-                    SDL_RenderFillRect(SDLWindow.Renderer, &confirmation.box);
-
-                    CursorForItems(&confirmation.info.buttons[confirmation.index], &right_cursor_asset, 4, 1);
-                    RenderAssetInWorldSpace(&right_cursor_asset);
-                    for (i32 i = 0; i < ArraySize(confirmation.info.buttons); ++i) 
+                    ConfirmationButtons_RenderBox(&test_confirm_buttons);
+                   
+                    CursorInit(&cursor[RIGHT_CURSOR].model, 
+                                  test_confirm_buttons.button[test_confirm_buttons.index].pos.x,
+                                  test_confirm_buttons.button[test_confirm_buttons.index].pos.y, 
+                                  -4, -1);
+                    RenderCursor(&cursor[RIGHT_CURSOR].model);
+                    for (i32 i = 0; i < ArraySize(test_confirm_buttons.button); ++i) 
                     {
-                        RenderText(SDLWindow.Renderer, font_atlas,
-                                   confirmation.info.buttons[i].x, 
-                                   confirmation.info.buttons[i].y,
-                                   confirmation.info.buttons[i].text, 
-                                   white);
+                        RenderText(SDLWindow.Renderer, font.atlas,
+                                   test_confirm_buttons.button[i].pos.x, 
+                                   test_confirm_buttons.button[i].pos.y,
+                                   test_confirm_buttons.button[i].text, 
+                                   font.color[COLOR_WHITE]);
                     }
                 }
 
@@ -4413,23 +4451,23 @@ int main(int argc, char *argv[])
                            CENTER_TEXT_X("Back", -94),
                            SCREEN_CENTER_Y - 96,
                            "Back",
-                           white);
+                           color.white);
                 RenderText(SDLWindow.Renderer, font_atlas, 
                            CENTER_TEXT_X("[ESC]", -64),
                            SCREEN_CENTER_Y - 96,
                            "[ESC]",
-                           orange);
+                           color.orange);
 
                 RenderText(SDLWindow.Renderer, font_atlas,
                            CENTER_TEXT_X("How will you allocate your", 0),
                            SCREEN_CENTER_Y - 48,
                            "How will you allocate your",
-                           white);
+                           color.white);
                 RenderText(SDLWindow.Renderer, font_atlas,
                            CENTER_TEXT_X("points for your character?", 0),
                            SCREEN_CENTER_Y - 40,
                            "points for your character?",
-                           white);
+                           color.white);
     
                 for (i32 i = 0; i < ArraySize(character_allocation_select_screen.info); ++i)
                 {
@@ -4438,11 +4476,11 @@ int main(int argc, char *argv[])
                                character_allocation_select_screen.info[i].asset.x, 
                                character_allocation_select_screen.info[i].asset.y, 
                                character_allocation_select_screen.info[i].name, 
-                               white, 
+                               color.white, 
                                2);
     
                     RenderWrappedText(SDLWindow.Renderer, font_atlas, 
-                                      character_allocation_select_screen.info[character_allocation_select_screen.index].description, white, 
+                                      character_allocation_select_screen.info[character_allocation_select_screen.index].description, color.white, 
                                       character_allocation_select_screen.description_box.x + 2,
                                       character_allocation_select_screen.description_box.y + 8, // containerX, containerY
                                       character_allocation_select_screen.description_box.w, 
@@ -4451,8 +4489,8 @@ int main(int argc, char *argv[])
 
                 }
                   
-                CursorForAssets(&character_allocation_select_screen.info[character_allocation_select_screen.index].asset, &up_cursor_asset, 24, 20);
-                RenderAssetInWorldSpace(&up_cursor_asset);
+                CursorForAssets(&character_allocation_select_screen.info[character_allocation_select_screen.index].asset, &cursor[UP_CURSOR].model, 24, 20);
+                RenderAssetInWorldSpace(&cursor[UP_CURSOR].model);
                 
                 SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
                 SDL_RenderDrawRect(SDLWindow.Renderer, &character_allocation_select_screen.description_box);
@@ -4495,10 +4533,11 @@ int main(int argc, char *argv[])
                     SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
                     SDL_RenderFillRect(SDLWindow.Renderer, &confirmation.box);
                     
-                    CursorForItems(&confirmation.info.buttons[confirmation.index], &right_cursor_asset, 4, 1);
-                    RenderAssetInWorldSpace(&right_cursor_asset);
+                    CursorForItems(&confirmation.info.buttons[confirmation.index], &cursor[RIGHT_CURSOR].model, 4, 1);
+                    RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
                     for (i32 i = 0; i < ArraySize(confirmation.info.buttons); ++i) 
-                    {if (is_settings)
+                    {
+                        if (is_settings)
                             {
                                 switch (sound_settings.index)
                                 {
@@ -4519,11 +4558,12 @@ int main(int argc, char *argv[])
                                     } break;
                                 }
                             }
+                        
                         RenderText(SDLWindow.Renderer, font_atlas,
                                    confirmation.info.buttons[i].x, 
                                    confirmation.info.buttons[i].y,
                                    confirmation.info.buttons[i].text, 
-                                   white);
+                                   color.white);
                     }
                 }
             }
@@ -4532,43 +4572,21 @@ int main(int argc, char *argv[])
             // Character name is the last screen where input will be entering it in letter by letter like FF8 or pokemon   
             if (is_personality_test)
             {
-                static i32 rand_index = 0;
-
-    
-                if (question_confirmation)
-                {
-                    question_confirmation = false;
-                    ++personality_test.index;
-                    
-                    static bool follow_up_question_selected = false;
-                    if (!follow_up_question_selected)
-                    {
-                        i32 skip_count = 5;
-                        i32 total = ArraySize(personality_test.table) - skip_count;
-                        rand_index = skip_count + (rand() % total);
-                        follow_up_question_selected = true;
-                    }
-
-                }
-                else
-                {
-                    // Only the starting questions
-                    static bool first_question_selected = false;
-                    if (!first_question_selected)
-                    {
-                        i32 total = ArraySize(personality_test.table) ;
-                        rand_index = rand() % 5;
-                        first_question_selected = true;
-                    }
-                }  
+                Personality_BeginQuestions(&personality_test); 
 
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
+/*               RenderText(SDLWindow.Renderer, font.atlas, 
+                           CENTER_TEXT_X(personality_test.table[personality_test.index], 0), 
+                           SCREEN_CENTER_Y,
+                           personality_test.table[personality_test.index],
+                           font.color[COLOR_WHITE]);
+*/
+
                 RenderWrappedTextCentered(SDLWindow.Renderer, font_atlas, 
-                                      personality_test.table[personality_test.index], white, 
+                                      personality_test.table[personality_test.index], color.white, 
                                       0, -32,        // containerX, containerY
                                       256, 240,    // containerW, containerH
                                       2);          // lineSpacing
-
 
                 if (personality_test.is_active)
                 {
@@ -4656,15 +4674,15 @@ int main(int argc, char *argv[])
 
                 if (confirmation.is_active)
                 {
-                    CursorForItems(&confirmation.info.buttons[confirmation.index], &right_cursor_asset, 4, 1);
-                    RenderAssetInWorldSpace(&right_cursor_asset);
+                    CursorForItems(&confirmation.info.buttons[confirmation.index], &cursor[RIGHT_CURSOR].model, 4, 1);
+                    RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
                     for (i32 i = 0; i < ArraySize(confirmation.info.buttons); ++i) 
                     {
                         RenderText(SDLWindow.Renderer, font_atlas,
                                    confirmation.info.buttons[i].x, 
                                    confirmation.info.buttons[i].y,
                                    confirmation.info.buttons[i].text, 
-                                   white);
+                                   color.white);
 
                     }
                 }
@@ -4676,27 +4694,27 @@ int main(int argc, char *argv[])
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
-                                   white);
+                                   color.white);
 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("Silver coins drop from the hanging bag", 0), 
                                SCREEN_CENTER_Y - 88,
                                "Silver coins drop from the hanging bag", 
-                               white); 
+                               color.white); 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X(" of an elderly man's pocket as he walks", 0), 
                                SCREEN_CENTER_Y - 80,
                                " of an elderly man's pocket as he walks", 
-                               white);
+                               color.white);
 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X(" through the market. What do you do?", 0), 
                                SCREEN_CENTER_Y - 72,
                                " through the market. What do you do?", 
-                               white);
+                               color.white);
 
-                    CursorForItems(&test_scenarios.scenario[VILLAGE_INDEX].options[test_scenarios.scenario[VILLAGE_INDEX].index], &right_cursor_asset, 4, 1);
-                    RenderAssetInWorldSpace(&right_cursor_asset);
+                    CursorForItems(&test_scenarios.scenario[VILLAGE_INDEX].options[test_scenarios.scenario[VILLAGE_INDEX].index], &cursor[RIGHT_CURSOR].model, 4, 1);
+                    RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
 
                     for (i32 i = 0; i < VILLAGE_OPTION_COUNT; ++i)
                     {
@@ -4704,7 +4722,7 @@ int main(int argc, char *argv[])
                                                test_scenarios.scenario[VILLAGE_INDEX].options[i].x,
                                                test_scenarios.scenario[VILLAGE_INDEX].options[i].y,
                                                test_scenarios.scenario[VILLAGE_INDEX].options[i].text,
-                                               white,
+                                               color.white,
                                                2);
                     }
                      
@@ -4718,31 +4736,31 @@ int main(int argc, char *argv[])
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
-                                   white);
+                                   color.white);
 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X("You are a man by day and a beast by", 0), 
                                    SCREEN_CENTER_Y - 88,
                                    "You are a man by day and a beast by", 
-                                   white);                   
+                                   color.white);                   
 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X("night. You prey off human flesh and blood", 0), 
                                    SCREEN_CENTER_Y - 80,
                                    "night. You prey off human flesh and blood", 
-                                   white);  
+                                   color.white);  
 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X(" to survive. You come across a small and", 0), 
                                    SCREEN_CENTER_Y - 72,
                                    " to survive. You come across a small and", 
-                                   white);
+                                   color.white);
 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X(" quiet village. What do you do?", 0), 
                                    SCREEN_CENTER_Y - 64,
                                    " quiet village. What do you do?", 
-                                   white);
+                                   color.white);
 
                     personality_scenario[MONSTER_INDEX].scenario_box.x = SCREEN_CENTER_X - 124; 
                     personality_scenario[MONSTER_INDEX].scenario_box.y = SCREEN_CENTER_Y - 96; 
@@ -4752,8 +4770,8 @@ int main(int argc, char *argv[])
                     SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
                     SDL_RenderDrawRect(SDLWindow.Renderer, &personality_scenario[MONSTER_INDEX].scenario_box);
                     
-                    CursorForItems(&test_scenarios.scenario[MONSTER_INDEX].options[test_scenarios.scenario[MONSTER_INDEX].index], &right_cursor_asset, 4, 1);
-                    RenderAssetInWorldSpace(&right_cursor_asset);
+                    CursorForItems(&test_scenarios.scenario[MONSTER_INDEX].options[test_scenarios.scenario[MONSTER_INDEX].index], &cursor[RIGHT_CURSOR].model, 4, 1);
+                    RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
 
                     for (i32 i = 0; i < MONSTER_OPTION_COUNT; ++i)
                     {
@@ -4761,7 +4779,7 @@ int main(int argc, char *argv[])
                                                test_scenarios.scenario[MONSTER_INDEX].options[i].x,
                                                test_scenarios.scenario[MONSTER_INDEX].options[i].y,
                                                test_scenarios.scenario[MONSTER_INDEX].options[i].text,
-                                               white,
+                                               color.white,
                                                2);
                     }
 
@@ -4937,7 +4955,7 @@ int main(int argc, char *argv[])
                         RenderText(SDLWindow.Renderer, font_atlas, 
                                CENTER_TEXT_X(gold_coins, 104), SCREEN_CENTER_Y - 95,
                                gold_coins,
-                               green);
+                               color.green);
                     }
                     
 
@@ -4950,7 +4968,7 @@ int main(int argc, char *argv[])
                                    SCREEN_CENTER_X - (128 - 56), 
                                    SCREEN_CENTER_Y + 56,
                                    forest_scenario_dialogue_intro[dialogue_index], 
-                                   green, 
+                                   color.green, 
                                    2);
                        
                         // Ensures we're rendering the dialogue from index 0, then increment
@@ -4972,7 +4990,7 @@ int main(int argc, char *argv[])
                                    SCREEN_CENTER_X - (128 - 56), 
                                    SCREEN_CENTER_Y + 56,
                                    forest_scenario_dialogue_return_the_boulder[dialogue_index_2], 
-                                   green, 
+                                   color.green, 
                                    2);
                     }
 
@@ -4993,38 +5011,38 @@ int main(int argc, char *argv[])
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
-                                   white);
+                                   color.white);
 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X("You are near the end of your quest in", 0), 
                                    SCREEN_CENTER_Y - 88,
                                    "You are near the end of your quest in ", 
-                                   white); 
+                                   color.white); 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X("saving the princess, where the entrance", 0), 
                                    SCREEN_CENTER_Y - 80,
                                    "saving the princess, where the entrance ", 
-                                   white); 
+                                   color.white); 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X("to her prison is in front of you. But two", 0), 
                                    SCREEN_CENTER_Y - 72,
                                    "to her prison is in front of you. But two doors", 
-                                   white); 
+                                   color.white); 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X("doors fork to the left and right, a", 0), 
                                    SCREEN_CENTER_Y - 64,
                                    "doors fork to the left and right, a", 
-                                   white); 
+                                   color.white); 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X("door to take you deeper in and a door to", 0), 
                                    SCREEN_CENTER_Y - 56,
                                    "door to take you deeper in and a door to", 
-                                   white); 
+                                   color.white); 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                    CENTER_TEXT_X("a room of treasures. What do you do?", 0), 
                                    SCREEN_CENTER_Y - 48,
                                    "a room of treasures. What do you do?", 
-                                   white);
+                                   color.white);
 
    
                     test_scenarios.scenario[CAVE_INDEX].box.x = SCREEN_CENTER_X - 126;
@@ -5036,8 +5054,8 @@ int main(int argc, char *argv[])
                     SDL_RenderDrawRect(SDLWindow.Renderer, &test_scenarios.scenario[CAVE_INDEX].box);
 
 
-                    CursorForItems(&test_scenarios.scenario[CAVE_INDEX].options[test_scenarios.scenario[CAVE_INDEX].index], &right_cursor_asset, 4, 1);
-                    RenderAssetInWorldSpace(&right_cursor_asset);
+                    CursorForItems(&test_scenarios.scenario[CAVE_INDEX].options[test_scenarios.scenario[CAVE_INDEX].index], &cursor[RIGHT_CURSOR].model, 4, 1);
+                    RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
 
                     for (i32 i = 0; i < CAVE_OPTION_COUNT; ++i)
                     {
@@ -5045,7 +5063,7 @@ int main(int argc, char *argv[])
                                                test_scenarios.scenario[CAVE_INDEX].options[i].x,
                                                test_scenarios.scenario[CAVE_INDEX].options[i].y,
                                                test_scenarios.scenario[CAVE_INDEX].options[i].text,
-                                               white,
+                                               color.white,
                                                2);
                     }
                 }
@@ -5057,38 +5075,38 @@ int main(int argc, char *argv[])
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
-                                   white);
+                                   color.white);
 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("You carry with yourself a canteen of", 0), 
                                SCREEN_CENTER_Y - 88,
                                "You carry with yourself a canteen of", 
-                               white);           
+                               color.white);           
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("water with only a few sips worth left.", 0), 
                                SCREEN_CENTER_Y - 80,
                                "water with only a few sips worth left.", 
-                               white);
+                               color.white);
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("In the harsh and unforgiving desert,", 0), 
                                SCREEN_CENTER_Y - 72,
                                "In the harsh and unforgiving desert", 
-                               white);           
+                               color.white);           
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("you come across two men stranded, where", 0), 
                                SCREEN_CENTER_Y - 64,
                                "you come across two men stranded, where", 
-                               white);
+                               color.white);
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("one is near death from thirst.", 0), 
                                SCREEN_CENTER_Y - 56,
                                "one is near death from thirst.", 
-                               white);
+                               color.white);
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("What do you do?", 0), 
                                SCREEN_CENTER_Y - 48,
                                "What do you do?", 
-                               white);
+                               color.white);
 
                     test_scenarios.scenario[DESERT_INDEX].box.x = SCREEN_CENTER_X - 126;
                     test_scenarios.scenario[DESERT_INDEX].box.y = SCREEN_CENTER_Y - 98;
@@ -5098,8 +5116,8 @@ int main(int argc, char *argv[])
                     SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
                     SDL_RenderDrawRect(SDLWindow.Renderer, &test_scenarios.scenario[DESERT_INDEX].box);
 
-                    CursorForItems(&test_scenarios.scenario[DESERT_INDEX].options[test_scenarios.scenario[DESERT_INDEX].index], &right_cursor_asset, 4, 1);
-                    RenderAssetInWorldSpace(&right_cursor_asset);
+                    CursorForItems(&test_scenarios.scenario[DESERT_INDEX].options[test_scenarios.scenario[DESERT_INDEX].index], &cursor[RIGHT_CURSOR].model, 4, 1);
+                    RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
 
                     for (i32 i = 0; i < DESERT_OPTION_COUNT; ++i)
                     {
@@ -5107,7 +5125,7 @@ int main(int argc, char *argv[])
                                                test_scenarios.scenario[DESERT_INDEX].options[i].x,
                                                test_scenarios.scenario[DESERT_INDEX].options[i].y,
                                                test_scenarios.scenario[DESERT_INDEX].options[i].text,
-                                               white,
+                                               color.white,
                                                2);
                     }
                 }
@@ -5119,28 +5137,28 @@ int main(int argc, char *argv[])
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
-                                   white);
+                                   color.white);
 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("You are disoriented and awake at", 0), 
                                SCREEN_CENTER_Y - 88,
                                "You are disoriented and awake at", 
-                               white);           
+                               color.white);           
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("the top of a seemingly endless tower.", 0), 
                                SCREEN_CENTER_Y - 80,
                                "the top of a seemingly endless tower.", 
-                               white);  
+                               color.white);  
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("You see a staircase besides you that leads", 0), 
                                SCREEN_CENTER_Y - 72,
                                "You see a staircase besides you that leads", 
-                               white);
+                               color.white);
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("down to the unknown. What do you do?", 0), 
                                SCREEN_CENTER_Y - 64,
                                "down to the unknown. What do you do?", 
-                               white);
+                               color.white);
                                         
                     test_scenarios.scenario[TOWER_INDEX].box.x = SCREEN_CENTER_X - 126;
                     test_scenarios.scenario[TOWER_INDEX].box.y = SCREEN_CENTER_Y - 98;
@@ -5150,8 +5168,8 @@ int main(int argc, char *argv[])
                     SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
                     SDL_RenderDrawRect(SDLWindow.Renderer, &test_scenarios.scenario[TOWER_INDEX].box);
                     
-                    CursorForItems(&test_scenarios.scenario[TOWER_INDEX].options[test_scenarios.scenario[TOWER_INDEX].index], &right_cursor_asset, 4, 1);
-                    RenderAssetInWorldSpace(&right_cursor_asset);
+                    CursorForItems(&test_scenarios.scenario[TOWER_INDEX].options[test_scenarios.scenario[TOWER_INDEX].index], &cursor[RIGHT_CURSOR].model, 4, 1);
+                    RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
 
                     for (i32 i = 0; i < TOWER_OPTION_COUNT; ++i)
                     {
@@ -5159,7 +5177,7 @@ int main(int argc, char *argv[])
                                                test_scenarios.scenario[TOWER_INDEX].options[i].x,
                                                test_scenarios.scenario[TOWER_INDEX].options[i].y,
                                                test_scenarios.scenario[TOWER_INDEX].options[i].text,
-                                               white,
+                                               color.white,
                                                2);
                     }
                 }
@@ -5171,7 +5189,7 @@ int main(int argc, char *argv[])
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
-                                   white);
+                                   color.white);
              
 
                     // TODO: Corny scenario I think, edit later
@@ -5179,42 +5197,42 @@ int main(int argc, char *argv[])
                                CENTER_TEXT_X("You are a priest, and dressed for", 0), 
                                SCREEN_CENTER_Y - 88,
                                "You are a priest, and dressed for", 
-                               white); 
+                               color.white); 
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("night's stage show. You walk into", 0), 
                                SCREEN_CENTER_Y - 80,
                                "night's stage show. You walk into", 
-                               white);
+                               color.white);
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("the theater and a man recognizes you", 0), 
                                SCREEN_CENTER_Y - 72,
                                "the theater and a man recognizes you", 
-                               white);
+                               color.white);
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("as the town's priest. He immediately", 0), 
                                SCREEN_CENTER_Y - 64,
                                "as the town's priest. He immediately", 
-                               white);
+                               color.white);
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("begs you to marry the women of life, of", 0), 
                                SCREEN_CENTER_Y - 56,
                                "begs you to marry the women of life, of", 
-                               white);
+                               color.white);
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("life, of which they had only just met", 0), 
                                SCREEN_CENTER_Y - 48,
                                "life, of which they had only just met", 
-                               white);
+                               color.white);
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("and he claims is love at first sight.", 0), 
                                SCREEN_CENTER_Y - 40,
                                "and he claims is love at first sight.", 
-                               white);
+                               color.white);
                     RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X(" What do you do?", 0), 
                                SCREEN_CENTER_Y - 32,
                                "What do you do?", 
-                               white);
+                               color.white);
 
                     test_scenarios.scenario[THEATER_INDEX].box.x = SCREEN_CENTER_X - 126;
                     test_scenarios.scenario[THEATER_INDEX].box.y = SCREEN_CENTER_Y - 98;
@@ -5224,8 +5242,8 @@ int main(int argc, char *argv[])
                     SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 255, 255, 255);
                     SDL_RenderDrawRect(SDLWindow.Renderer, &test_scenarios.scenario[THEATER_INDEX].box);
                     
-                    CursorForItems(&test_scenarios.scenario[THEATER_INDEX].options[test_scenarios.scenario[THEATER_INDEX].index], &right_cursor_asset, 4, 1);
-                    RenderAssetInWorldSpace(&right_cursor_asset);
+                    CursorForItems(&test_scenarios.scenario[THEATER_INDEX].options[test_scenarios.scenario[THEATER_INDEX].index], &cursor[RIGHT_CURSOR].model, 4, 1);
+                    RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
 
                     for (i32 i = 0; i < THEATER_OPTION_COUNT; ++i)
                     {
@@ -5233,7 +5251,7 @@ int main(int argc, char *argv[])
                                                test_scenarios.scenario[THEATER_INDEX].options[i].x,
                                                test_scenarios.scenario[THEATER_INDEX].options[i].y,
                                                test_scenarios.scenario[THEATER_INDEX].options[i].text,
-                                               white,
+                                               color.white,
                                                2);
                     }
 
@@ -5246,7 +5264,7 @@ int main(int argc, char *argv[])
                                    CENTER_TEXT_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
-                                   white);
+                                   color.white);
                 }  
             }
     
@@ -5257,10 +5275,10 @@ int main(int argc, char *argv[])
                                CENTER_TEXT_X("Personality:", 0), 
                                SCREEN_CENTER_Y - 88,
                                "Personality:", 
-                               white);
+                               color.white);
 
 
-                static test_personality_test_results_t PERSONALITY_RESULT = {0};
+                static personality_results_t PERSONALITY_RESULT = {0};
                 static i32 SCENARIO_INDEX = -1;
                 static i32 SCENARIO_DIALOGUE_SIZE = -1;
 
@@ -5281,7 +5299,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = show_off.colors[i];
 
                             
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_SLIPPERY_DEVIL:
@@ -5294,7 +5312,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = slippery_devil.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_SHRINKING_VIOLET:
@@ -5307,7 +5325,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = shrinking_violet.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                 
@@ -5322,7 +5340,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = paragon.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_WIMP:
@@ -5335,7 +5353,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = wimp.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_SPOILT_BRAT:
@@ -5348,7 +5366,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = spoilt_brat.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_EGGHEAD:
@@ -5361,7 +5379,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = egghead.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_KLUTZ:
@@ -5374,7 +5392,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = klutz.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
 
@@ -5389,7 +5407,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = daredevil.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_IDEALIST:
@@ -5402,7 +5420,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = idealist.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break; 
                         case PERSONALITY_THUG:
@@ -5415,7 +5433,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = thug.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
 
@@ -5430,7 +5448,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = straight_arrow.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_MULE:
@@ -5443,7 +5461,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = mule.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_NARCISSIST:
@@ -5456,7 +5474,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = narcissist.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_SORE_LOSER:
@@ -5469,7 +5487,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = sore_loser.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
 
@@ -5483,7 +5501,7 @@ int main(int argc, char *argv[])
                             for (i32 i = 0; i < 10; ++i)
                                 stat_overview_color[i] = lazybones.colors[i];
         
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_PLUGGER:
@@ -5495,7 +5513,7 @@ int main(int argc, char *argv[])
                             for (i32 i = 0; i < 10; ++i)
                                 stat_overview_color[i] = plugger.colors[i];
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_DRUDGE:
@@ -5508,7 +5526,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = drudge.colors[i];
 
     
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_TOUGH_COOKIE:
@@ -5521,7 +5539,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = tough_cookie.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
 
@@ -5536,7 +5554,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = daydreamer.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_SOCIALITE:
@@ -5549,7 +5567,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = socialite.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
 
@@ -5564,7 +5582,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = free_spirit.colors[i];
 
   
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_CRYBABY:
@@ -5577,7 +5595,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = crybaby.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_LONE_WOLF:
@@ -5590,7 +5608,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = lone_wolf.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_LOUT:
@@ -5603,7 +5621,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = lout.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
 
@@ -5618,7 +5636,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = vamp.colors[i];
 
      
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_WIT:
@@ -5631,7 +5649,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = wit.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_CLOWN:
@@ -5644,7 +5662,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = clown.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_GOOD_EGG:
@@ -5657,7 +5675,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = good_egg.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         case PERSONALITY_HAPPY_CAMPER:
@@ -5670,7 +5688,7 @@ int main(int argc, char *argv[])
                                 stat_overview_color[i] = happy_camper.colors[i];
 
 
-                            PersonalityTest_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                            Personality_InitResults(&test_scenarios, &PERSONALITY_RESULT, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                             loading_results = false;
                         } break;
                         default:
@@ -5685,17 +5703,17 @@ int main(int argc, char *argv[])
                 SDLCamera.X = 0;
                 SDLCamera.Y = 0;
 
-                PersonalityTest_RenderResults(&test_scenarios, font_atlas, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
+                Personality_RenderResults(&test_scenarios, &font, SCENARIO_INDEX, SCENARIO_DIALOGUE_SIZE);
                 
-                CursorForItems(&next_button.button[next_button.index], &right_cursor_asset, 4, 1);
-                RenderAssetInWorldSpace(&right_cursor_asset);
+                CursorForItems(&next_button.button[next_button.index], &cursor[RIGHT_CURSOR].model, 4, 1);
+                RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
                 for (i32 i = 0; i < ArraySize(next_button.button); ++i)
                 {
                     RenderText(SDLWindow.Renderer, font_atlas,
                                next_button.button[i].x,
                                next_button.button[i].y,
                                next_button.button[i].text,
-                               white);
+                               color.white);
                 }
 
                 if (!next_button.is_active)
@@ -5743,8 +5761,8 @@ int main(int argc, char *argv[])
 
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                 
-                NameEntry_RenderNameUnderline(name_entry_bar, SDLWindow.Renderer, font_atlas, white);
-                NameEntry_RenderName(name_entry_bar, SDLWindow.Renderer, font_atlas, white);
+                NameEntry_RenderNameUnderline(name_entry_bar, SDLWindow.Renderer, font_atlas, color.white);
+                NameEntry_RenderName(name_entry_bar, SDLWindow.Renderer, font_atlas, color.white);
             
                 for (i32 i = 0; i < ArraySize(glyph_grid); ++i)
                 {
@@ -5752,7 +5770,7 @@ int main(int argc, char *argv[])
                             glyph_grid[i].pos.x, 
                             glyph_grid[i].pos.y,
                             glyph_grid[i].glyph, 
-                            white);
+                            color.white);
 
                 }    
                 
@@ -5760,12 +5778,12 @@ int main(int argc, char *argv[])
                            CENTER_TEXT_X("Enter your name", 0), 
                            SCREEN_CENTER_Y - 96,
                            "Enter your name", 
-                           white);
+                           color.white);
                 
                 
                 // Render after the glyph grid so it renders over rather than behind, looks decent but still considering a change
-                Cursor(&right_cursor_asset, &glyph_grid[name_entry.index].pos, -4, -1);
-                RenderAssetInWorldSpace(&right_cursor_asset);
+                Cursor(&cursor[RIGHT_CURSOR].model, &glyph_grid[name_entry.index].pos, -4, -1);
+                RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
                 RenderAsset(&character_creation_screen.info[character_creation_screen.index].asset, 
                             SCREEN_CENTER_X - (16/2), 52,
                             16, 24);
@@ -5833,15 +5851,15 @@ int main(int argc, char *argv[])
             }
 
             SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
-            CursorForItems(&next_button.button[next_button.index], &right_cursor_asset, 4, 1);
-            RenderAssetInWorldSpace(&right_cursor_asset);
+            CursorForItems(&next_button.button[next_button.index], &cursor[RIGHT_CURSOR].model, 4, 1);
+            RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
             for (i32 i = 0; i < ArraySize(next_button.button); ++i)
             {
                 RenderText(SDLWindow.Renderer, font_atlas,
                            next_button.button[i].x,
                            next_button.button[i].y,
                            next_button.button[i].text,
-                           white);
+                           color.white);
             }
 
             if (!next_button.is_active)
@@ -5861,7 +5879,7 @@ int main(int argc, char *argv[])
                            class_status_overview[i].pos.x,
                            class_status_overview[i].pos.y,
                            class_status_overview[i].text,
-                           white);
+                           color.white);
             }
 
             for (i32 i = 0; i < 10; ++i)
@@ -5884,16 +5902,10 @@ int main(int argc, char *argv[])
             UpdatePlayer(&character_data.model, &sfx_move);
 
             for (int i = 0; i < total_floor_tiles; ++i)
-               AABB_Resolution(&character_data.model, &floor_tiles[i].collision_tiles);
-
-            for (int i = 0; i < total_floor_tiles; ++i)
             {
-                if (AABB_Detection(&character_data.model.body, &floor_tiles[i].collision_tiles.body))
-                {
-                    printf("tile x: %d\n", floor_tiles[i].collision_tiles.body.x);
-                    printf("tile y: %d\n", floor_tiles[i].collision_tiles.body.y);
-                }
-            }
+               AABB_Resolution(&character_data.model, &map_rooms[0].floor_tiles[i].collision_tiles);
+               AABB_Resolution(&character_data.model, &map_rooms[0].floor_tiles[i].item_tiles);
+            } 
 
             AttachCameraToPlayer(&character_data.model, &room_asset[0]);
             SDL_SetRenderTarget(SDLWindow.Renderer, SDLCamera.TargetTexture);
@@ -5902,13 +5914,27 @@ int main(int argc, char *argv[])
 
             RenderAssetInWorldSpace(&room_asset[0]);
             RenderAssetInWorldSpace(&down_stairs_asset);
-            RenderAssetInWorldSpace(&character_data.model);
 
             for (int i = 0; i < total_floor_tiles; ++i)
             {
-                RenderAssetInWorldSpace(&floor_tiles[i].collision_tiles);
+                if (map_rooms[0].floor_tiles[i].collision_tiles.conditions.is_occupied)
+                {
+                    RenderAssetInWorldSpaceWithCoords(&tile_sparkle, 
+                                                      map_rooms[0].floor_tiles[i].collision_tiles.body.x,
+                                                      map_rooms[0].floor_tiles[i].collision_tiles.body.y);
+                }
             }
 
+            RenderAssetInWorldSpace(&character_data.model);
+
+            if (touch_item_on_floor)
+            {
+                RenderAssetInCameraSpace(&loot_box, 
+                                         SCREEN_CENTER_X - (loot_box.w / 2), 
+                                         SCREEN_CENTER_Y - (loot_box.h / 2));
+
+
+            }
 
             if (game_command_menu.is_opened)
             {
@@ -5973,9 +5999,10 @@ int main(int argc, char *argv[])
                                            game_command_menu_items.slots[i].model.x + 10,
                                            game_command_menu_items.slots[i].model.y + 8, 
                                            game_items[i].count_buffer,
-                                           white);
+                                           color.white);
                             }
                         }
+
                     } break;
                     case 1: // Equip
                     {
@@ -6067,7 +6094,7 @@ int main(int argc, char *argv[])
                                        in_game_class_status_overview[i].pos.x,
                                        in_game_class_status_overview[i].pos.y,
                                        in_game_class_status_overview[i].text,
-                                       white);
+                                       color.white);
                         }
 
                         for (i32 i = 0; i < 13; ++i)
@@ -6085,8 +6112,8 @@ int main(int argc, char *argv[])
                     } break;
                 }
 
-                CursorForItems(&game_command_menu.options[game_command_menu.index], &right_cursor_asset, 4, 1);
-                RenderAssetInCameraSpace(&right_cursor_asset,
+                CursorForItems(&game_command_menu.options[game_command_menu.index], &cursor[RIGHT_CURSOR].model, 4, 1);
+                RenderAssetInCameraSpace(&cursor[RIGHT_CURSOR].model,
                                          game_command_menu.options[game_command_menu.index].x - 12,     
                                          game_command_menu.options[game_command_menu.index].y - 2);     
                 for (i32 i = 0; i < ArraySize(game_command_menu.options); ++i)
@@ -6095,15 +6122,15 @@ int main(int argc, char *argv[])
                                game_command_menu.options[i].x,
                                game_command_menu.options[i].y, 
                                game_command_menu.options[i].text,
-                               white);
+                               color.white);
                 }
 
 
                 if (game_command_menu_items.is_opened)
                 {
                     // Render the cursor that iterates over the slots in items
-                    CursorForAssets(&game_command_menu_items.slots[game_command_menu_items.index].model, &right_cursor_asset, 0, 0);
-                    RenderAssetInCameraSpace(&right_cursor_asset, 
+                    CursorForAssets(&game_command_menu_items.slots[game_command_menu_items.index].model, &cursor[RIGHT_CURSOR].model, 0, 0);
+                    RenderAssetInCameraSpace(&cursor[RIGHT_CURSOR].model, 
                                              game_command_menu_items.slots[game_command_menu_items.index].model.x - 10, 
                                              game_command_menu_items.slots[game_command_menu_items.index].model.y + 1);
 
@@ -6122,19 +6149,19 @@ int main(int argc, char *argv[])
                                CENTER_TEXT_X(game_items[game_command_menu_items.index].name, -56),
                                SCREEN_CENTER_Y + 68, 
                                game_items[game_command_menu_items.index].name,
-                               white);
+                               color.white);
 
                         RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X(game_items[game_command_menu_items.index].description, -50),
                                SCREEN_CENTER_Y + 80, 
                                game_items[game_command_menu_items.index].description,
-                               white);
+                               color.white);
 
                         RenderText(SDLWindow.Renderer, font_atlas,
                                CENTER_TEXT_X("Sell Value: 1", 56),
                                SCREEN_CENTER_Y + 92, 
                                "Sell Value: 1",
-                               white);
+                               color.white);
 
 
                         if (item_slot_option)
@@ -6147,22 +6174,22 @@ int main(int argc, char *argv[])
                                            game_command_menu_items.slots[game_command_menu_items.index].model.x + 36,
                                            game_command_menu_items.slots[game_command_menu_items.index].model.y + 4, 
                                            item_slot_options[0].text,
-                                           white);
+                                           color.white);
 
                             RenderText(SDLWindow.Renderer, font_atlas,
                                            game_command_menu_items.slots[game_command_menu_items.index].model.x + 33,
                                            game_command_menu_items.slots[game_command_menu_items.index].model.y + 16, 
                                            item_slot_options[1].text,
-                                           white);
+                                           color.white);
 
                             RenderText(SDLWindow.Renderer, font_atlas,
                                            game_command_menu_items.slots[game_command_menu_items.index].model.x + 33,
                                            game_command_menu_items.slots[game_command_menu_items.index].model.y + 28, 
                                            item_slot_options[2].text,
-                                           white);
+                                           color.white);
 
-                            CursorForItems(&item_slot_options[item_slot_option_index], &right_cursor_asset, 0, 0);
-                            RenderAssetInCameraSpace(&right_cursor_asset, 
+                            CursorForItems(&item_slot_options[item_slot_option_index], &cursor[RIGHT_CURSOR].model, 0, 0);
+                            RenderAssetInCameraSpace(&cursor[RIGHT_CURSOR].model, 
                                                      item_slot_options[item_slot_option_index].x, 
                                                      item_slot_options[item_slot_option_index].y);
                         }
@@ -6191,7 +6218,7 @@ int main(int argc, char *argv[])
     }
     DestroyAssets(&room_asset[0]);
     DestroyAssets(&player_asset);
-    DestroyAssets(&right_cursor_asset);
+    DestroyAssets(&cursor[RIGHT_CURSOR].model);
     SDL_DestroyTexture(font_atlas);
 
 

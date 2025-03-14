@@ -31,7 +31,7 @@ typedef double f64;
 #define WINDOW_HEIGHT 464
 
 #define ASPECT_WIDTH  256
-#define ASPECT_HEIGHT 244
+#define ASPECT_HEIGHT 240
 
 #define SCREEN_CENTER_X (ASPECT_WIDTH  / 2)
 #define SCREEN_CENTER_Y (ASPECT_HEIGHT / 2)
@@ -50,18 +50,14 @@ typedef struct
 
 typedef struct
 {
-    u32 r, g, b, a;
-} color_t;
+    u8 r, g, b, a;
+} rgba_t;
 
+// temp
 typedef struct menu_item_t
 {
     char *text;
     i32 x, y;
 } menu_item_t;
-
-
-
-
-
 
 #endif
