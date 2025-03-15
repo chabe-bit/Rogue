@@ -492,6 +492,74 @@ void SetAssetAdjacentHitBoxes(asset_t *asset)
     asset->adjacent_hitboxes[RIGHT].h = 24 - 1;
 }
 
+#define MAX_CARD_STACK 4
+typedef struct
+{
+    i32 index;
+    asset_t asset[MAX_CARD_STACK];  
+} asset_card_stack_t;
+
+asset_t Asset_Zero()
+{
+    asset_t zero = {0};
+    return zero;
+}
+
+void AssetCard_Push(asset_card_stack_t *stack, asset_t card)
+{
+    if (stack->index < MAX_CARD_STACK)
+    {
+        stack->asset[stack->index] = card; 
+
+        // Update the asset's position based on index
+        switch (stack->index)
+        {
+            // Hardcoding to handle only enemy cards for noe
+            case 0:
+            {
+                stack->asset[0].x = SCREEN_CENTER_X + (120 - card.w);
+                stack->asset[0].y = SCREEN_CENTER_Y - 112;
+            } break;
+            case 1:
+            {
+                stack->asset[1].x = SCREEN_CENTER_X + (120 - card.w);
+                stack->asset[1].y = (SCREEN_CENTER_Y - 112 + card.h * 1) + 8;
+            } break;
+            case 2:
+            {
+                stack->asset[2].x = SCREEN_CENTER_X + (120 - card.w);
+                stack->asset[2].y = (SCREEN_CENTER_Y - 112 + card.h * 2) + 16;
+            } break;
+            case 3:
+            {
+                stack->asset[3].x = SCREEN_CENTER_X + (120 - card.w);
+                stack->asset[3].y = (SCREEN_CENTER_Y - 112 + card.h * 3) + 24;
+            } break;
+        }
+
+        printf("card stack x: %d\n", stack->asset[stack->index].x); 
+        stack->index++;
+    }
+}
+
+void AssetCard_Pop(asset_card_stack_t *stack)
+{
+    if (stack->index > 0)
+        stack->index--;
+}
+
+void AssetCard_Render(asset_card_stack_t *stack)
+{
+    // Render only to the total number of assets counted from stack->index
+    for (int i = 0; i < stack->index; ++i)
+    {
+        RenderAssetInCameraSpace(&stack->asset[i],
+                                 stack->asset[i].x,
+                                 stack->asset[i].y);
+    }
+}
+
+
 void InitializeCamera()
 {
     SDLCamera.X = -1;
@@ -2457,6 +2525,18 @@ int main(int argc, char *argv[])
     printf("floor tile x: %d\n", map_rooms[0].floor_tiles[443].collision_tiles.body.x);
     printf("floor tile y: %d\n", map_rooms[0].floor_tiles[443].collision_tiles.body.y);
 
+    asset_t player_card_mock = IdealLoadAsset("assets/player_card_mockup_3.png");
+    asset_t enemy_card_mock = IdealLoadAsset("assets/enemy_card_mockup_3.png");
+    
+    asset_card_stack_t enemy_card_stack = {0};
+
+    for (int i = 0; i < MAX_CARD_STACK; ++i)
+        printf("enemy_card_stack: %d\n", enemy_card_stack.asset[i].x);
+    
+    // Push and pop asset_t within a stack
+    printf("w: %d\n", enemy_card_mock.w);
+
+
     while (Running) 
     {
         // Poll events
@@ -4065,6 +4145,22 @@ int main(int argc, char *argv[])
                                     }
                                 }
                                 
+                            } break;
+                            case SDLK_t:
+                            {
+                                if (is_game_running)
+                                {
+                                    if (enemy_card_stack.index < MAX_CARD_STACK)
+                                        AssetCard_Push(&enemy_card_stack, enemy_card_mock);
+                                }
+                            } break;
+                            case SDLK_y:
+                            {
+                                if (is_game_running)
+                                {
+                                    if (enemy_card_stack.index > 0)
+                                        AssetCard_Pop(&enemy_card_stack);
+                                }
                             } break;
                             default:
                             {
@@ -5822,8 +5918,6 @@ int main(int argc, char *argv[])
         
         if (is_game_running)
         {
-            SDL_RenderClear(SDLWindow.Renderer);
-
             UpdatePlayer(&character_data.model, &sfx_move);
 
             for (int i = 0; i < total_floor_tiles; ++i)
@@ -5832,6 +5926,11 @@ int main(int argc, char *argv[])
                AABB_Resolution(&character_data.model, &map_rooms[0].floor_tiles[i].item_tiles);
             } 
 
+            GUI_UpdateCursor(&cursor[RIGHT_CURSOR].model, 
+                             enemy_card_stack.asset[enemy_card_stack.index - 1].x,
+                             enemy_card_stack.asset[enemy_card_stack.index - 1].y,
+                             -4, -1);
+
             AttachCameraToPlayer(&character_data.model, &room_asset[0]);
             SDL_SetRenderTarget(SDLWindow.Renderer, SDLCamera.TargetTexture);
             SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
@@ -5839,6 +5938,21 @@ int main(int argc, char *argv[])
 
             RenderAssetInWorldSpace(&room_asset[0]);
             RenderAssetInWorldSpace(&down_stairs_asset);
+         
+            ///////////////////////////////////////////
+            
+            RenderAssetInCameraSpace(&player_card_mock, 
+                                     SCREEN_CENTER_X - 120, 
+                                     SCREEN_CENTER_Y - 112);
+    
+
+            AssetCard_Render(&enemy_card_stack);
+            GUI_RenderCursor(&cursor[RIGHT_CURSOR].model);
+
+
+            RenderAssetInCameraSpace(&game_item_description.box,
+                                     SCREEN_CENTER_X - 112, SCREEN_CENTER_Y + 48);
+            ///////////////////////////////////////////
 
             for (int i = 0; i < total_floor_tiles; ++i)
             {
