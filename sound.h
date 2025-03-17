@@ -86,7 +86,7 @@ typedef struct
     bool is_active;
 
     SDL_Rect volume_body[3];
-    menu_item_t options[5];
+    option_t options[5];
 } sound_settings_t;
 
 typedef enum

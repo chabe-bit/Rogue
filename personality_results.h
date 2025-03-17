@@ -62,11 +62,10 @@ extern personality_types personality_types_state;
 
 typedef struct 
 {
-    bool load_results;
     int x_coords[PERSONALITY_DESCRIPTION_SIZE];
-    SDL_Color colors[8];
     char *scenario;
     char *name;
+    SDL_Color colors[8];
     char *description[PERSONALITY_DESCRIPTION_SIZE];
 } personality_results_t;
 
@@ -116,8 +115,6 @@ extern personality_results_t tough_cookie;
 extern personality_results_t vamp;
 extern personality_results_t wimp;
 extern personality_results_t wit;
-
-
 
 
 #endif

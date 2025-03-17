@@ -51,7 +51,7 @@ typedef struct
     i32 index; 
     bool is_active;
     SDL_Rect box;
-    menu_item_t options[5];
+    option_t options[5];
 } scenario_t;
 
 typedef struct
@@ -83,11 +83,11 @@ extern const char tower_scenario[];
 extern const char cave_scenario[];
 extern const char theater_scenario[];
 
-extern menu_item_t village_scenario_options[];
-extern menu_item_t monster_scenario_options[];
-extern menu_item_t cave_scenario_options[];
-extern menu_item_t desert_scenario_options[];
-extern menu_item_t tower_scenario_options[];
-extern menu_item_t theater_scenario_options[];
+extern option_t village_scenario_options[];
+extern option_t monster_scenario_options[];
+extern option_t cave_scenario_options[];
+extern option_t desert_scenario_options[];
+extern option_t tower_scenario_options[];
+extern option_t theater_scenario_options[];
 
 #endif 

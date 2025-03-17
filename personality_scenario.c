@@ -46,20 +46,20 @@ const char theater_scenario[] = {
     // Play dumb and say you're not the town's priest -> Lout
 };
 
-menu_item_t village_scenario_options[] = {
+option_t village_scenario_options[] = {
     { VILLAGE_OPTION_1, CENTER_TEXT_X(VILLAGE_OPTION_1, 0), SCREEN_CENTER_Y - 16 },
     { VILLAGE_OPTION_2, CENTER_TEXT_X(VILLAGE_OPTION_2, 0), SCREEN_CENTER_Y + 0 },
     { VILLAGE_OPTION_3, CENTER_TEXT_X(VILLAGE_OPTION_3, 0), SCREEN_CENTER_Y + 16 },
 };
 
-menu_item_t monster_scenario_options[] = {
+option_t monster_scenario_options[] = {
     { MONSTER_OPTION_1, CENTER_TEXT_X(MONSTER_OPTION_1, 0), SCREEN_CENTER_Y - 16 },
     { MONSTER_OPTION_2, CENTER_TEXT_X(MONSTER_OPTION_2, 0), SCREEN_CENTER_Y + 0  },
     { MONSTER_OPTION_3, CENTER_TEXT_X(MONSTER_OPTION_3, 0), SCREEN_CENTER_Y + 16 },
     { MONSTER_OPTION_4, CENTER_TEXT_X(MONSTER_OPTION_4, 0), SCREEN_CENTER_Y + 32 },
 };
 
-menu_item_t cave_scenario_options[] = {
+option_t cave_scenario_options[] = {
     { CAVE_OPTION_1, CENTER_TEXT_X(CAVE_OPTION_1, 0), SCREEN_CENTER_Y - 16 },
     { CAVE_OPTION_2, CENTER_TEXT_X(CAVE_OPTION_2, 0), SCREEN_CENTER_Y + 0  },
     { CAVE_OPTION_3, CENTER_TEXT_X(CAVE_OPTION_3, 0), SCREEN_CENTER_Y + 18 },
@@ -67,18 +67,18 @@ menu_item_t cave_scenario_options[] = {
     { CAVE_OPTION_5, CENTER_TEXT_X(CAVE_OPTION_5, 0), SCREEN_CENTER_Y + 64 },
 };
 
-menu_item_t desert_scenario_options[] = {
+option_t desert_scenario_options[] = {
     { DESERT_OPTION_1, CENTER_TEXT_X(DESERT_OPTION_1, 0), SCREEN_CENTER_Y - 16 },
     { DESERT_OPTION_2, CENTER_TEXT_X(DESERT_OPTION_2, 56), SCREEN_CENTER_Y + 0  },
     { DESERT_OPTION_3, CENTER_TEXT_X(DESERT_OPTION_3, 0), SCREEN_CENTER_Y + 24 },
 };
 
-menu_item_t tower_scenario_options[] = {
+option_t tower_scenario_options[] = {
     { TOWER_OPTION_1, CENTER_TEXT_X(TOWER_OPTION_1, 0), SCREEN_CENTER_Y - 16 },
     { TOWER_OPTION_2, CENTER_TEXT_X(TOWER_OPTION_2, 0), SCREEN_CENTER_Y + 0  },
 };
 
-menu_item_t theater_scenario_options[] = {
+option_t theater_scenario_options[] = {
     { THEATER_OPTION_1, CENTER_TEXT_X(THEATER_OPTION_1, 0), SCREEN_CENTER_Y - 16 },
     { THEATER_OPTION_2, CENTER_TEXT_X(THEATER_OPTION_2, 0), SCREEN_CENTER_Y + 0  },
     { THEATER_OPTION_3, CENTER_TEXT_X(THEATER_OPTION_3, 0), SCREEN_CENTER_Y + 18 },

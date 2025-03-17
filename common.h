@@ -54,10 +54,10 @@ typedef struct
 } rgba_t;
 
 // temp
-typedef struct menu_item_t
+typedef struct option_t
 {
     char *text;
     i32 x, y;
-} menu_item_t;
+} option_t;
 
 #endif

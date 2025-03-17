@@ -100,7 +100,7 @@ typedef struct
     SDL_Texture *texture;
 } asset_t;
 
-void CursorForItems(menu_item_t *title_screen_options, asset_t *cursor, i32 x_offset, int y_offset)
+void CursorForItems(option_t *title_screen_options, asset_t *cursor, i32 x_offset, int y_offset)
 {
     cursor->body.x = title_screen_options->x - cursor->w - x_offset;
     cursor->body.y = title_screen_options->y + (GLYPH_HEIGHT / 2) - (cursor->h / 2) - y_offset; // Subtracting by 1 at the end is the center the cursor
@@ -884,21 +884,6 @@ void Personality_InitQuestions(personality_test_t *personality_test)
     }
 }
 
-/*
-void Personality_InitScenarioResults(personality_scenario_t *personality, personality_results_t *results, i32 SCENARIO)
-{
-    personality->scenario[SCENARIO].results.name = results->name;
-    personality->scenario[SCENARIO].results.scenario = results->scenario;
-
-    for (i32 i = 0; i < PERSONALITY_DESCRIPTION_SIZE; ++i)
-    {
-        personality->scenario[SCENARIO].results.x_coords[i] = results->x_coords[i];
-        personality->scenario[SCENARIO].results.description[i] = results->description[i];
-        printf("description: %s\n", personality->scenario[SCENARIO].results.description[i]);
-    }
-}
-*/
-
 void Personality_BeginQuestions(personality_test_t *personality_test)
 {
     // This function randomizes between the first five questions on starting the 
@@ -985,7 +970,7 @@ i32 Personality_ActuallyGettingTheOptionCount(i32 index)
     return result;
 }
 
-void Personality_InitScenarioOptions(personality_scenario_t *personality, menu_item_t options[], i32 index)
+void Personality_InitScenarioOptions(personality_scenario_t *personality, option_t options[], i32 index)
 {
     i32 option_count = Personality_ActuallyGettingTheOptionCount(index);
 
@@ -1026,7 +1011,7 @@ i32 Personality_GetScenario(personality_scenario_t *scenario)
     return result;
 }
 
-void Personality_TestRenderScenarioResults(personality_results_t *personality, font_t *font)
+void Personality_RenderScenarioResults(personality_results_t *personality, font_t *font)
 {
     RenderText(SDLWindow.Renderer, font->atlas,
                CENTER_TEXT_X(personality->name, 0),
@@ -1178,26 +1163,6 @@ personality_results_t Personality_GetScenarioResults(personality_scenario_t *sce
 
     return results;
 }
-
-/*
-void Personality_RenderScenarioResults(personality_scenario_t *personality, font_t *font, i32 SCENARIO)
-{
-    RenderText(SDLWindow.Renderer, font->atlas,
-               CENTER_TEXT_X(personality->scenario[SCENARIO].results.name, 0),
-               SCREEN_CENTER_Y - 80,
-               personality->scenario[SCENARIO].results.name,
-               font->color[COLOR_WHITE]);
-
-    for (i32 i = 0; i < PERSONALITY_DESCRIPTION_SIZE; ++i)
-    {
-        RenderText(SDLWindow.Renderer, font->atlas,
-                   CENTER_TEXT_X(personality->scenario[SCENARIO].results.description[i], 0),
-                   SCREEN_CENTER_Y + personality->scenario[SCENARIO].results.x_coords[i],
-                   personality->scenario[SCENARIO].results.description[i],
-                   font->color[COLOR_WHITE]);
-    }
-}
-*/
 
 void Personality_MoveUpScenario(personality_scenario_t *personality)
 {
@@ -1539,7 +1504,7 @@ int main(int argc, char *argv[])
 
     
     i32 option_index = 0;
-    menu_item_t title_screen_options[4] = {
+    option_t title_screen_options[4] = {
         { "New Game", CENTER_TEXT_X("New Game", 0), SCREEN_CENTER_Y},
         { "Continue Game", CENTER_TEXT_X("Continue Game", 0), SCREEN_CENTER_Y + 16 },
         { "Settings", CENTER_TEXT_X("Settings", 0), SCREEN_CENTER_Y + 32 },
@@ -2070,7 +2035,7 @@ int main(int argc, char *argv[])
     {
         i32 index;
         bool is_active;
-        menu_item_t button[1];
+        option_t button[1];
     } next_button_t;
 
     next_button_t next_button = {0};
@@ -2156,7 +2121,7 @@ int main(int argc, char *argv[])
         bool is_active;
 
         // Two options for sound settings and exit
-        menu_item_t options[2];
+        option_t options[2];
 
         // Init with our current volume settings
         sound_settings_t *sound_settings;
@@ -2393,7 +2358,7 @@ int main(int argc, char *argv[])
     bool item_slot_option_is_movable = false;
     asset_t item_slot_asset = IdealLoadAsset("assets/ui/slot_options.png");
     asset_t item_menu_description_box = IdealLoadAsset("assets/ui/item_description_box.png");
-    menu_item_t item_slot_options[3] = {
+    option_t item_slot_options[3] = {
         {"Use", CENTER_TEXT_X("Use", 0), SCREEN_CENTER_Y - 16},
         {"Move", CENTER_TEXT_X("Move", 0), SCREEN_CENTER_Y},
         {"Toss", CENTER_TEXT_X("Toss", 0), SCREEN_CENTER_Y + 16},
@@ -2505,7 +2470,7 @@ int main(int argc, char *argv[])
         asset_t box;
         asset_t option_box[3];
         
-        menu_item_t options[3]; // items, equipment and status for now
+        option_t options[3]; // items, equipment and status for now
     } game_command_menu_t;
 
 #define COMMAND_MENU_OPTION_COUNT       3
@@ -2737,7 +2702,7 @@ int main(int argc, char *argv[])
         {"What do you do?"}
     };
 
-    menu_item_t theater_scenario_results[8] = {
+    option_t theater_scenario_results[8] = {
         { "You are a priest, and dressed for",          CENTER_TEXT_X("You are a priest, and dressed for", 0),          SCREEN_CENTER_Y - 88 },
         { "night's stage show. You walk into",          CENTER_TEXT_X("night's stage show. You walk into", 0),          SCREEN_CENTER_Y - 80 },
         { "the theater and a man recognizes you",       CENTER_TEXT_X("the theater and a man recognizes you", 0),       SCREEN_CENTER_Y - 72 },
@@ -5125,7 +5090,7 @@ int main(int argc, char *argv[])
                 SDLCamera.X = 0;
                 SDLCamera.Y = 0;
 
-                Personality_TestRenderScenarioResults(&personality_result, &font);
+                Personality_RenderScenarioResults(&personality_result, &font);
 
                 CursorForItems(&next_button.button[next_button.index], &cursor[RIGHT_CURSOR].model, 4, 1);
                 RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
