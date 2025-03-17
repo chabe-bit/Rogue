@@ -7,6 +7,8 @@
 #include "personality_results.h"
 #include "personality_scenario.h"
 
+#include "class_base_stats.h"
+
 #include "sound.h"
 #include "name_entry.h"
 #include "gui_text.h"
@@ -41,6 +43,34 @@ typedef struct
 
 typedef struct
 {
+    bool is_up;
+    bool is_down;
+    bool is_left;
+    bool is_right;
+} asset_front_face_t;
+asset_front_face_t front_face_zero = {0};
+
+typedef struct
+{
+    bool is_front;
+    asset_front_face_t front;
+    SDL_Rect range[4]; 
+} asset_line_of_sight_t;
+
+typedef struct
+{
+    bool is_front;
+    asset_front_face_t front;
+    SDL_Rect range; 
+} test_asset_line_of_sight_t;
+
+typedef struct
+{
+    
+} asset_chase_radius_t;
+
+typedef struct
+{
     bool up, down, left, right;
 } asset_direction_t;
 
@@ -62,7 +92,9 @@ typedef struct
     
     asset_direction_t direction;
     asset_conditions_t conditions;
-   
+    asset_line_of_sight_t los; // line of sight
+    test_asset_line_of_sight_t test_los[4];
+    
     SDL_Rect body;
     SDL_Rect adjacent_hitboxes[4];
     SDL_Texture *texture;
@@ -223,45 +255,51 @@ CombatUpdate(asset_t *player, asset_t *asset, sound_wav_t *sound)
     }
 }
 
-void UpdatePlayer(asset_t *player, sound_wav_t *sound)
+void UpdateAssetMovement(asset_t *asset, sound_wav_t *sound)
 {
-    player->x = player->body.x; 
-    player->y = player->body.y; 
+   
+    //asset->x = asset->body.x; 
+    //asset->y = asset->body.y; 
 
-    if (player->conditions.is_movable)
+    if (asset->conditions.is_movable)
     {
-        if (player->direction.up)
+        if (asset->direction.up)
         {       
-            player->body.y -= player->body.h;
+            asset->body.y -= asset->body.h;
+            asset->los.range[0].y -= asset->los.range[0].h;
+           
+            printf("player y: %d\n", asset->body.y);
+            printf("player los y: %d\n", asset->los.range[0].y);
+
             Sound_PlaySFX(sound);
-            player->direction.up = false;
+            asset->direction.up = false;
         }
 
-        if (player->direction.down)
+        if (asset->direction.down)
         {
-            player->body.y += player->body.h; 
+            asset->body.y += asset->body.h; 
             Sound_PlaySFX(sound);
-            player->direction.down = false;
+            asset->direction.down = false;
         }
 
-        if (player->direction.left)
+        if (asset->direction.left)
         {
-            player->body.x -= player->body.w; 
+            asset->body.x -= asset->body.w; 
             Sound_PlaySFX(sound);
-            player->direction.left = false;
+            asset->direction.left = false;
         }
 
-        if (player->direction.right)
+        if (asset->direction.right)
         {
-            player->body.x += player->body.w; 
+            asset->body.x += asset->body.w; 
             Sound_PlaySFX(sound);
-            player->direction.right = false;
+            asset->direction.right = false;
         }
     }
-
 }
 
-void UpdateAsset(asset_t *asset, asset_t *player)
+
+void UpdatePushableAsset(asset_t *asset, asset_t *player)
 {
     asset->x = asset->body.x; 
     asset->y = asset->body.y; 
@@ -334,17 +372,136 @@ void InitializeAssetConditions(asset_t *asset)
     asset->conditions.is_movable = true;
 }
 
+void Asset_SetPosition(asset_t *asset, vec2_t *coords)
+{
+    asset->body.x = coords->x;
+    asset->body.y = coords->y;
+}
+void Asset_TestInitLOS(asset_t *asset, i32 x, i32 y)
+{
+    i32 range = 3;
+    
+    // Up
+    asset->test_los[0].range.x = asset->body.x - SDLCamera.X;
+    asset->test_los[0].range.y = (asset->body.y - (asset->h * range)) - SDLCamera.Y;
+    asset->test_los[0].range.w = asset->w;
+    asset->test_los[0].range.h = asset->h * range; // range multiplayer 
+    
+    // Down 
+    asset->test_los[0].range.x = asset->body.x - SDLCamera.X;
+    asset->test_los[0].range.y = (asset->body.y + (asset->h * range)) - SDLCamera.Y;
+    asset->test_los[0].range.w = asset->w;
+    asset->test_los[0].range.h = asset->h * range; // range multiplayer
+
+    // Left 
+    asset->test_los[0].range.x = (asset->body.x - (asset->w * range)) - SDLCamera.X;
+    asset->test_los[0].range.y = asset->body.y - SDLCamera.Y;
+    asset->test_los[0].range.w = asset->w * range; // range multiplayer
+    asset->test_los[0].range.h = asset->h;
+
+    // Right 
+    asset->test_los[0].range.x = (asset->body.x + asset->w) - SDLCamera.X;
+    asset->test_los[0].range.y = asset->body.y - SDLCamera.Y;
+    asset->test_los[0].range.w = asset->w * range; // range multiplayer
+    asset->test_los[0].range.h = asset->h;
+}
+
+
+void Asset_InitLOS(asset_t *asset, i32 x, i32 y)
+{
+    i32 range = 3;
+    
+    // Up
+    asset->los.range[0].x = asset->body.x - SDLCamera.X;
+    asset->los.range[0].y = (asset->body.y - (asset->h * range)) - SDLCamera.Y;
+    asset->los.range[0].w = asset->w;
+    asset->los.range[0].h = asset->h * range; // range multiplayer 
+    
+    // Down 
+    asset->los.range[1].x = asset->body.x - SDLCamera.X;
+    asset->los.range[1].y = (asset->body.y + (asset->h * range)) - SDLCamera.Y;
+    asset->los.range[1].w = asset->w;
+    asset->los.range[1].h = asset->h * range; // range multiplayer
+
+    // Left 
+    asset->los.range[2].x = (asset->body.x - (asset->w * range)) - SDLCamera.X;
+    asset->los.range[2].y = asset->body.y - SDLCamera.Y;
+    asset->los.range[2].w = asset->w * range; // range multiplayer
+    asset->los.range[2].h = asset->h;
+
+    // Right 
+    asset->los.range[3].x = (asset->body.x + asset->w) - SDLCamera.X;
+    asset->los.range[3].y = asset->body.y - SDLCamera.Y;
+    asset->los.range[3].w = asset->w * range; // range multiplayer
+    asset->los.range[3].h = asset->h;
+}
+
+void Asset_RenderLOS(asset_t *asset)
+{
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+    for (int i = 0; i < 4; ++i)
+        SDL_RenderDrawRect(SDLWindow.Renderer, &asset->los.range[i]);
+}
+
+void Asset_RenderHitbox(asset_t *asset)
+{
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+    SDL_RenderDrawRect(SDLWindow.Renderer, &asset->body);
+}
+
+void SetAssetLOS(asset_t *asset)
+{
+    i32 TOP =   0;
+    i32 DOWN =  1;
+    i32 LEFT =  2;
+    i32 RIGHT = 3;
+
+    asset->los.range[TOP].x = asset->body.x - SDLCamera.X; 
+    asset->los.range[TOP].y = (asset->body.y - (24*3)) - SDLCamera.Y;
+    asset->los.range[TOP].w = 16;
+    asset->los.range[TOP].h = (24*3);
+
+    asset->los.range[DOWN].x = asset->body.x - SDLCamera.X; 
+    asset->los.range[DOWN].y = (asset->body.y + 24) - SDLCamera.Y;
+    asset->los.range[DOWN].w = 16;
+    asset->los.range[DOWN].h = (24*3);
+
+    asset->los.range[LEFT].x = (asset->body.x - (16*3)) - SDLCamera.X; 
+    asset->los.range[LEFT].y = asset->body.y - SDLCamera.Y;
+    asset->los.range[LEFT].w = (16*3);
+    asset->los.range[LEFT].h = 24;
+
+    asset->los.range[RIGHT].x = (asset->body.x + 16) - SDLCamera.X; 
+    asset->los.range[RIGHT].y = asset->body.y - SDLCamera.Y;
+    asset->los.range[RIGHT].w = (16*3);
+    asset->los.range[RIGHT].h = 24;
+
+}
+
+void UpdateAssetLOS(asset_t *asset)
+{
+    i32 TOP =   0;
+    i32 DOWN =  1;
+    i32 LEFT =  2;
+    i32 RIGHT = 3;
+
+  //  int x = asset->los.range[TOP].x;
+  //  int y = asset->los.range[TOP].y;
+
+  //   asset->los.range[TOP].x = x;
+ //   asset->los.range[TOP].y = y;
+
+}
+
 // Render and update any asset that moves in world space
 void RenderAssetInWorldSpace(asset_t *asset)
 {
     asset->x = asset->body.x;
     asset->y = asset->body.y;
+
     asset->body.x -= SDLCamera.X;
     asset->body.y -= SDLCamera.Y;
-  
-    //SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-    //SDL_RenderDrawRect(SDLWindow.Renderer, &asset->body);
-
+                                            
     if (asset->texture)
     {
         SDL_SetTextureBlendMode(asset->texture, SDL_BLENDMODE_BLEND);
@@ -384,22 +541,6 @@ void RenderAssetInWorldSpaceWithCoords(asset_t *asset, int x, int y)
     asset->body.y = y;
 }
 
-void RenderSDLRectInWorldSpace(SDL_Rect *rect)
-{
-    int x = rect->x;
-    int y = rect->y;
-
-    rect->x -= SDLCamera.X;
-    rect->y -= SDLCamera.Y;
-
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
-    SDL_RenderDrawRect(SDLWindow.Renderer, rect);
-
-    rect->x = x;
-    rect->y = y;
-    
-}
-
 // Render any asset anywhere in world space
 void RenderAsset(asset_t *asset, i32 x, int y, int w, int h)
 {
@@ -424,8 +565,6 @@ void RenderAssetInCameraSpace(asset_t *asset, i32 x, int y)
 {
     asset->body.x = x;
     asset->body.y = y;
-    asset->body.w = asset->w;
-    asset->body.h = asset->h;
 
     if (asset->texture)
     {
@@ -454,6 +593,21 @@ void RenderAssetInCameraSpaceDIMENSION(asset_t asset, i32 x, int y, int w, int h
             return;
         }
     }
+}
+
+void RenderSDLRectInWorldSpace(SDL_Rect *rect)
+{
+    int x = rect->x;
+    int y = rect->y;
+
+    rect->x -= SDLCamera.X;
+    rect->y -= SDLCamera.Y;
+
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 255, 0, 0, 255);
+    SDL_RenderDrawRect(SDLWindow.Renderer, rect);
+
+    rect->x = x;
+    rect->y = y;
 }
 
 void SetAssetAdjacentHitBoxes(asset_t *asset)
@@ -491,6 +645,7 @@ void SetAssetAdjacentHitBoxes(asset_t *asset)
     asset->adjacent_hitboxes[RIGHT].w = 16 - 1;
     asset->adjacent_hitboxes[RIGHT].h = 24 - 1;
 }
+
 
 #define MAX_CARD_STACK 4
 typedef struct
@@ -1569,7 +1724,7 @@ int main(int argc, char *argv[])
 
 
     // Base stats of each class from here: https://dragon-quest.org/wiki/List_of_vocations_in_Dragon_Quest_III#The_vocations
-    typedef struct
+/*    typedef struct
     {
         i32 index; // Iterate over for player to select
 
@@ -1588,7 +1743,7 @@ int main(int argc, char *argv[])
         i32 attack; // Combination of your strength and weapon damage
         i32 defense; // 
     } class_base_stats_t;
-    
+*/    
     // Base stats should be set to a baseline of let's say 5 by default, so that depending on the method the player chooses to allocate their points,
     // that is where it's initialized. 
     // Ex: Personality will default the selected class's stats of what a wizard would be, then assign your personality.
@@ -1601,57 +1756,10 @@ int main(int argc, char *argv[])
     #define ARCHER_ID   3
 
     class_base_stats_t class_base_stats[4] = {0};
-    class_base_stats[KNIGHT_ID].strength = 11;
-    class_base_stats[KNIGHT_ID].resilience = 11;
-    class_base_stats[KNIGHT_ID].agility = 6;
-    class_base_stats[KNIGHT_ID].stamina = 13;
-    class_base_stats[KNIGHT_ID].wisdom = 3;
-    class_base_stats[KNIGHT_ID].luck = 4;
-    class_base_stats[KNIGHT_ID].max_hp = (3 * class_base_stats[KNIGHT_ID].stamina) + 5; // formula from DQ3 -> HP = [3 * VIT / 2] + 5
-    class_base_stats[KNIGHT_ID].hp = class_base_stats[KNIGHT_ID].max_hp; // 
-    class_base_stats[KNIGHT_ID].max_mp = class_base_stats[KNIGHT_ID].wisdom; // MP == Wisdom
-    class_base_stats[KNIGHT_ID].hp = class_base_stats[KNIGHT_ID].max_mp; // 
-    class_base_stats[KNIGHT_ID].attack = class_base_stats[KNIGHT_ID].strength + 0; // strength + weapon power
-    class_base_stats[KNIGHT_ID].defense = class_base_stats[KNIGHT_ID].resilience + 0; // resilience + armor 
-
-    class_base_stats[PALADIN_ID].strength = 7;
-    class_base_stats[PALADIN_ID].resilience = 16;
-    class_base_stats[PALADIN_ID].agility = 5;
-    class_base_stats[PALADIN_ID].stamina = 17;
-    class_base_stats[PALADIN_ID].wisdom = 8;
-    class_base_stats[PALADIN_ID].luck = 1;
-    class_base_stats[PALADIN_ID].max_hp = (3 * class_base_stats[PALADIN_ID].stamina) + 5; // formula from DQ3 -> HP = [3 * VIT / 2] + 5
-    class_base_stats[PALADIN_ID].hp = class_base_stats[PALADIN_ID].max_hp; // 
-    class_base_stats[PALADIN_ID].max_mp = class_base_stats[PALADIN_ID].wisdom; // MP == Wisdom
-    class_base_stats[PALADIN_ID].hp = class_base_stats[PALADIN_ID].max_mp; // 
-    class_base_stats[PALADIN_ID].attack = class_base_stats[PALADIN_ID].strength + 0; // strength + weapon power
-    class_base_stats[PALADIN_ID].defense = class_base_stats[PALADIN_ID].resilience + 0; // resilience + armor 
-
-    class_base_stats[WIZARD_ID].strength = 4;
-    class_base_stats[WIZARD_ID].resilience = 8;
-    class_base_stats[WIZARD_ID].agility = 7;
-    class_base_stats[WIZARD_ID].stamina = 8;
-    class_base_stats[WIZARD_ID].wisdom = 18;
-    class_base_stats[WIZARD_ID].luck = 8;
-    class_base_stats[WIZARD_ID].max_hp = (3 * class_base_stats[WIZARD_ID].stamina) + 5; // formula from DQ3 -> HP = [3 * VIT / 2] + 5
-    class_base_stats[WIZARD_ID].hp = class_base_stats[WIZARD_ID].max_hp; // 
-    class_base_stats[WIZARD_ID].max_mp = class_base_stats[WIZARD_ID].wisdom; // MP == Wisdom
-    class_base_stats[WIZARD_ID].hp = class_base_stats[WIZARD_ID].max_mp; // 
-    class_base_stats[WIZARD_ID].attack = class_base_stats[WIZARD_ID].strength + 0; // strength + weapon power
-    class_base_stats[WIZARD_ID].defense = class_base_stats[WIZARD_ID].resilience + 0; // resilience + armor 
-
-    class_base_stats[ARCHER_ID].strength = 5;
-    class_base_stats[ARCHER_ID].resilience = 8;
-    class_base_stats[ARCHER_ID].agility = 15;
-    class_base_stats[ARCHER_ID].stamina = 9;
-    class_base_stats[ARCHER_ID].wisdom = 4;
-    class_base_stats[ARCHER_ID].luck = 9;
-    class_base_stats[ARCHER_ID].max_hp = (3 * class_base_stats[ARCHER_ID].stamina) + 5; // formula from DQ3 -> HP = [3 * VIT / 2] + 5
-    class_base_stats[ARCHER_ID].hp = class_base_stats[ARCHER_ID].max_hp; // 
-    class_base_stats[ARCHER_ID].max_mp = class_base_stats[ARCHER_ID].wisdom; // MP == Wisdom
-    class_base_stats[ARCHER_ID].hp = class_base_stats[ARCHER_ID].max_mp; // 
-    class_base_stats[ARCHER_ID].attack = class_base_stats[ARCHER_ID].strength + 0; // strength + weapon power
-    class_base_stats[ARCHER_ID].defense = class_base_stats[ARCHER_ID].resilience + 0; // resilience + armor 
+    class_base_stats[KNIGHT_ID] = Class_InitBaseStats(knight_base_stat_data);
+    class_base_stats[PALADIN_ID] = Class_InitBaseStats(paladin_base_stat_data);
+    class_base_stats[WIZARD_ID] = Class_InitBaseStats(wizard_base_stat_data);
+    class_base_stats[ARCHER_ID] = Class_InitBaseStats(archer_base_stat_data);
 
     printf("Max HP: %d\n", class_base_stats[KNIGHT_ID].max_hp);
 
@@ -2536,6 +2644,32 @@ int main(int argc, char *argv[])
     // Push and pop asset_t within a stack
     printf("w: %d\n", enemy_card_mock.w);
 
+    // Combat mode - Triggered event by being in the line of sight of an enemy
+    // Enemy will have a line of sight that stems from their "front", and where their front is is where that
+    // line renders. Then they have a chase radius that will be the same distance as their line of sight. The chase
+    // radius is only relevant in combat mode such that if you have not already triggered the enemy, walking into
+    // their chase radius does nothing. It's only relevant during combat in which let's say you are running and not
+    // aligned with their line of sight, but still in their chase radius, you'll remain in combat mode, where in this
+    // case, if you are out of range.
+    // Line of sight - Every enemy type will have a different line of sight range.
+    // Sprite's Front - The front of a sprite is the direction in which they last turned. 
+   
+    bool player_facing_front = false;
+
+    vec2_t player_starting_coords = {0};
+    player_starting_coords.x = 16 * 10;
+    player_starting_coords.y = 24 * 16;
+
+    vec2_t enemy_starting_coords = {0};
+    enemy_starting_coords.x = 16 * 14;
+    enemy_starting_coords.y = 24 * 16;
+    
+    asset_t enemy_los_asset = IdealLoadAsset("assets/sprites/enemy1.png");
+    enemy_los_asset.conditions.is_collidable = true;
+    enemy_los_asset.body.x = enemy_starting_coords.x; 
+    enemy_los_asset.body.y = enemy_starting_coords.y;
+
+    
 
     while (Running) 
     {
@@ -2586,8 +2720,24 @@ int main(int argc, char *argv[])
                         {
                             case SDLK_w:
                             {
-                                character_data.model.direction.up = true;
-                                boulder_asset.direction.up = true;
+                                if (test_scenarios.scenario[FOREST_INDEX].is_active)
+                                {
+                                    character_data.model.direction.up = true;
+                                    boulder_asset.direction.up = true;
+                                }
+
+                                if (is_game_running)
+                                {
+                                    character_data.model.direction.up = true;
+                                   
+                                    character_data.model.los.front = front_face_zero;
+                                    character_data.model.los.front.is_up = true;
+
+                                    printf("up: %d\n", character_data.model.los.front.is_up);
+                                    printf("down: %d\n", character_data.model.los.front.is_down);
+                                    printf("left: %d\n", character_data.model.los.front.is_left);
+                                    printf("right: %d\n", character_data.model.los.front.is_right);
+                                }
 
                                 if (boulder_has_reached_end)
                                     boulder_has_reached_end = false;
@@ -2649,9 +2799,25 @@ int main(int argc, char *argv[])
                             } break;
                             case SDLK_s:
                             {
-                                character_data.model.direction.down = true;
-                                boulder_asset.direction.down = true;
-                                
+                                if (test_scenarios.scenario[FOREST_INDEX].is_active)
+                                {
+                                    character_data.model.direction.down = true;
+                                    boulder_asset.direction.down = true;
+                                } 
+                               
+                                if (is_game_running)
+                                {
+                                    character_data.model.direction.down = true;
+                                   
+                                    character_data.model.los.front = front_face_zero;
+                                    character_data.model.los.front.is_down = true;
+
+                                    printf("up: %d\n", character_data.model.los.front.is_up);
+                                    printf("down: %d\n", character_data.model.los.front.is_down);
+                                    printf("left: %d\n", character_data.model.los.front.is_left);
+                                    printf("right: %d\n", character_data.model.los.front.is_right);
+                                }
+
                                 if (boulder_has_reached_end)
                                     boulder_has_reached_end = false;
                                 if (player_talking_to_oldman)
@@ -2712,9 +2878,25 @@ int main(int argc, char *argv[])
                             } break;
                             case SDLK_a:
                             {
-                                character_data.model.direction.left = true;
-                                boulder_asset.direction.left = true;
-                                
+                                if (test_scenarios.scenario[FOREST_INDEX].is_active)
+                                {
+                                    character_data.model.direction.left = true;
+                                    boulder_asset.direction.left = true;
+                                }
+
+                                if (is_game_running)
+                                {
+                                    character_data.model.direction.left = true;
+                                    
+                                    character_data.model.los.front = front_face_zero;
+                                    character_data.model.los.front.is_left = true;
+
+                                    printf("up: %d\n", character_data.model.los.front.is_up);
+                                    printf("down: %d\n", character_data.model.los.front.is_down);
+                                    printf("left: %d\n", character_data.model.los.front.is_left);
+                                    printf("right: %d\n", character_data.model.los.front.is_right);
+                                }
+
                                 if (boulder_has_reached_end)
                                     boulder_has_reached_end = false;
 
@@ -2838,8 +3020,24 @@ int main(int argc, char *argv[])
                             } break;
                             case SDLK_d:
                             {
-                                character_data.model.direction.right = true;
-                                boulder_asset.direction.right = true;
+                                if (test_scenarios.scenario[FOREST_INDEX].is_active)
+                                {
+                                    character_data.model.direction.right = true;
+                                    boulder_asset.direction.right = true;
+                                }
+
+                                if (is_game_running)
+                                {
+                                    character_data.model.direction.right = true;
+                                    
+                                    character_data.model.los.front = front_face_zero;
+                                    character_data.model.los.front.is_right = true;
+
+                                    printf("up: %d\n", character_data.model.los.front.is_up);
+                                    printf("down: %d\n", character_data.model.los.front.is_down);
+                                    printf("left: %d\n", character_data.model.los.front.is_left);
+                                    printf("right: %d\n", character_data.model.los.front.is_right);
+                                }
 
                                 if (boulder_has_reached_end)
                                     boulder_has_reached_end = false;
@@ -4004,6 +4202,13 @@ int main(int argc, char *argv[])
                                             case 0: // next
                                             {
                                                 printf("overview next\n");
+
+                                                // Initialize/Reset the player starting here
+                                                SetAssetLOS(&character_data.model);
+                                                //SetAssetLOS(&enemy_los_asset);
+                                                Asset_SetPosition(&character_data.model, &player_starting_coords);
+
+
                                                 Sound_PlaySFX(&master_volume.sfx[1]->wav);
                                                 is_class_overview_screen = false;
                                                 next_button.is_active = false;
@@ -4129,7 +4334,6 @@ int main(int argc, char *argv[])
                                     }
 
                                 }
-
                             } break;
                             case SDLK_r:
                             {
@@ -4801,8 +5005,8 @@ int main(int argc, char *argv[])
                         first_forest_entrance = true;
                     }
 
-                    UpdatePlayer(&character_data.model, &sfx_move);
-                    UpdateAsset(&boulder_asset, &character_data.model); 
+                    UpdateAssetMovement(&character_data.model, &sfx_move);
+                    UpdatePushableAsset(&boulder_asset, &character_data.model); 
 
                     for (i32 i = 0; i < ArraySize(forest_scenario_walls); ++i)
                     {
@@ -5918,18 +6122,26 @@ int main(int argc, char *argv[])
         
         if (is_game_running)
         {
-            UpdatePlayer(&character_data.model, &sfx_move);
-
+            UpdateAssetMovement(&character_data.model, &sfx_move);
+            GUI_UpdateCursor(&cursor[RIGHT_CURSOR].model, 
+                             enemy_card_stack.asset[enemy_card_stack.index - 1].x,
+                             enemy_card_stack.asset[enemy_card_stack.index - 1].y,
+                             -4, -1);
+            
+            AABB_Resolution(&character_data.model, &enemy_los_asset);
             for (int i = 0; i < total_floor_tiles; ++i)
             {
                AABB_Resolution(&character_data.model, &map_rooms[0].floor_tiles[i].collision_tiles);
                AABB_Resolution(&character_data.model, &map_rooms[0].floor_tiles[i].item_tiles);
             } 
 
-            GUI_UpdateCursor(&cursor[RIGHT_CURSOR].model, 
-                             enemy_card_stack.asset[enemy_card_stack.index - 1].x,
-                             enemy_card_stack.asset[enemy_card_stack.index - 1].y,
-                             -4, -1);
+            for (int i = 0; i < 4; ++i)
+            {
+                if (AABB_Detection(&character_data.model.los.range[i], &enemy_los_asset.los.range[i]))
+                {
+                    printf("In sight!\n");
+                }
+            }
 
             AttachCameraToPlayer(&character_data.model, &room_asset[0]);
             SDL_SetRenderTarget(SDLWindow.Renderer, SDLCamera.TargetTexture);
@@ -5947,12 +6159,9 @@ int main(int argc, char *argv[])
     
 
             AssetCard_Render(&enemy_card_stack);
+            // Only render along with enemy cards
             GUI_RenderCursor(&cursor[RIGHT_CURSOR].model);
 
-
-            RenderAssetInCameraSpace(&game_item_description.box,
-                                     SCREEN_CENTER_X - 112, SCREEN_CENTER_Y + 48);
-            ///////////////////////////////////////////
 
             for (int i = 0; i < total_floor_tiles; ++i)
             {
@@ -5964,8 +6173,9 @@ int main(int argc, char *argv[])
                 }
             }
 
+            RenderAssetInWorldSpace(&enemy_los_asset);
             RenderAssetInWorldSpace(&character_data.model);
-
+        
             if (touch_item_on_floor)
             {
                 RenderAssetInCameraSpace(&loot_box, 
@@ -6119,13 +6329,6 @@ int main(int argc, char *argv[])
 
                             game_init_stats = true;
                         }
-/*
-                        RenderAssetInCameraSpaceDIMENSION(character_data.model,
-                                                          SCREEN_CENTER_X - 44,
-                                                          SCREEN_CENTER_Y - 96,
-                                                          character_data.model.w,
-                                                          character_data.model.h);
-*/
 
                         for (i32 i = 0; i < ArraySize(in_game_class_status_overview); ++i)
                         {
