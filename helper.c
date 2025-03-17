@@ -1,4 +1,4 @@
-#include "helper_funcs.h"
+#include "helper.h"
 
 // general push and pop function
 void PushCharStack(char *array, char value)

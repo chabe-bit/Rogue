@@ -8,6 +8,12 @@
 #define WIZARD_ID   2
 #define ARCHER_ID   3
     
+// Base stats should be set to a baseline of let's say 5 by default, so that depending on the method the player chooses to allocate their points,
+// that is where it's initialized. 
+// Ex: Personality will default the selected class's stats of what a wizard would be, then assign your personality.
+// But manual allocation you're shown the baseline of "5" per stat, where they can choose what to allocate to the choose a personality.
+// Preset would be defaulting the class's stat then choosing a personality.
+  
 // Base stats of each class from here: https://dragon-quest.org/wiki/List_of_vocations_in_Dragon_Quest_III#The_vocations
 typedef struct
 {

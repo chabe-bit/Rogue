@@ -1,5 +1,5 @@
-#ifndef GUI_TEXT_H
-#define GUI_TEXT_H
+#ifndef gui_font_H
+#define gui_font_H
 
 #include "common.h"
 

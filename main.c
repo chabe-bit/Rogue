@@ -1,5 +1,5 @@
 #include "common.h"
-#include "helper_funcs.h"
+#include "helper.h"
 #include "global_states.h"
 #include "colors.h"
 
@@ -8,10 +8,11 @@
 #include "personality_scenario.h"
 
 #include "class_base_stats.h"
+#include "class_stat_growth.h"
 
 #include "sound.h"
 #include "name_entry.h"
-#include "gui_text.h"
+#include "gui_font.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -99,6 +100,13 @@ typedef struct
     SDL_Rect adjacent_hitboxes[4];
     SDL_Texture *texture;
 } asset_t;
+
+typedef struct
+{
+    i32 x, y, w, h;
+    SDL_Rect body;
+    SDL_Texture *texture;
+} asset_cursor_t;
 
 void CursorForItems(option_t *title_screen_options, asset_t *cursor, i32 x_offset, int y_offset)
 {
@@ -475,21 +483,6 @@ void SetAssetLOS(asset_t *asset)
     asset->los.range[RIGHT].y = asset->body.y - SDLCamera.Y;
     asset->los.range[RIGHT].w = (16*3);
     asset->los.range[RIGHT].h = 24;
-
-}
-
-void UpdateAssetLOS(asset_t *asset)
-{
-    i32 TOP =   0;
-    i32 DOWN =  1;
-    i32 LEFT =  2;
-    i32 RIGHT = 3;
-
-  //  int x = asset->los.range[TOP].x;
-  //  int y = asset->los.range[TOP].y;
-
-  //   asset->los.range[TOP].x = x;
- //   asset->los.range[TOP].y = y;
 
 }
 
@@ -1222,11 +1215,6 @@ typedef struct
     asset_t type[5];
 } game_rarity_roller_t;
 
-// Macro to center an asset within another asset 
-// TODO: Revisit
-#define CENTER_ASSET_X(x, offset) (x + offset)
-#define CENTER_ASSET_Y(y, offset) (y + offset)
-
 game_rarity_roller_t Game_RarityRoller(asset_t rarity_types[])
 {
     // The color of the slots will change upon the rarity of the
@@ -1360,7 +1348,6 @@ int main(int argc, char *argv[])
     personality_test_t personality_test = {0};
     Personality_InitQuestions(&personality_test);
 
-    bool updated_sound = false;
     bool is_title_screen = true;
     bool is_new_game = false;
     bool is_class_select = false;
@@ -1375,7 +1362,6 @@ int main(int argc, char *argv[])
     bool is_game_running = false;
     bool class_has_been_selected = false;
     bool is_personality_test = false;
-    //bool question_confirmation = false;
 
     bool is_name_submission = false;
     bool is_class_overview_screen = false;
@@ -1402,48 +1388,11 @@ int main(int argc, char *argv[])
     i32 room_select = 1;
     asset_t room_asset[2] = {0};
     LoadAsset(&room_asset[0], "assets/map1.png");
-    LoadAsset(&room_asset[1], "assets/map2.png");
-    InitializeAssetToRender(&room_asset[0], CameraX, CameraY, room_asset[0].w, room_asset[0].h);
     InitializeAssetToRender(&room_asset[1], CameraX, CameraY, room_asset[1].w, room_asset[1].h);
 
     asset_t down_stairs_asset = {0};
     LoadAsset(&down_stairs_asset, "assets/down_stairs.png");
     InitializeAssetToRender(&down_stairs_asset, 14 * 16, 2 * 24, down_stairs_asset.w, down_stairs_asset.h);
-
-
-    asset_t player_asset = {0};
-    stats_t player_stats = {0};
-    player_stats.hp = 11;
-    player_stats.atk = 8;
-    player_stats.def = 9;
-    player_stats.exp = 0;
-    LoadAsset(&player_asset, "assets/sprites/knight.png");
-    InitializeAssetToRender(&player_asset, 10 * 16, 16 * 24, player_asset.w, player_asset.h);
-    
-    player_asset.conditions.is_collidable = true;
-    player_asset.conditions.is_movable = true;
-
-    const char *enemy_filenames[2] = {
-        "assets/sprites/enemy1.png",
-        "assets/sprites/enemy2.png"
-    };
-    
-    asset_t enemy_arr[3];
-    asset_t enemy_arr2[3];
-    for (i32 i = 0; i < ArraySize(enemy_arr); ++i)
-    {
-        LoadAsset(&enemy_arr[i], enemy_filenames[0]);
-        LoadAsset(&enemy_arr2[i], enemy_filenames[1]);
-    }
-
-    InitializeAssetToRender(&enemy_arr[0], 7 * 16, 16 * 24, enemy_arr[0].w, enemy_arr[0].h);
-    InitializeAssetToRender(&enemy_arr[1], 8 * 16, 15 * 24, enemy_arr[1].w, enemy_arr[1].h);
-    InitializeAssetToRender(&enemy_arr[2], 9 * 16, 14 * 24, enemy_arr[2].w, enemy_arr[2].h);
-
-    InitializeAssetToRender(&enemy_arr2[0], 7 * 16, 19 * 24, enemy_arr2[0].w, enemy_arr2[0].h);
-    InitializeAssetToRender(&enemy_arr2[1], 8 * 16, 18 * 24, enemy_arr2[1].w, enemy_arr2[1].h);
-    InitializeAssetToRender(&enemy_arr2[2], 9 * 16, 17 * 24, enemy_arr2[2].w, enemy_arr2[2].h);
-
 
     asset_t forest_scenario_map = IdealLoadAsset("assets/forest_scenario.png");
     asset_t oldman_asset = IdealLoadAsset("assets/sprites/oldman.png");
@@ -1675,7 +1624,6 @@ int main(int argc, char *argv[])
     const char *scenario_name = '\0';
 
     personality_scenario_t scenarios = {0};
-  
     Personality_InitScenarioOptions(&scenarios, village_scenario_options, VILLAGE_INDEX);
     Personality_InitScenarioOptions(&scenarios, monster_scenario_options, MONSTER_INDEX);
     Personality_InitScenarioOptions(&scenarios, cave_scenario_options,    CAVE_INDEX);
@@ -1756,12 +1704,6 @@ int main(int argc, char *argv[])
     printf("helm name: %s\n", equipment_items.helm[0].name);
 
 
-    // Base stats should be set to a baseline of let's say 5 by default, so that depending on the method the player chooses to allocate their points,
-    // that is where it's initialized. 
-    // Ex: Personality will default the selected class's stats of what a wizard would be, then assign your personality.
-    // But manual allocation you're shown the baseline of "5" per stat, where they can choose what to allocate to the choose a personality.
-    // Preset would be defaulting the class's stat then choosing a personality.
-  
     class_base_stats_t class_base_stats[4] = {0};
     class_base_stats[KNIGHT_ID] = Class_InitBaseStats(knight_base_stat_data);
     class_base_stats[PALADIN_ID] = Class_InitBaseStats(paladin_base_stat_data);
@@ -1771,59 +1713,12 @@ int main(int argc, char *argv[])
     printf("Max HP: %d\n", class_base_stats[KNIGHT_ID].max_hp);
 
        
-    // Stat growth:
-    // Baseline -> Value that if the gain value exceeds it, the character loses their normal gain rate and instead rolls a 50/50 chance to gain 
-    // +1 or +0.
-    // Think of it like a bar graph per stat attribute where there's a limit for each for each class, the 50/50 chance roll is simply there to
-    // balance in a way that from level 1 to 50, one's HP growth will be consistent in gaining +4 or so per level until 50, but because they excel in
-    // magic, their INT will grow at a large rate but cap quickly.
+    class_stat_growth_per_level_t class_stat_growth[4] = {0};
+    f32 knight_stat_baseline[5] = {
+        15, 15, 15, 15, 15
+    };
 
-    typedef struct
-    {
-        struct {
-            float baseline;
-            float growth_per_level[20];
-        } strength;
-
-        struct {
-            float baseline;
-            float growth_per_level[20];
-        } agility;
-    
-        struct {
-            float baseline;
-            float growth_per_level[20];
-        } stamina;
-
-        struct {
-            float baseline;
-            float growth_per_level[20];
-        } wisdom;
-    
-        struct {
-            float baseline;
-            float growth_per_level[20];
-        } luck;
-
-    } class_stat_growth_per_level_t;
-
-    class_stat_growth_per_level_t class_stat_growth[1] = {0};
-    class_stat_growth[0].strength.baseline = 15;
-    class_stat_growth[0].agility.baseline = 15;
-    class_stat_growth[0].stamina.baseline = 15;
-    class_stat_growth[0].wisdom.baseline = 15;
-    class_stat_growth[0].luck.baseline = 15;
-
-    typedef enum
-    {
-        KNIGHT_STR,
-        KNIGHT_AGI,
-        KNIGHT_VIT,
-        KNIGHT_WIS,
-        KNIGHT_LCK
-    } knight_stats;
-
-    float knight_growth_per_level[][20] = {
+    f32 knight_growth_per_level[][20] = {
         // STR
         {4, 4, 4, 4, 4, 8, 8, 8, 8, 8,
         12, 12, 12, 12, 12, 16, 16, 16, 16, 16},
@@ -1845,31 +1740,8 @@ int main(int argc, char *argv[])
         4, 16, 16, 16, 16, 16, 16, 16, 16, 16},
     };
 
-    // TODO: Use an index outside of this loop to increment to the next stat gain on level up
-    for (i32 i = 0; i < 20; ++i)
-    {
-        if (knight_growth_per_level[KNIGHT_STR][i] > class_stat_growth[0].strength.baseline ||
-            knight_growth_per_level[KNIGHT_AGI][i] > class_stat_growth[0].agility.baseline  ||
-            knight_growth_per_level[KNIGHT_VIT][i] > class_stat_growth[0].stamina.baseline  ||
-            knight_growth_per_level[KNIGHT_WIS][i] > class_stat_growth[0].wisdom.baseline   ||
-            knight_growth_per_level[KNIGHT_LCK][i] > class_stat_growth[0].luck.baseline)
-        {
-            knight_growth_per_level[KNIGHT_STR][i] = rand() % 2;
-            knight_growth_per_level[KNIGHT_AGI][i] = rand() % 2;
-            knight_growth_per_level[KNIGHT_VIT][i] = rand() % 2;
-            knight_growth_per_level[KNIGHT_WIS][i] = rand() % 2;
-            knight_growth_per_level[KNIGHT_LCK][i] = rand() % 2;
-        }
-
-
-        class_stat_growth[0].strength.growth_per_level[i]   = knight_growth_per_level[KNIGHT_STR][i]; 
-        class_stat_growth[0].agility.growth_per_level[i]    = knight_growth_per_level[KNIGHT_AGI][i]; 
-        class_stat_growth[0].stamina.growth_per_level[i]    = knight_growth_per_level[KNIGHT_VIT][i]; 
-        class_stat_growth[0].wisdom.growth_per_level[i]     = knight_growth_per_level[KNIGHT_WIS][i]; 
-        class_stat_growth[0].luck.growth_per_level[i]       = knight_growth_per_level[KNIGHT_LCK][i]; 
-        
-        printf("knight agi stat growth: %.2f\n", class_stat_growth[0].agility.growth_per_level[i]);
-    }
+    Class_InitStatBaseline(&class_stat_growth[0], knight_stat_baseline);
+    Class_InitStatGrowthPerLevel(&class_stat_growth[0], knight_growth_per_level);
 
     typedef struct
     {
@@ -5617,14 +5489,9 @@ int main(int argc, char *argv[])
         SDL_RenderPresent(SDLWindow.Renderer);
     }
 
+    // TODO: Store objecst in their own respecitive block of mem then free
     DestroyCamera(); 
-    for (i32 i = 0; i < 3; ++i)
-    {
-        DestroyAssets(&enemy_arr[i]);
-        DestroyAssets(&enemy_arr2[i]);
-    }
     DestroyAssets(&room_asset[0]);
-    DestroyAssets(&player_asset);
     DestroyAssets(&cursor[RIGHT_CURSOR].model);
     SDL_DestroyTexture(font.atlas);
 

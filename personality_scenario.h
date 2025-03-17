@@ -46,6 +46,19 @@
 #define THEATER_OPTION_3 "Say no" 
 #define THEATER_OPTION_4 "Play dumb and tell him\nhe got the wrong person." 
 
+typedef enum
+{
+    SCENARIO_NONE       = -1,
+    SCENARIO_VILLAGE    = (1 << 0),
+    SCENARIO_MONSTER    = (1 << 1),
+    SCENARIO_FOREST     = (1 << 2),
+    SCENARIO_CAVE       = (1 << 3),
+    SCENARIO_DESERT     = (1 << 4),
+    SCENARIO_TOWER      = (1 << 5),
+    SCENARIO_THEATER    = (1 << 6),
+    SCENARIO_CASTLE     = (1 << 7),
+} scenario_type;
+
 typedef struct
 {
     i32 index; 
@@ -61,20 +74,6 @@ typedef struct
     char personality[32];
     scenario_t scenario[8];
 } personality_scenario_t; 
-
-
-typedef enum
-{
-    SCENARIO_NONE       = -1,
-    SCENARIO_VILLAGE    = (1 << 0),
-    SCENARIO_MONSTER    = (1 << 1),
-    SCENARIO_FOREST     = (1 << 2),
-    SCENARIO_CAVE       = (1 << 3),
-    SCENARIO_DESERT     = (1 << 4),
-    SCENARIO_TOWER      = (1 << 5),
-    SCENARIO_THEATER    = (1 << 6),
-    SCENARIO_CASTLE     = (1 << 7),
-} scenario_type;
 
 extern const char village_scenario[];
 extern const char desert_scenario[];

@@ -1,7 +1,7 @@
 #include "name_entry.h"
 
-#include "gui_text.h"
-#include "helper_funcs.h"
+#include "gui_font.h"
+#include "helper.h"
 
 name_entry_ascii_t ascii_to_glyph_grid[50] = {
     { { CENTER_TEXT_X("A", - 52), SCREEN_CENTER_Y - 8}, 'A', }, 
