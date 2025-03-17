@@ -32,22 +32,6 @@ typedef enum
 } class_allocation_type;
 class_allocation_type class_allocation_state = CLASS_ALLOCATION_NONE;
 
-// ENTIRELY BASED on DQ3 remaster
-// https://game8.co/games/Dragon-Quest-3/archives/464271
-typedef enum
-{
-    CLASS_PERSONALITY_RESULT_NONE,
-    CLASS_PERSONALITY_RESULT_VILLAGE,
-    CLASS_PERSONALITY_RESULT_MONSTER,
-    CLASS_PERSONALITY_RESULT_FOREST,
-    CLASS_PERSONALITY_RESULT_CAVE,
-    CLASS_PERSONALITY_RESULT_DESERT,
-    CLASS_PERSONALITY_RESULT_TOWER,
-    CLASS_PERSONALITY_RESULT_THEATER,
-    CLASS_PERSONALITY_RESULT_CASTLE,
-} character_class_personality_test_result;
-character_class_personality_test_result character_class_personality_test_result_state = CLASS_PERSONALITY_RESULT_NONE;
-
 typedef enum
 {
     CLASS_NAME_NONE,

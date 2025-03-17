@@ -1,5 +1,7 @@
 #include "personality_test.h"
 
+personality_scenario_result_type personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_NONE;
+
 const char *personality_questions[PERSONALITY_TEST_QUESTIONS] = {
     // Starting questions 
     "",
@@ -56,3 +58,417 @@ const char *personality_questions[PERSONALITY_TEST_QUESTIONS] = {
     "Do you trip on a boulder and blame youself?"
 };
 
+
+void PersonalityTest_BranchQuestions(personality_test_t *personality_test, i32 index)
+{
+    printf("confirm index: %d\n", index);
+    switch (index)
+    {
+        case 0: // yes
+        {
+            // turn into a function
+            switch (personality_test->index)
+            {
+                case 1:
+                {
+                    personality_test->index = 7;
+                } break;
+                case 2:
+                {
+                    personality_test->index = 14;
+                } break;
+                case 3:
+                {
+                    personality_test->index = 6;
+                } break;
+                case 4:
+                {
+                    personality_test->index = 15;
+                } break;
+                case 5:
+                {
+                    personality_test->index = 8;
+                } break;
+                case 6:
+                {
+                    personality_test->index = 7;
+                } break;
+                case 7:
+                {
+                    personality_test->index = 10;
+                } break;
+                case 8:
+                {
+                    personality_test->index = 10;
+                } break;
+                case 9:
+                {
+                    personality_test->index = 11;
+                } break;
+                case 10:
+                {
+                    personality_test->index = 14;
+                } break;
+                case 11:
+                {
+                    personality_test->index = 14;
+                } break;
+                case 12:
+                {
+                    personality_test->index = 31;
+                } break;
+                case 13:
+                {
+                    personality_test->index = 25;
+                } break;
+                case 14:
+                {
+                    personality_test->index = 18;
+                } break;
+                case 15:
+                {
+                    personality_test->index = 16;
+                } break;
+                case 16:
+                {
+                    personality_test->index = 17;
+                } break;
+                case 17:
+                {
+                    personality_test->index = 21;
+                } break;
+                case 18:
+                {
+                    personality_test->index = 19;
+                } break;
+                case 19:
+                {
+                    personality_test->index = 20;
+                } break;
+                case 20:
+                {
+                    personality_test->index = 21;
+                } break; 
+                case 21:
+                {
+                    personality_test->index = 23;
+                } break;
+                case 22:
+                {
+                    personality_test->index = 38;
+                } break;
+                case 23:
+                {
+                    personality_test->index = 24;
+                } break;
+                case 24:
+                {
+                    personality_test->index = 34;
+                } break;
+                case 25:
+                {
+                    personality_test->index = 31;
+                } break;
+                case 26:
+                {
+                    personality_test->index = 27;
+                } break;
+                case 27:
+                {
+                    personality_test->index = 28;
+                } break;
+                case 28:
+                {
+                    personality_test->index = 29;
+                } break;
+                case 29:
+                {
+                    personality_test->index = 30;
+                } break;
+                case 30:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_VILLAGE; // final question
+                } break;
+                case 31:
+                {
+                    personality_test->index = 32;
+                } break;
+                case 32:
+                {
+                    personality_test->index = 33;
+                } break;
+                case 33:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_DESERT; // final question
+                } break;
+                case 34:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_THEATER; //PERSONALITY_SCENARIO_RESULT_FOREST; //CLASS_PERSONALITY_RESULT_MONSTER; // final question
+                } break;
+                case 35:
+                {
+                    personality_test->index = 0; // final question
+                } break;
+                case 36:
+                {
+                    personality_test->index = 37;
+                } break;
+                case 37:
+                {
+                    personality_test->index = 43;
+                } break;
+                case 38:
+                {
+                    personality_test->index = 39;
+                } break;
+                case 39:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_TOWER;
+                } break;
+                case 40:
+                {
+                    personality_test->index = 42;
+                } break; 
+                case 41:
+                {
+                    personality_test->index = 43;
+                } break;
+                case 42:
+                {
+                    personality_test->index = 43;
+                } break;
+                case 43:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_FOREST; 
+                } break;
+                case 44:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_THEATER; 
+                } break;
+                case 45:
+                {
+                    personality_test->index = 47;
+                } break;
+                case 46:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_CAVE; 
+                } break;
+                case 47:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_CAVE; 
+                } break;
+                case 48:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_FOREST;//CLASS_PERSONALITY_RESULT_CASTLE;
+                } break;
+                case 49:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_FOREST;//CLASS_PERSONALITY_RESULT_CASTLE; 
+                } break;
+            }
+        } break;
+        case 1: // no
+        {
+            switch (personality_test->index)
+            {
+                case 1:
+                {
+                    personality_test->index = 9;
+                } break;
+                case 2:
+                {
+                    personality_test->index = 8;
+                } break;
+                case 3:
+                {
+                    personality_test->index = 8;
+                } break;
+                case 4:
+                {
+                    personality_test->index = 6;
+                } break;
+                case 5:
+                {
+                    personality_test->index = 16;
+                } break;
+                case 6:
+                {
+                    personality_test->index = 8;
+                } break;
+                case 7:
+                {
+                    personality_test->index = 5;
+                } break;
+                case 8:
+                {
+                    personality_test->index = 9;
+                } break;
+                case 9:
+                {
+                    personality_test->index = 12;
+                } break;
+                case 10:
+                {
+                    personality_test->index = 13;
+                } break;
+                case 11:
+                {
+                    personality_test->index = 13;
+                } break;
+                case 12:
+                {
+                    personality_test->index = 14;
+                } break;
+                case 13:
+                {
+                    personality_test->index = 15;
+                } break;
+                case 14:
+                {
+                    personality_test->index = 19;
+                } break;
+                case 15:
+                {
+                    personality_test->index = 20;
+                } break;
+                case 16:
+                {
+                    personality_test->index = 22;
+                } break;
+                case 17:
+                {
+                    personality_test->index = 25;
+                } break;
+                case 18:
+                {
+                    personality_test->index = 23;
+                } break;
+                case 19:
+                {
+                    personality_test->index = 25;
+                } break;
+                case 20:
+                {
+                    personality_test->index = 22;
+                } break; 
+                case 21:
+                {
+                    personality_test->index = 23;
+                } break;
+                case 22:
+                {
+                    personality_test->index = 38;
+                } break;
+                case 23:
+                { 
+                    personality_test->index = 40;
+                } break;
+                case 24:
+                {
+                    personality_test->index = 25;
+                } break;
+                case 25:
+                {
+                    personality_test->index = 26;
+                } break;
+                case 26:
+                {
+                    personality_test->index = 28;
+                } break;
+                case 27:
+                {
+                    personality_test->index = 29;
+                } break;
+                case 28:
+                {
+                    personality_test->index = 30;
+                } break;
+                case 29:
+                {
+                    personality_test->index = 30;
+                } break;
+                case 30:
+                {
+                    personality_test->index = 40; 
+                } break;
+                case 31:
+                {
+                    personality_test->index = 34;
+                } break;
+                case 32:
+                {
+                    personality_test->index = 36;
+                } break;
+                case 33:
+                {
+                    personality_test->index = 36;
+                } break;
+                case 34:
+                {
+                    personality_test->index = 36;
+                } break;
+                case 35:
+                {
+                    personality_test->index = 36; 
+                } break;
+                case 36:
+                {
+                    personality_test->index = 48;
+                } break;
+                case 37:
+                {
+                    personality_test->index = 49;
+                } break;
+                case 38:
+                {
+                    personality_test->index = 40;
+                } break;
+                case 39:
+                {
+                    personality_test->index = 41; 
+                } break;
+                case 40:
+                {
+                    personality_test->index = 41;
+                } break; 
+                case 41:
+                {
+                    personality_test->index = 42;
+                } break;
+                case 42:
+                {
+                    personality_test->index = 44;
+                } break;
+                case 43:
+                {
+                    personality_test->index = 45; 
+                } break;
+                case 44:
+                {
+                    personality_test->index = 45;
+                } break;
+                case 45:
+                {
+                    personality_test->index = 46;
+                } break;
+                case 46:
+                {
+                    personality_test->index = 47; 
+                } break;
+                case 47:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_THEATER; 
+                } break;
+                case 48:
+                {
+                    personality_test->index = 49;
+                } break;
+                case 49:
+                {
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_CAVE;
+                } break;
+            }
+        } break;
+    }
+
+}

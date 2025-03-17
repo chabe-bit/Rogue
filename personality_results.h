@@ -62,10 +62,11 @@ extern personality_types personality_types_state;
 
 typedef struct 
 {
+    bool load_results;
     int x_coords[PERSONALITY_DESCRIPTION_SIZE];
+    SDL_Color colors[8];
     char *scenario;
     char *name;
-    SDL_Color colors[10];
     char *description[PERSONALITY_DESCRIPTION_SIZE];
 } personality_results_t;
 

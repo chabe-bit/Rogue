@@ -7,8 +7,8 @@
 #define PALADIN_ID  1
 #define WIZARD_ID   2
 #define ARCHER_ID   3
-
-
+    
+// Base stats of each class from here: https://dragon-quest.org/wiki/List_of_vocations_in_Dragon_Quest_III#The_vocations
 typedef struct
 {
     i32 index; // Iterate over for player to select
