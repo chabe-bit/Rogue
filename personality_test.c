@@ -203,7 +203,7 @@ void PersonalityTest_BranchQuestions(personality_test_t *personality_test, i32 i
                 } break;
                 case 34:
                 {
-                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_THEATER; //PERSONALITY_SCENARIO_RESULT_FOREST; //CLASS_PERSONALITY_RESULT_MONSTER; // final question
+                    personality_scenario_result_state = PERSONALITY_SCENARIO_RESULT_FOREST; //CLASS_PERSONALITY_RESULT_MONSTER; // final question
                 } break;
                 case 35:
                 {
