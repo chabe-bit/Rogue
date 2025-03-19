@@ -295,7 +295,11 @@ void AABB_LOSResolution(asset_t *A, asset_t *B, font_t *font)
         printf("in los range!\n");
         
         // Initiate combat mode!
-        
+        RenderText(SDLWindow.Renderer, font->atlas,
+                   SET_TEXT_CENTER_X("COMBAT MODE", 0),
+                   SCREEN_CENTER_Y,
+                   "COMBAT MODE",
+                   font->color[COLOR_WHITE]); 
     }
 }
 
