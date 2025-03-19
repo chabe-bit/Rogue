@@ -4,149 +4,149 @@
 #include "helper.h"
 
 name_entry_ascii_t ascii_to_glyph_grid[50] = {
-    { { CENTER_TEXT_X("A", - 52), SCREEN_CENTER_Y - 8}, 'A', }, 
-    { { CENTER_TEXT_X("B", - 40), SCREEN_CENTER_Y - 8}, 'B', },
-    { { CENTER_TEXT_X("C", - 28), SCREEN_CENTER_Y - 8}, 'C', }, 
-    { { CENTER_TEXT_X("D", - 16), SCREEN_CENTER_Y - 8}, 'D', }, 
-    { { CENTER_TEXT_X("E", - 4),  SCREEN_CENTER_Y - 8}, 'E', }, 
-    { { CENTER_TEXT_X("F", + 16), SCREEN_CENTER_Y - 8}, 'F', }, 
-    { { CENTER_TEXT_X("G", + 28), SCREEN_CENTER_Y - 8}, 'G', }, 
-    { { CENTER_TEXT_X("H", + 40), SCREEN_CENTER_Y - 8}, 'H', }, 
-    { { CENTER_TEXT_X("I", + 52), SCREEN_CENTER_Y - 8}, 'I', }, 
-    { { CENTER_TEXT_X("J", + 64), SCREEN_CENTER_Y - 8}, 'J', }, 
+    { { SET_TEXT_CENTER_X("A", - 52), SCREEN_CENTER_Y - 8}, 'A', }, 
+    { { SET_TEXT_CENTER_X("B", - 40), SCREEN_CENTER_Y - 8}, 'B', },
+    { { SET_TEXT_CENTER_X("C", - 28), SCREEN_CENTER_Y - 8}, 'C', }, 
+    { { SET_TEXT_CENTER_X("D", - 16), SCREEN_CENTER_Y - 8}, 'D', }, 
+    { { SET_TEXT_CENTER_X("E", - 4),  SCREEN_CENTER_Y - 8}, 'E', }, 
+    { { SET_TEXT_CENTER_X("F", + 16), SCREEN_CENTER_Y - 8}, 'F', }, 
+    { { SET_TEXT_CENTER_X("G", + 28), SCREEN_CENTER_Y - 8}, 'G', }, 
+    { { SET_TEXT_CENTER_X("H", + 40), SCREEN_CENTER_Y - 8}, 'H', }, 
+    { { SET_TEXT_CENTER_X("I", + 52), SCREEN_CENTER_Y - 8}, 'I', }, 
+    { { SET_TEXT_CENTER_X("J", + 64), SCREEN_CENTER_Y - 8}, 'J', }, 
 
-    { { CENTER_TEXT_X("K", - 52), SCREEN_CENTER_Y + 2}, 'K', }, 
-    { { CENTER_TEXT_X("L", - 40), SCREEN_CENTER_Y + 2}, 'L', }, 
-    { { CENTER_TEXT_X("M", - 28), SCREEN_CENTER_Y + 2}, 'M', }, 
-    { { CENTER_TEXT_X("N", - 16), SCREEN_CENTER_Y + 2}, 'N', }, 
-    { { CENTER_TEXT_X("O", - 4),  SCREEN_CENTER_Y + 2}, 'O', }, 
-    { { CENTER_TEXT_X("P", + 16), SCREEN_CENTER_Y + 2}, 'P', }, 
-    { { CENTER_TEXT_X("Q", + 28), SCREEN_CENTER_Y + 2}, 'Q', }, 
-    { { CENTER_TEXT_X("R", + 40), SCREEN_CENTER_Y + 2}, 'R', }, 
-    { { CENTER_TEXT_X("S", + 52), SCREEN_CENTER_Y + 2}, 'S', }, 
-    { { CENTER_TEXT_X("T", + 64), SCREEN_CENTER_Y + 2}, 'T', },
+    { { SET_TEXT_CENTER_X("K", - 52), SCREEN_CENTER_Y + 2}, 'K', }, 
+    { { SET_TEXT_CENTER_X("L", - 40), SCREEN_CENTER_Y + 2}, 'L', }, 
+    { { SET_TEXT_CENTER_X("M", - 28), SCREEN_CENTER_Y + 2}, 'M', }, 
+    { { SET_TEXT_CENTER_X("N", - 16), SCREEN_CENTER_Y + 2}, 'N', }, 
+    { { SET_TEXT_CENTER_X("O", - 4),  SCREEN_CENTER_Y + 2}, 'O', }, 
+    { { SET_TEXT_CENTER_X("P", + 16), SCREEN_CENTER_Y + 2}, 'P', }, 
+    { { SET_TEXT_CENTER_X("Q", + 28), SCREEN_CENTER_Y + 2}, 'Q', }, 
+    { { SET_TEXT_CENTER_X("R", + 40), SCREEN_CENTER_Y + 2}, 'R', }, 
+    { { SET_TEXT_CENTER_X("S", + 52), SCREEN_CENTER_Y + 2}, 'S', }, 
+    { { SET_TEXT_CENTER_X("T", + 64), SCREEN_CENTER_Y + 2}, 'T', },
 
-    { { CENTER_TEXT_X("U", - 52), SCREEN_CENTER_Y + 14}, 'U', }, 
-    { { CENTER_TEXT_X("V", - 40), SCREEN_CENTER_Y + 14}, 'V', }, 
-    { { CENTER_TEXT_X("W", - 28), SCREEN_CENTER_Y + 14}, 'W', }, 
-    { { CENTER_TEXT_X("X", - 16), SCREEN_CENTER_Y + 14}, 'X', }, 
-    { { CENTER_TEXT_X("Y", - 4),  SCREEN_CENTER_Y + 14}, 'Y', }, 
-    { { CENTER_TEXT_X("Z", + 16), SCREEN_CENTER_Y + 14}, 'Z', }, 
-    { { CENTER_TEXT_X("", + 28),  SCREEN_CENTER_Y + 14}, ' ', }, // Unused 
-    { { CENTER_TEXT_X("", + 40),  SCREEN_CENTER_Y + 14}, ' ', }, // Unused
-    { { CENTER_TEXT_X("", + 52),  SCREEN_CENTER_Y + 14}, ' ', }, // Unused
-    { { CENTER_TEXT_X("", + 64),  SCREEN_CENTER_Y + 14}, ' ', }, // Unused
+    { { SET_TEXT_CENTER_X("U", - 52), SCREEN_CENTER_Y + 14}, 'U', }, 
+    { { SET_TEXT_CENTER_X("V", - 40), SCREEN_CENTER_Y + 14}, 'V', }, 
+    { { SET_TEXT_CENTER_X("W", - 28), SCREEN_CENTER_Y + 14}, 'W', }, 
+    { { SET_TEXT_CENTER_X("X", - 16), SCREEN_CENTER_Y + 14}, 'X', }, 
+    { { SET_TEXT_CENTER_X("Y", - 4),  SCREEN_CENTER_Y + 14}, 'Y', }, 
+    { { SET_TEXT_CENTER_X("Z", + 16), SCREEN_CENTER_Y + 14}, 'Z', }, 
+    { { SET_TEXT_CENTER_X("", + 28),  SCREEN_CENTER_Y + 14}, ' ', }, // Unused 
+    { { SET_TEXT_CENTER_X("", + 40),  SCREEN_CENTER_Y + 14}, ' ', }, // Unused
+    { { SET_TEXT_CENTER_X("", + 52),  SCREEN_CENTER_Y + 14}, ' ', }, // Unused
+    { { SET_TEXT_CENTER_X("", + 64),  SCREEN_CENTER_Y + 14}, ' ', }, // Unused
 
 
     // Special characters 
-    { { CENTER_TEXT_X("[", - 52), SCREEN_CENTER_Y + 26}, '[', }, 
-    { { CENTER_TEXT_X("]", - 40), SCREEN_CENTER_Y + 26}, ']', }, 
-    { { CENTER_TEXT_X(".", - 28), SCREEN_CENTER_Y + 26}, '.', }, 
-    { { CENTER_TEXT_X(",", - 16), SCREEN_CENTER_Y + 26}, ',', }, 
-    { { CENTER_TEXT_X("!", - 4),  SCREEN_CENTER_Y + 26}, '!', }, 
-    { { CENTER_TEXT_X("?", + 16), SCREEN_CENTER_Y + 26}, '?', }, 
-    { { CENTER_TEXT_X("-", + 28), SCREEN_CENTER_Y + 26}, '-', }, 
-    { { CENTER_TEXT_X("_", + 40), SCREEN_CENTER_Y + 26}, '_', }, 
-    { { CENTER_TEXT_X(":", + 52), SCREEN_CENTER_Y + 26}, ':', }, 
-    { { CENTER_TEXT_X(";", + 60), SCREEN_CENTER_Y + 26}, ';', }, 
+    { { SET_TEXT_CENTER_X("[", - 52), SCREEN_CENTER_Y + 26}, '[', }, 
+    { { SET_TEXT_CENTER_X("]", - 40), SCREEN_CENTER_Y + 26}, ']', }, 
+    { { SET_TEXT_CENTER_X(".", - 28), SCREEN_CENTER_Y + 26}, '.', }, 
+    { { SET_TEXT_CENTER_X(",", - 16), SCREEN_CENTER_Y + 26}, ',', }, 
+    { { SET_TEXT_CENTER_X("!", - 4),  SCREEN_CENTER_Y + 26}, '!', }, 
+    { { SET_TEXT_CENTER_X("?", + 16), SCREEN_CENTER_Y + 26}, '?', }, 
+    { { SET_TEXT_CENTER_X("-", + 28), SCREEN_CENTER_Y + 26}, '-', }, 
+    { { SET_TEXT_CENTER_X("_", + 40), SCREEN_CENTER_Y + 26}, '_', }, 
+    { { SET_TEXT_CENTER_X(":", + 52), SCREEN_CENTER_Y + 26}, ':', }, 
+    { { SET_TEXT_CENTER_X(";", + 60), SCREEN_CENTER_Y + 26}, ';', }, 
     
     // Nums
-    { { CENTER_TEXT_X("0", - 52), SCREEN_CENTER_Y + 38}, '0', }, 
-    { { CENTER_TEXT_X("1", - 40), SCREEN_CENTER_Y + 38}, '1', }, 
-    { { CENTER_TEXT_X("2", - 28), SCREEN_CENTER_Y + 38}, '2', }, 
-    { { CENTER_TEXT_X("3", - 16), SCREEN_CENTER_Y + 38}, '3', }, 
-    { { CENTER_TEXT_X("4", - 4),  SCREEN_CENTER_Y + 38}, '4', }, 
-    { { CENTER_TEXT_X("5", + 16), SCREEN_CENTER_Y + 38}, '5', }, 
-    { { CENTER_TEXT_X("6", + 28), SCREEN_CENTER_Y + 38}, '6', }, 
-    { { CENTER_TEXT_X("7", + 40), SCREEN_CENTER_Y + 38}, '7', }, 
-    { { CENTER_TEXT_X("8", + 52), SCREEN_CENTER_Y + 38}, '8', }, 
-    { { CENTER_TEXT_X("9", + 64), SCREEN_CENTER_Y + 38}, '9', },
+    { { SET_TEXT_CENTER_X("0", - 52), SCREEN_CENTER_Y + 38}, '0', }, 
+    { { SET_TEXT_CENTER_X("1", - 40), SCREEN_CENTER_Y + 38}, '1', }, 
+    { { SET_TEXT_CENTER_X("2", - 28), SCREEN_CENTER_Y + 38}, '2', }, 
+    { { SET_TEXT_CENTER_X("3", - 16), SCREEN_CENTER_Y + 38}, '3', }, 
+    { { SET_TEXT_CENTER_X("4", - 4),  SCREEN_CENTER_Y + 38}, '4', }, 
+    { { SET_TEXT_CENTER_X("5", + 16), SCREEN_CENTER_Y + 38}, '5', }, 
+    { { SET_TEXT_CENTER_X("6", + 28), SCREEN_CENTER_Y + 38}, '6', }, 
+    { { SET_TEXT_CENTER_X("7", + 40), SCREEN_CENTER_Y + 38}, '7', }, 
+    { { SET_TEXT_CENTER_X("8", + 52), SCREEN_CENTER_Y + 38}, '8', }, 
+    { { SET_TEXT_CENTER_X("9", + 64), SCREEN_CENTER_Y + 38}, '9', },
 };
 
 name_entry_glyph_t glyph_grid[60] = {
     // 10x6 grid
     // Every glyph has a padding of 12px around itself
-    { { CENTER_TEXT_X("A", - 52), SCREEN_CENTER_Y - 8}, "A", }, 
-    { { CENTER_TEXT_X("B", - 40), SCREEN_CENTER_Y - 8}, "B", },
-    { { CENTER_TEXT_X("C", - 28), SCREEN_CENTER_Y - 8}, "C", }, 
-    { { CENTER_TEXT_X("D", - 16), SCREEN_CENTER_Y - 8}, "D", }, 
-    { { CENTER_TEXT_X("E", - 4),  SCREEN_CENTER_Y - 8}, "E", }, 
-    { { CENTER_TEXT_X("F", + 16), SCREEN_CENTER_Y - 8}, "F", }, 
-    { { CENTER_TEXT_X("G", + 28), SCREEN_CENTER_Y - 8}, "G", }, 
-    { { CENTER_TEXT_X("H", + 40), SCREEN_CENTER_Y - 8}, "H", }, 
-    { { CENTER_TEXT_X("I", + 52), SCREEN_CENTER_Y - 8}, "I", }, 
-    { { CENTER_TEXT_X("J", + 64), SCREEN_CENTER_Y - 8}, "J", }, 
+    { { SET_TEXT_CENTER_X("A", - 52), SCREEN_CENTER_Y - 8}, "A", }, 
+    { { SET_TEXT_CENTER_X("B", - 40), SCREEN_CENTER_Y - 8}, "B", },
+    { { SET_TEXT_CENTER_X("C", - 28), SCREEN_CENTER_Y - 8}, "C", }, 
+    { { SET_TEXT_CENTER_X("D", - 16), SCREEN_CENTER_Y - 8}, "D", }, 
+    { { SET_TEXT_CENTER_X("E", - 4),  SCREEN_CENTER_Y - 8}, "E", }, 
+    { { SET_TEXT_CENTER_X("F", + 16), SCREEN_CENTER_Y - 8}, "F", }, 
+    { { SET_TEXT_CENTER_X("G", + 28), SCREEN_CENTER_Y - 8}, "G", }, 
+    { { SET_TEXT_CENTER_X("H", + 40), SCREEN_CENTER_Y - 8}, "H", }, 
+    { { SET_TEXT_CENTER_X("I", + 52), SCREEN_CENTER_Y - 8}, "I", }, 
+    { { SET_TEXT_CENTER_X("J", + 64), SCREEN_CENTER_Y - 8}, "J", }, 
 
-    { { CENTER_TEXT_X("K", - 52), SCREEN_CENTER_Y + 2}, "K", }, 
-    { { CENTER_TEXT_X("L", - 40), SCREEN_CENTER_Y + 2}, "L", }, 
-    { { CENTER_TEXT_X("M", - 28), SCREEN_CENTER_Y + 2}, "M", }, 
-    { { CENTER_TEXT_X("N", - 16), SCREEN_CENTER_Y + 2}, "N", }, 
-    { { CENTER_TEXT_X("O", - 4),  SCREEN_CENTER_Y + 2}, "O", }, 
-    { { CENTER_TEXT_X("P", + 16), SCREEN_CENTER_Y + 2}, "P", }, 
-    { { CENTER_TEXT_X("Q", + 28), SCREEN_CENTER_Y + 2}, "Q", }, 
-    { { CENTER_TEXT_X("R", + 40), SCREEN_CENTER_Y + 2}, "R", }, 
-    { { CENTER_TEXT_X("S", + 52), SCREEN_CENTER_Y + 2}, "S", }, 
-    { { CENTER_TEXT_X("T", + 64), SCREEN_CENTER_Y + 2}, "T", },
+    { { SET_TEXT_CENTER_X("K", - 52), SCREEN_CENTER_Y + 2}, "K", }, 
+    { { SET_TEXT_CENTER_X("L", - 40), SCREEN_CENTER_Y + 2}, "L", }, 
+    { { SET_TEXT_CENTER_X("M", - 28), SCREEN_CENTER_Y + 2}, "M", }, 
+    { { SET_TEXT_CENTER_X("N", - 16), SCREEN_CENTER_Y + 2}, "N", }, 
+    { { SET_TEXT_CENTER_X("O", - 4),  SCREEN_CENTER_Y + 2}, "O", }, 
+    { { SET_TEXT_CENTER_X("P", + 16), SCREEN_CENTER_Y + 2}, "P", }, 
+    { { SET_TEXT_CENTER_X("Q", + 28), SCREEN_CENTER_Y + 2}, "Q", }, 
+    { { SET_TEXT_CENTER_X("R", + 40), SCREEN_CENTER_Y + 2}, "R", }, 
+    { { SET_TEXT_CENTER_X("S", + 52), SCREEN_CENTER_Y + 2}, "S", }, 
+    { { SET_TEXT_CENTER_X("T", + 64), SCREEN_CENTER_Y + 2}, "T", },
 
-    { { CENTER_TEXT_X("U", - 52), SCREEN_CENTER_Y + 14}, "U", }, 
-    { { CENTER_TEXT_X("V", - 40), SCREEN_CENTER_Y + 14}, "V", }, 
-    { { CENTER_TEXT_X("W", - 28), SCREEN_CENTER_Y + 14}, "W", }, 
-    { { CENTER_TEXT_X("X", - 16), SCREEN_CENTER_Y + 14}, "X", }, 
-    { { CENTER_TEXT_X("Y", - 4),  SCREEN_CENTER_Y + 14}, "Y", }, 
-    { { CENTER_TEXT_X("Z", + 16), SCREEN_CENTER_Y + 14}, "Z", }, 
-    { { CENTER_TEXT_X("", + 28),  SCREEN_CENTER_Y + 14}, "", }, // Unused 
-    { { CENTER_TEXT_X("", + 40),  SCREEN_CENTER_Y + 14}, "", }, // Unused
-    { { CENTER_TEXT_X("", + 52),  SCREEN_CENTER_Y + 14}, "", }, // Unused
-    { { CENTER_TEXT_X("", + 64),  SCREEN_CENTER_Y + 14}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("U", - 52), SCREEN_CENTER_Y + 14}, "U", }, 
+    { { SET_TEXT_CENTER_X("V", - 40), SCREEN_CENTER_Y + 14}, "V", }, 
+    { { SET_TEXT_CENTER_X("W", - 28), SCREEN_CENTER_Y + 14}, "W", }, 
+    { { SET_TEXT_CENTER_X("X", - 16), SCREEN_CENTER_Y + 14}, "X", }, 
+    { { SET_TEXT_CENTER_X("Y", - 4),  SCREEN_CENTER_Y + 14}, "Y", }, 
+    { { SET_TEXT_CENTER_X("Z", + 16), SCREEN_CENTER_Y + 14}, "Z", }, 
+    { { SET_TEXT_CENTER_X("", + 28),  SCREEN_CENTER_Y + 14}, "", }, // Unused 
+    { { SET_TEXT_CENTER_X("", + 40),  SCREEN_CENTER_Y + 14}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("", + 52),  SCREEN_CENTER_Y + 14}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("", + 64),  SCREEN_CENTER_Y + 14}, "", }, // Unused
 
 
     // Special characters 
-    { { CENTER_TEXT_X("[", - 52), SCREEN_CENTER_Y + 26}, "[", }, 
-    { { CENTER_TEXT_X("]", - 40), SCREEN_CENTER_Y + 26}, "]", }, 
-    { { CENTER_TEXT_X(".", - 28), SCREEN_CENTER_Y + 26}, ".", }, 
-    { { CENTER_TEXT_X(",", - 16), SCREEN_CENTER_Y + 26}, ",", }, 
-    { { CENTER_TEXT_X("!", - 4),  SCREEN_CENTER_Y + 26}, "!", }, 
-    { { CENTER_TEXT_X("?", + 16), SCREEN_CENTER_Y + 26}, "?", }, 
-    { { CENTER_TEXT_X("-", + 28), SCREEN_CENTER_Y + 26}, "-", }, 
-    { { CENTER_TEXT_X("_", + 40), SCREEN_CENTER_Y + 26}, "_", }, 
-    { { CENTER_TEXT_X(":", + 52), SCREEN_CENTER_Y + 26}, ":", }, 
-    { { CENTER_TEXT_X(";", + 60), SCREEN_CENTER_Y + 26}, ";", }, 
+    { { SET_TEXT_CENTER_X("[", - 52), SCREEN_CENTER_Y + 26}, "[", }, 
+    { { SET_TEXT_CENTER_X("]", - 40), SCREEN_CENTER_Y + 26}, "]", }, 
+    { { SET_TEXT_CENTER_X(".", - 28), SCREEN_CENTER_Y + 26}, ".", }, 
+    { { SET_TEXT_CENTER_X(",", - 16), SCREEN_CENTER_Y + 26}, ",", }, 
+    { { SET_TEXT_CENTER_X("!", - 4),  SCREEN_CENTER_Y + 26}, "!", }, 
+    { { SET_TEXT_CENTER_X("?", + 16), SCREEN_CENTER_Y + 26}, "?", }, 
+    { { SET_TEXT_CENTER_X("-", + 28), SCREEN_CENTER_Y + 26}, "-", }, 
+    { { SET_TEXT_CENTER_X("_", + 40), SCREEN_CENTER_Y + 26}, "_", }, 
+    { { SET_TEXT_CENTER_X(":", + 52), SCREEN_CENTER_Y + 26}, ":", }, 
+    { { SET_TEXT_CENTER_X(";", + 60), SCREEN_CENTER_Y + 26}, ";", }, 
     
     // Nums
-    { { CENTER_TEXT_X("0", - 52), SCREEN_CENTER_Y + 38}, "0", }, 
-    { { CENTER_TEXT_X("1", - 40), SCREEN_CENTER_Y + 38}, "1", }, 
-    { { CENTER_TEXT_X("2", - 28), SCREEN_CENTER_Y + 38}, "2", }, 
-    { { CENTER_TEXT_X("3", - 16), SCREEN_CENTER_Y + 38}, "3", }, 
-    { { CENTER_TEXT_X("4", - 4),  SCREEN_CENTER_Y + 38}, "4", }, 
-    { { CENTER_TEXT_X("5", + 16), SCREEN_CENTER_Y + 38}, "5", }, 
-    { { CENTER_TEXT_X("6", + 28), SCREEN_CENTER_Y + 38}, "6", }, 
-    { { CENTER_TEXT_X("7", + 40), SCREEN_CENTER_Y + 38}, "7", }, 
-    { { CENTER_TEXT_X("8", + 52), SCREEN_CENTER_Y + 38}, "8", }, 
-    { { CENTER_TEXT_X("9", + 64), SCREEN_CENTER_Y + 38}, "9", },
+    { { SET_TEXT_CENTER_X("0", - 52), SCREEN_CENTER_Y + 38}, "0", }, 
+    { { SET_TEXT_CENTER_X("1", - 40), SCREEN_CENTER_Y + 38}, "1", }, 
+    { { SET_TEXT_CENTER_X("2", - 28), SCREEN_CENTER_Y + 38}, "2", }, 
+    { { SET_TEXT_CENTER_X("3", - 16), SCREEN_CENTER_Y + 38}, "3", }, 
+    { { SET_TEXT_CENTER_X("4", - 4),  SCREEN_CENTER_Y + 38}, "4", }, 
+    { { SET_TEXT_CENTER_X("5", + 16), SCREEN_CENTER_Y + 38}, "5", }, 
+    { { SET_TEXT_CENTER_X("6", + 28), SCREEN_CENTER_Y + 38}, "6", }, 
+    { { SET_TEXT_CENTER_X("7", + 40), SCREEN_CENTER_Y + 38}, "7", }, 
+    { { SET_TEXT_CENTER_X("8", + 52), SCREEN_CENTER_Y + 38}, "8", }, 
+    { { SET_TEXT_CENTER_X("9", + 64), SCREEN_CENTER_Y + 38}, "9", },
 
-    { { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
-    { { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
-    { { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
-    { { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
-    { { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
-    { { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
-    { { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
-    { { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
-    { { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
-    { { CENTER_TEXT_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "Confirm", }
+    { { SET_TEXT_CENTER_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "", }, // Unused
+    { { SET_TEXT_CENTER_X("Confirm", 88), SCREEN_CENTER_Y + 96}, "Confirm", }
 };
 
 name_entry_bar_t name_entry_bar[NAME_ENTRY_LIMIT] = {
-    { { CENTER_TEXT_X("_", - 32), SCREEN_CENTER_Y - 28 }, "", "_", }, 
-    { { CENTER_TEXT_X("_", - 24), SCREEN_CENTER_Y - 28 }, "", "_", }, 
-    { { CENTER_TEXT_X("_", - 15), SCREEN_CENTER_Y - 28 }, "", "_", }, 
-    { { CENTER_TEXT_X("_", - 8),  SCREEN_CENTER_Y - 28 }, "", "_", }, 
-    { { CENTER_TEXT_X("_", - 0),  SCREEN_CENTER_Y - 28 }, "", "_", }, 
-    { { CENTER_TEXT_X("_", + 8),  SCREEN_CENTER_Y - 28 }, "", "_", }, 
-    { { CENTER_TEXT_X("_", + 16), SCREEN_CENTER_Y - 28 }, "", "_", }, 
-    { { CENTER_TEXT_X("_", + 24), SCREEN_CENTER_Y - 28 }, "", "_", }, 
-    { { CENTER_TEXT_X("_", + 32), SCREEN_CENTER_Y - 28 }, "", "_", }, 
-    { { CENTER_TEXT_X("_", + 40), SCREEN_CENTER_Y - 28 }, "", "_", }, 
+    { { SET_TEXT_CENTER_X("_", - 32), SCREEN_CENTER_Y - 28 }, "", "_", }, 
+    { { SET_TEXT_CENTER_X("_", - 24), SCREEN_CENTER_Y - 28 }, "", "_", }, 
+    { { SET_TEXT_CENTER_X("_", - 15), SCREEN_CENTER_Y - 28 }, "", "_", }, 
+    { { SET_TEXT_CENTER_X("_", - 8),  SCREEN_CENTER_Y - 28 }, "", "_", }, 
+    { { SET_TEXT_CENTER_X("_", - 0),  SCREEN_CENTER_Y - 28 }, "", "_", }, 
+    { { SET_TEXT_CENTER_X("_", + 8),  SCREEN_CENTER_Y - 28 }, "", "_", }, 
+    { { SET_TEXT_CENTER_X("_", + 16), SCREEN_CENTER_Y - 28 }, "", "_", }, 
+    { { SET_TEXT_CENTER_X("_", + 24), SCREEN_CENTER_Y - 28 }, "", "_", }, 
+    { { SET_TEXT_CENTER_X("_", + 32), SCREEN_CENTER_Y - 28 }, "", "_", }, 
+    { { SET_TEXT_CENTER_X("_", + 40), SCREEN_CENTER_Y - 28 }, "", "_", }, 
 };
 
 void NameEntry_Init(name_entry_t *name_entry)

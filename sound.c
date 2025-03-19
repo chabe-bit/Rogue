@@ -222,23 +222,23 @@ void Sound_LoadWavFile(sound_wav_t *wav, const char *filename, sound_wav_audio_t
 void Sound_InitSettings(sound_settings_t *sound_settings)
 {
     sound_settings->options[0].text = "Master";
-    sound_settings->options[0].x = CENTER_TEXT_X(sound_settings->options[0].text, 0);
+    sound_settings->options[0].x = SET_TEXT_CENTER_X(sound_settings->options[0].text, 0);
     sound_settings->options[0].y = SCREEN_CENTER_Y + 0;
 
     sound_settings->options[1].text = "Music";
-    sound_settings->options[1].x = CENTER_TEXT_X(sound_settings->options[1].text, 0);
+    sound_settings->options[1].x = SET_TEXT_CENTER_X(sound_settings->options[1].text, 0);
     sound_settings->options[1].y = SCREEN_CENTER_Y + 24;
 
     sound_settings->options[2].text = "SFX";
-    sound_settings->options[2].x = CENTER_TEXT_X(sound_settings->options[2].text, 0);
+    sound_settings->options[2].x = SET_TEXT_CENTER_X(sound_settings->options[2].text, 0);
     sound_settings->options[2].y = SCREEN_CENTER_Y + 48;
 
     sound_settings->options[3].text = "Apply";
-    sound_settings->options[3].x = CENTER_TEXT_X(sound_settings->options[3].text, 96);
+    sound_settings->options[3].x = SET_TEXT_CENTER_X(sound_settings->options[3].text, 96);
     sound_settings->options[3].y = SCREEN_CENTER_Y + 96;
 
     sound_settings->options[4].text = "Back";
-    sound_settings->options[4].x = CENTER_TEXT_X(sound_settings->options[4].text, -96);
+    sound_settings->options[4].x = SET_TEXT_CENTER_X(sound_settings->options[4].text, -96);
     sound_settings->options[4].y = SCREEN_CENTER_Y + 96;
     
     sound_settings->volume_body[0].x = SCREEN_CENTER_X - ((96/2));

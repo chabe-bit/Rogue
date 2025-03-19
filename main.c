@@ -44,6 +44,12 @@ typedef struct
 
 typedef struct
 {
+    SDL_Color color[MAX_COLOR];
+    SDL_Texture *atlas;
+} font_t;
+
+typedef struct
+{
     bool is_up;
     bool is_down;
     bool is_left;
@@ -78,8 +84,10 @@ typedef struct
 typedef struct
 {
     bool has_movement;
+    bool has_movement_priority;
     bool has_renderer;
     bool has_physics;
+    bool has_collided;
     bool is_occupied;
 } asset_conditions_t; // temp 
 
@@ -200,69 +208,139 @@ asset_t IdealLoadAsset(const char *filename)
     return asset;
 }
 
-bool AABB_Detection(SDL_Rect *a, SDL_Rect *b)
+bool AABB_Detection(SDL_Rect *A, SDL_Rect *B)
 {
-    if(a->y + a->h <= b->y) 
+    if(A->y + A->h <= B->y) 
         return false;
 
-    if(a->y >= b->y + b->h) 
+    if(A->y >= B->y + B->h) 
         return false;
 
-    if(a->x + a->w <= b->x) 
+    if(A->x + A->w <= B->x) 
         return false;
 
-    if(a->x >= b->x + b->w) 
+    if(A->x >= B->x + B->w) 
         return false;
 
     return true;
 }
 
-void AABB_Resolution(asset_t *a, asset_t *b)
+void AABB_Resolution(asset_t *A, asset_t *B)
 {
-    if (AABB_Detection(&a->body, &b->body) && 
-        (a->conditions.has_physics && b->conditions.has_physics))
+    if (AABB_Detection(&A->body, &B->body) && 
+        (A->conditions.has_physics && B->conditions.has_physics))
     {
-        a->body.x = a->x;
-    }
+        A->body.x = A->x;
+        A->body.y = A->y;
 
-    if (AABB_Detection(&a->body, &b->body) &&
-        (a->conditions.has_physics && b->conditions.has_physics))
-    {
-        a->body.y = a->y;
+        if (B->conditions.has_movement)
+            B->conditions.has_movement = false;
+
     }
-}
-/*
-void 
-CombatCheck(asset_t *player, asset_t* asset)
-{
-    if (AABB_Detection(&player->body, &asset->body) && asset->conditions.has_physics)
+    else
     {
-        player->conditions.is_attacking = true;
-        asset->conditions.is_under_attack = true;
+        B->conditions.has_movement = true;
     }
 }
 
-void
-CombatUpdate(asset_t *player, asset_t *asset, sound_wav_t *sound) 
+void AABB_AdjHitboxResolution(asset_t *A, asset_t *B)
 {
-    if (asset->conditions.is_under_attack)
+    // Ideal function for combat; for example, if an enemy intiates combat
+    // with the player via melee, the AI of the enemy is to stay and attack, 
+    // where the player has the choice to fight or flee, and is not 'locked'.
+    // Enemy is released through flee AI.
+    
+    // If Asset B enters the adjacent hitbox of Asset A, Asset B caanot 
+    // move until Asset A releases it by moving or is released from some other
+    // condition. 
+    if ((AABB_Detection(&A->adjacent_hitboxes[0], &B->body)) ||
+         (AABB_Detection(&A->adjacent_hitboxes[1], &B->body)) ||
+         (AABB_Detection(&A->adjacent_hitboxes[2], &B->body)) ||
+         (AABB_Detection(&A->adjacent_hitboxes[3], &B->body)) ||
+         (AABB_Detection(&A->body, &B->body)))
     {
-       if (asset->stats.hp <= 0)
+        // Push back collision 
+        B->body.x = B->x;
+        B->body.y = B->y;
+
+        // Asset A's collision with Asset B is handled here
+        if (AABB_Detection(&A->body, &B->body))
         {
-            asset->conditions.has_physics = false;
-            player->stats.exp += asset->stats.exp;
-            printf("Player has earned: %d exp\n", player->stats.exp);
-
-            SDL_DestroyTexture(asset->texture);
-            asset->texture = NULL;    
-
+            A->body.x = A->x;
+            A->body.y = A->y;
         }
-        Sound_PlaySFX(sound);
-        asset->stats.hp -= player->stats.atk;
-        printf("enemy took %d damage \n", player->stats.atk);
+
+        // Toggles Asset B's movement off
+        if (B->conditions.has_movement)
+        {
+            B->conditions.has_movement = false;
+        }
+
+    }
+    else
+    {
+        // Releases Asset B if out of Asset A's adjacent hitbox
+        B->conditions.has_movement = true;
     }
 }
-*/
+
+void AABB_LOSResolution(asset_t *A, asset_t *B, font_t *font)
+{
+    if ((AABB_Detection(&A->los.range[0], &B->body)) ||
+     (AABB_Detection(&A->los.range[1], &B->body)) ||
+     (AABB_Detection(&A->los.range[2], &B->body)) ||
+     (AABB_Detection(&A->los.range[3], &B->body)) ||
+     (AABB_Detection(&A->body, &B->body)))
+    {
+        printf("in los range!\n");
+        
+        // Initiate combat mode!
+        
+    }
+}
+
+void AABB_ChaseRadiusResolution(asset_t *A, asset_t *B, font_t *font)
+{
+    if (AABB_Detection(&A->chase_radius.range, &B->body))
+    {
+       // printf("in chase range!\n");
+        
+        
+    }
+}
+
+bool AABB_DetectionV2(asset_t *A, asset_t *B)
+{
+    if(A->body.y + A->body.h <= B->body.y) 
+        return false;
+
+    if(A->body.y >= B->body.y + B->body.h) 
+        return false;
+
+    if(A->body.x + A->body.w <= B->body.x) 
+        return false;
+
+    if(A->body.x >= B->body.x + B->body.w) 
+        return false;
+
+    return true;
+}
+
+void AABB_ResolutionV2(asset_t *A, asset_t *B)
+{
+    if (AABB_DetectionV2(A, B) &&
+        (A->conditions.has_physics && B->conditions.has_physics))
+    {
+        A->body.x = A->x;
+        A->body.y = A->y;
+
+        B->body.x = B->x;
+        B->body.y = B->y;
+
+        A->conditions.has_collided = true;
+        B->conditions.has_collided = true;
+    }
+}
 
 typedef enum
 {
@@ -271,29 +349,6 @@ typedef enum
     ASSET_LEFT,
     ASSET_RIGHT
 } asset_index_type;
-
-void TestUpdateAssetLOS(asset_t asset)
-{
-    asset.los.range[ASSET_TOP].x = asset.body.x - SDLCamera.X; 
-    asset.los.range[ASSET_TOP].y = (asset.body.y - (24*3)) - SDLCamera.Y;
-    asset.los.range[ASSET_TOP].w = 16;
-    asset.los.range[ASSET_TOP].h = (24*3);
-
-    asset.los.range[ASSET_BOT].x = asset.body.x - SDLCamera.X; 
-    asset.los.range[ASSET_BOT].y = (asset.body.y + 24) - SDLCamera.Y;
-    asset.los.range[ASSET_BOT].w = 16;
-    asset.los.range[ASSET_BOT].h = (24*3);
-
-    asset.los.range[ASSET_LEFT].x = (asset.body.x - (16*3)) - SDLCamera.X; 
-    asset.los.range[ASSET_LEFT].y = asset.body.y - SDLCamera.Y;
-    asset.los.range[ASSET_LEFT].w = (16*3);
-    asset.los.range[ASSET_LEFT].h = 24;
-
-    asset.los.range[ASSET_RIGHT].x = (asset.body.x + 16) - SDLCamera.X; 
-    asset.los.range[ASSET_RIGHT].y = asset.body.y - SDLCamera.Y;
-    asset.los.range[ASSET_RIGHT].w = (16*3);
-    asset.los.range[ASSET_RIGHT].h = 24;
-}
 
 void UpdateAssetLOS(asset_t *asset)
 {
@@ -357,12 +412,12 @@ void UpdateAssetProperties(asset_t *asset)
     UpdateAssetChaseRadius(asset);
 }
 
-void UpdateAssetMovement(asset_t *asset, sound_wav_t *sound)
+bool UpdateAssetMovement(asset_t *asset, sound_wav_t *sound)
 {    
     // Not needed but will leave this here since we're doing 
     // this in RenderAssetInWorldSpace. 
-    asset->x = asset->body.x; 
-    asset->y = asset->body.y; 
+    //asset->x = asset->body.x; 
+    //asset->y = asset->body.y; 
 
     if (asset->conditions.has_movement)
     {
@@ -372,6 +427,8 @@ void UpdateAssetMovement(asset_t *asset, sound_wav_t *sound)
 
             Sound_PlaySFX(sound);
             asset->direction.up = false;
+
+            return true;
         }
 
         if (asset->direction.down)
@@ -380,6 +437,8 @@ void UpdateAssetMovement(asset_t *asset, sound_wav_t *sound)
            
             Sound_PlaySFX(sound);
             asset->direction.down = false;
+
+            return true;
         }
 
         if (asset->direction.left)
@@ -388,6 +447,8 @@ void UpdateAssetMovement(asset_t *asset, sound_wav_t *sound)
           
             Sound_PlaySFX(sound);
             asset->direction.left = false;
+
+            return true;
         }
 
         if (asset->direction.right)
@@ -396,10 +457,54 @@ void UpdateAssetMovement(asset_t *asset, sound_wav_t *sound)
            
             Sound_PlaySFX(sound);
             asset->direction.right = false;
+
+            return true;
         }
     }
+
+    return false;
 }
 
+typedef enum
+{
+    ASSET_NPC_UP,
+    ASSET_NPC_DOWN,
+    ASSET_NPC_LEFT,
+    ASSET_NPC_RIGHT,
+} asset_npc_movement_type;
+
+void UpdateAssetNPCMovement(asset_t *asset, sound_wav_t *sound)
+{
+    asset->x = asset->body.x; 
+    asset->y = asset->body.y;
+
+    i32 direction = 2; //rand() % 4;
+ 
+    if (asset->conditions.has_movement)
+    {
+        switch (direction)
+        {
+            case ASSET_NPC_UP:
+            {
+                asset->body.y -= asset->body.h;
+            } break;
+            case ASSET_NPC_DOWN:
+            {
+                asset->body.y += asset->body.h; 
+            } break;
+            case ASSET_NPC_LEFT:
+            {
+                asset->body.x -= asset->body.w;
+            } break;
+            case ASSET_NPC_RIGHT:
+            {
+                asset->body.x += asset->body.w; 
+            } break;
+        }
+
+    }
+
+}
 
 void UpdatePushableAsset(asset_t *asset, asset_t *player)
 {
@@ -492,6 +597,26 @@ void RenderAssetLOS(asset_t *asset)
 
 void RenderAssetAdjHitboxes(asset_t *asset)
 {
+    asset->adjacent_hitboxes[ASSET_TOP].x = asset->body.x - SDLCamera.X; 
+    asset->adjacent_hitboxes[ASSET_TOP].y = (asset->body.y - 24) - SDLCamera.Y;
+    asset->adjacent_hitboxes[ASSET_TOP].w = 16;
+    asset->adjacent_hitboxes[ASSET_TOP].h = 24;
+
+    asset->adjacent_hitboxes[ASSET_BOT].x = asset->body.x - SDLCamera.X; 
+    asset->adjacent_hitboxes[ASSET_BOT].y = (asset->body.y + 24) - SDLCamera.Y;
+    asset->adjacent_hitboxes[ASSET_BOT].w = 16;
+    asset->adjacent_hitboxes[ASSET_BOT].h = 24;
+
+    asset->adjacent_hitboxes[ASSET_LEFT].x = (asset->body.x - 16) - SDLCamera.X; 
+    asset->adjacent_hitboxes[ASSET_LEFT].y = asset->body.y - SDLCamera.Y;
+    asset->adjacent_hitboxes[ASSET_LEFT].w = 16;
+    asset->adjacent_hitboxes[ASSET_LEFT].h = 24;
+
+    asset->adjacent_hitboxes[ASSET_RIGHT].x = (asset->body.x + 16) - SDLCamera.X; 
+    asset->adjacent_hitboxes[ASSET_RIGHT].y = asset->body.y - SDLCamera.Y;
+    asset->adjacent_hitboxes[ASSET_RIGHT].w = 16;
+    asset->adjacent_hitboxes[ASSET_RIGHT].h = 24;
+
     SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
     for (int i = 0; i < 4; ++i)
     {
@@ -501,6 +626,11 @@ void RenderAssetAdjHitboxes(asset_t *asset)
 
 void RenderAssetChaseRadius(asset_t *asset)
 {
+    asset->chase_radius.range.x = (asset->body.x - asset->w * 4) - SDLCamera.X; 
+    asset->chase_radius.range.y = (asset->body.y - asset->h * 4) - SDLCamera.Y;
+    asset->chase_radius.range.w = asset->w * 9;
+    asset->chase_radius.range.h = asset->h * 9;
+
     SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
     SDL_RenderDrawRect(SDLWindow.Renderer, &asset->chase_radius.range);
 }
@@ -509,6 +639,8 @@ void RenderAssetChaseRadius(asset_t *asset)
 void RenderAssetInWorldSpace(asset_t *asset)
 {
     // Temp store asset body's current position 
+    // NOTE: This is to handle our collision detection to push the asset
+    // back into its position before the collision.
     asset->x = asset->body.x;
     asset->y = asset->body.y;
 
@@ -526,94 +658,19 @@ void RenderAssetInWorldSpace(asset_t *asset)
         }
     }
 
-    // Only render in debug mode 
-    // This is also temporary, ideally this function is not using pointers, we're only
-    // doing so because we're updating above and below, fix!
-   // RenderAssetAdjHitboxes(asset);
-   // RenderAssetChaseRadius(asset);
-  
     // Return the asset's current position into camera space
     asset->body.x = asset->x;
     asset->body.y = asset->y;
     
-    RenderAssetLOS(asset);
+   // RenderAssetLOS(asset);
+   // RenderAssetAdjHitboxes(asset);
+   // RenderAssetChaseRadius(asset);
 }
 
 void Asset_SetPosition(asset_t *asset, vec2_t *coords)
 {
     asset->body.x = coords->x;
     asset->body.y = coords->y;
-}
-void Asset_TestInitLOS(asset_t *asset, i32 x, i32 y)
-{
-    i32 range = 3;
-    
-    // Up
-    asset->test_los[0].range.x = asset->body.x - SDLCamera.X;
-    asset->test_los[0].range.y = (asset->body.y - (asset->h * range)) - SDLCamera.Y;
-    asset->test_los[0].range.w = asset->w;
-    asset->test_los[0].range.h = asset->h * range; // range multiplayer 
-    
-    // Down 
-    asset->test_los[0].range.x = asset->body.x - SDLCamera.X;
-    asset->test_los[0].range.y = (asset->body.y + (asset->h * range)) - SDLCamera.Y;
-    asset->test_los[0].range.w = asset->w;
-    asset->test_los[0].range.h = asset->h * range; // range multiplayer
-
-    // Left 
-    asset->test_los[0].range.x = (asset->body.x - (asset->w * range)) - SDLCamera.X;
-    asset->test_los[0].range.y = asset->body.y - SDLCamera.Y;
-    asset->test_los[0].range.w = asset->w * range; // range multiplayer
-    asset->test_los[0].range.h = asset->h;
-
-    // Right 
-    asset->test_los[0].range.x = (asset->body.x + asset->w) - SDLCamera.X;
-    asset->test_los[0].range.y = asset->body.y - SDLCamera.Y;
-    asset->test_los[0].range.w = asset->w * range; // range multiplayer
-    asset->test_los[0].range.h = asset->h;
-}
-
-
-void Asset_InitLOS(asset_t *asset, i32 x, i32 y)
-{
-    i32 range = 3;
-    
-    // Up
-    asset->los.range[0].x = asset->body.x - SDLCamera.X;
-    asset->los.range[0].y = (asset->body.y - (asset->h * range)) - SDLCamera.Y;
-    asset->los.range[0].w = asset->w;
-    asset->los.range[0].h = asset->h * range; // range multiplayer 
-    
-    // Down 
-    asset->los.range[1].x = asset->body.x - SDLCamera.X;
-    asset->los.range[1].y = (asset->body.y + (asset->h * range)) - SDLCamera.Y;
-    asset->los.range[1].w = asset->w;
-    asset->los.range[1].h = asset->h * range; // range multiplayer
-
-    // Left 
-    asset->los.range[2].x = (asset->body.x - (asset->w * range)) - SDLCamera.X;
-    asset->los.range[2].y = asset->body.y - SDLCamera.Y;
-    asset->los.range[2].w = asset->w * range; // range multiplayer
-    asset->los.range[2].h = asset->h;
-
-    // Right 
-    asset->los.range[3].x = (asset->body.x + asset->w) - SDLCamera.X;
-    asset->los.range[3].y = asset->body.y - SDLCamera.Y;
-    asset->los.range[3].w = asset->w * range; // range multiplayer
-    asset->los.range[3].h = asset->h;
-}
-
-void Asset_RenderLOS(asset_t *asset)
-{
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-    for (int i = 0; i < 4; ++i)
-        SDL_RenderDrawRect(SDLWindow.Renderer, &asset->los.range[i]);
-}
-
-void Asset_RenderHitbox(asset_t *asset)
-{
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-    SDL_RenderDrawRect(SDLWindow.Renderer, &asset->body);
 }
 
 // temp
@@ -633,7 +690,6 @@ void RenderAssetInWorldSpaceWithCoords(asset_t *asset, int x, int y)
             return;
         }
     }
-
 
     asset->body.x = x;
     asset->body.y = y;
@@ -760,6 +816,7 @@ void SetAssetConditionAllOn(asset_t *asset)
     asset->conditions.has_physics = true;
     asset->conditions.has_renderer = true;
     asset->conditions.has_movement = true;
+
 }
 
 void SetAssetConditionAllOff(asset_t *asset)
@@ -950,12 +1007,6 @@ void DestroyAssets(asset_t *assets)
     SDL_DestroyTexture(assets->texture);
 }
 
-typedef struct
-{
-    SDL_Color color[MAX_COLOR];
-    SDL_Texture *atlas;
-} font_t;
-
 void Font_Init(font_t *font)
 {
     font->atlas = CreateFontAtlas(SDLWindow.Renderer);
@@ -1016,11 +1067,11 @@ void ConfirmationButtons_Init(confirm_buttons_t *confirm, font_t *font)
     confirm->font = font;
 
     confirm->button[0].text = "Yes";
-    confirm->button[0].pos.x = CENTER_TEXT_X("Yes", 0);
+    confirm->button[0].pos.x = SET_TEXT_CENTER_X("Yes", 0);
     confirm->button[0].pos.y = SCREEN_CENTER_Y;
 
     confirm->button[1].text = "No";
-    confirm->button[1].pos.x = CENTER_TEXT_X("No", 0);
+    confirm->button[1].pos.x = SET_TEXT_CENTER_X("No", 0);
     confirm->button[1].pos.y = SCREEN_CENTER_Y + 16;
 
     confirm->box.x = SCREEN_CENTER_X - (48 / 2);
@@ -1201,7 +1252,7 @@ i32 Personality_GetScenario(personality_scenario_t *scenario)
 void Personality_RenderScenarioResults(personality_results_t *personality, font_t *font)
 {
     RenderText(SDLWindow.Renderer, font->atlas,
-               CENTER_TEXT_X(personality->name, 0),
+               SET_TEXT_CENTER_X(personality->name, 0),
                SCREEN_CENTER_Y - 80,
                personality->name,
                font->color[COLOR_WHITE]);
@@ -1209,7 +1260,7 @@ void Personality_RenderScenarioResults(personality_results_t *personality, font_
     for (i32 i = 0; i < PERSONALITY_DESCRIPTION_SIZE; ++i)
     {
         RenderText(SDLWindow.Renderer, font->atlas,
-                   CENTER_TEXT_X(personality->description[i], 0),
+                   SET_TEXT_CENTER_X(personality->description[i], 0),
                    SCREEN_CENTER_Y + personality->x_coords[i],
                    personality->description[i],
                    font->color[COLOR_WHITE]);
@@ -1651,10 +1702,10 @@ int main(int argc, char *argv[])
     
     i32 option_index = 0;
     option_t title_screen_options[4] = {
-        { "New Game", CENTER_TEXT_X("New Game", 0), SCREEN_CENTER_Y},
-        { "Continue Game", CENTER_TEXT_X("Continue Game", 0), SCREEN_CENTER_Y + 16 },
-        { "Settings", CENTER_TEXT_X("Settings", 0), SCREEN_CENTER_Y + 32 },
-        { "Exit", CENTER_TEXT_X("Exit", 0), SCREEN_CENTER_Y + 48 },
+        { "New Game", SET_TEXT_CENTER_X("New Game", 0), SCREEN_CENTER_Y},
+        { "Continue Game", SET_TEXT_CENTER_X("Continue Game", 0), SCREEN_CENTER_Y + 16 },
+        { "Settings", SET_TEXT_CENTER_X("Settings", 0), SCREEN_CENTER_Y + 32 },
+        { "Exit", SET_TEXT_CENTER_X("Exit", 0), SCREEN_CENTER_Y + 48 },
     };
 
     asset_t new_game_asset = {0};
@@ -2053,20 +2104,20 @@ int main(int argc, char *argv[])
     char int_buffer[10][28]; 
     class_status_overview_t class_status_overview[12] = {
         // Box 1 - Info
-        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 96},    "Name:                      " },
-        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 86},    "Lv:                        " },
-        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 76},    "Class:                     " },
-        { {CENTER_TEXT_X(dst_txt, 0),                 SCREEN_CENTER_Y - 66},    "Personality:               " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),                 SCREEN_CENTER_Y - 96},    "Name:                      " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),                 SCREEN_CENTER_Y - 86},    "Lv:                        " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),                 SCREEN_CENTER_Y - 76},    "Class:                     " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),                 SCREEN_CENTER_Y - 66},    "Personality:               " },
 
         // Box 2 - Stats
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 46},                  "Strength:                 " },
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 36},                  "Resillience:              " },
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 26},                  "Agility:                  " },
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 16},                  "Stamina:                  " },
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y - 6},                   "Wisdom:                   " },
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 4},                   "Luck:                     " },
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 14},                  "Max HP:                  " },
-        { {CENTER_TEXT_X(dst_txt, 0),   SCREEN_CENTER_Y + 24},                  "Max MP:                  " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),   SCREEN_CENTER_Y - 46},                  "Strength:                 " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),   SCREEN_CENTER_Y - 36},                  "Resillience:              " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),   SCREEN_CENTER_Y - 26},                  "Agility:                  " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),   SCREEN_CENTER_Y - 16},                  "Stamina:                  " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),   SCREEN_CENTER_Y - 6},                   "Wisdom:                   " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),   SCREEN_CENTER_Y + 4},                   "Luck:                     " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),   SCREEN_CENTER_Y + 14},                  "Max HP:                  " },
+        { {SET_TEXT_CENTER_X(dst_txt, 0),   SCREEN_CENTER_Y + 24},                  "Max MP:                  " },
     };
    
     bool game_init_stats = false;
@@ -2077,23 +2128,23 @@ int main(int argc, char *argv[])
     char game_int_buffer[10][17];
     class_status_overview_t in_game_class_status_overview[15] = {
         // Box 1 - Info
-        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 94},    "Name:                " }, // name
-        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 84},    "Lv:                  " },
-        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 74},    "Class:               " }, // class
-        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 64},    "Ego:                 " }, // personality
-        { {CENTER_TEXT_X(test_txt, -48),                 SCREEN_CENTER_Y - 54},    "Exp_to_next:         " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),                 SCREEN_CENTER_Y - 94},    "Name:                " }, // name
+        { {SET_TEXT_CENTER_X(test_txt, -48),                 SCREEN_CENTER_Y - 84},    "Lv:                  " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),                 SCREEN_CENTER_Y - 74},    "Class:               " }, // class
+        { {SET_TEXT_CENTER_X(test_txt, -48),                 SCREEN_CENTER_Y - 64},    "Ego:                 " }, // personality
+        { {SET_TEXT_CENTER_X(test_txt, -48),                 SCREEN_CENTER_Y - 54},    "Exp_to_next:         " },
 
         // Box 2 - Stats
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y - 34},                  "Str:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y - 24},                  "Res:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y - 14},                  "Agi:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y - 4},                   "Sta:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 6},                   "Wis:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 16},                  "Lck:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 26},                  "Max HP:              " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 36},                  "Max MP:              " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 46},                  "Atk:                 " },
-        { {CENTER_TEXT_X(test_txt, -48),   SCREEN_CENTER_Y + 56},                  "Def:                 " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),   SCREEN_CENTER_Y - 34},                  "Str:                 " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),   SCREEN_CENTER_Y - 24},                  "Res:                 " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),   SCREEN_CENTER_Y - 14},                  "Agi:                 " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),   SCREEN_CENTER_Y - 4},                   "Sta:                 " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),   SCREEN_CENTER_Y + 6},                   "Wis:                 " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),   SCREEN_CENTER_Y + 16},                  "Lck:                 " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),   SCREEN_CENTER_Y + 26},                  "Max HP:              " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),   SCREEN_CENTER_Y + 36},                  "Max MP:              " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),   SCREEN_CENTER_Y + 46},                  "Atk:                 " },
+        { {SET_TEXT_CENTER_X(test_txt, -48),   SCREEN_CENTER_Y + 56},                  "Def:                 " },
     };
 
 
@@ -2106,7 +2157,7 @@ int main(int argc, char *argv[])
 
     next_button_t next_button = {0};
     next_button.button[0].text = "Next";
-    next_button.button[0].x = CENTER_TEXT_X(next_button.button[0].text, 96);
+    next_button.button[0].x = SET_TEXT_CENTER_X(next_button.button[0].text, 96);
     next_button.button[0].y = SCREEN_CENTER_Y + 96;
 
     bool boulder_has_reached_end = false;
@@ -2425,9 +2476,9 @@ int main(int argc, char *argv[])
     asset_t item_slot_asset = IdealLoadAsset("assets/ui/slot_options.png");
     asset_t item_menu_description_box = IdealLoadAsset("assets/ui/item_description_box.png");
     option_t item_slot_options[3] = {
-        {"Use", CENTER_TEXT_X("Use", 0), SCREEN_CENTER_Y - 16},
-        {"Move", CENTER_TEXT_X("Move", 0), SCREEN_CENTER_Y},
-        {"Toss", CENTER_TEXT_X("Toss", 0), SCREEN_CENTER_Y + 16},
+        {"Use", SET_TEXT_CENTER_X("Use", 0), SCREEN_CENTER_Y - 16},
+        {"Move", SET_TEXT_CENTER_X("Move", 0), SCREEN_CENTER_Y},
+        {"Toss", SET_TEXT_CENTER_X("Toss", 0), SCREEN_CENTER_Y + 16},
     };
     
     game_command_menu_items_t game_command_menu_items = {0};
@@ -2552,15 +2603,15 @@ int main(int argc, char *argv[])
     game_command_menu.option_box[2] = IdealLoadAsset("assets/ui/command_menu_options_box - Copy.png");
 
     game_command_menu.options[0].text = "Items",
-    game_command_menu.options[0].x = CENTER_TEXT_X("Items", 72),
+    game_command_menu.options[0].x = SET_TEXT_CENTER_X("Items", 72),
     game_command_menu.options[0].y = SCREEN_CENTER_Y - 64;
     
     game_command_menu.options[1].text = "Equip",
-    game_command_menu.options[1].x = CENTER_TEXT_X("Equip", 72),
+    game_command_menu.options[1].x = SET_TEXT_CENTER_X("Equip", 72),
     game_command_menu.options[1].y = SCREEN_CENTER_Y - 48;
 
     game_command_menu.options[2].text = "Status",
-    game_command_menu.options[2].x = CENTER_TEXT_X("Status", 72),
+    game_command_menu.options[2].x = SET_TEXT_CENTER_X("Status", 72),
     game_command_menu.options[2].y = SCREEN_CENTER_Y - 32;
 
 
@@ -2599,14 +2650,9 @@ int main(int argc, char *argv[])
         test_floor_tile_t floor_tiles[580];
     } rooms_t;
 
-    #define TILE_WIDTH 16
-    #define TILE_HEIGHT 24
 
-    #define SUB_TILE_WIDTH 10
-    #define SUB_TILE_HEIGHT 18
-
-    int main_room_rows = room_asset[0].h / TILE_HEIGHT;
     int main_room_cols = room_asset[0].w / TILE_WIDTH;
+    int main_room_rows = room_asset[0].h / TILE_HEIGHT;
 
     int total_floor_tiles = main_room_rows * main_room_cols;
     printf("total tiles: %d\n", total_floor_tiles);
@@ -2759,17 +2805,15 @@ int main(int argc, char *argv[])
     };
 
     option_t theater_scenario_results[8] = {
-        { "You are a priest, and dressed for",          CENTER_TEXT_X("You are a priest, and dressed for", 0),          SCREEN_CENTER_Y - 88 },
-        { "night's stage show. You walk into",          CENTER_TEXT_X("night's stage show. You walk into", 0),          SCREEN_CENTER_Y - 80 },
-        { "the theater and a man recognizes you",       CENTER_TEXT_X("the theater and a man recognizes you", 0),       SCREEN_CENTER_Y - 72 },
-        { "as the town's priest. He immediately",       CENTER_TEXT_X("as the town's priest. He immediately", 0),       SCREEN_CENTER_Y - 64 },
-        { "begs you to marry the women of life, of",    CENTER_TEXT_X("begs you to marry the women of life, of", 0),    SCREEN_CENTER_Y - 56 },
-        { "life, of which they had only just met",      CENTER_TEXT_X("life, of which they had only just met", 0),      SCREEN_CENTER_Y - 48 },
-        { "and he claims is love at first sight.",      CENTER_TEXT_X("and he claims is love at first sight", 0),       SCREEN_CENTER_Y - 40 },
-        { "What do you do?",                            CENTER_TEXT_X("What do you do?", 0),                            SCREEN_CENTER_Y - 32 },
+        { "You are a priest, and dressed for",          SET_TEXT_CENTER_X("You are a priest, and dressed for", 0),          SCREEN_CENTER_Y - 88 },
+        { "night's stage show. You walk into",          SET_TEXT_CENTER_X("night's stage show. You walk into", 0),          SCREEN_CENTER_Y - 80 },
+        { "the theater and a man recognizes you",       SET_TEXT_CENTER_X("the theater and a man recognizes you", 0),       SCREEN_CENTER_Y - 72 },
+        { "as the town's priest. He immediately",       SET_TEXT_CENTER_X("as the town's priest. He immediately", 0),       SCREEN_CENTER_Y - 64 },
+        { "begs you to marry the women of life, of",    SET_TEXT_CENTER_X("begs you to marry the women of life, of", 0),    SCREEN_CENTER_Y - 56 },
+        { "life, of which they had only just met",      SET_TEXT_CENTER_X("life, of which they had only just met", 0),      SCREEN_CENTER_Y - 48 },
+        { "and he claims is love at first sight.",      SET_TEXT_CENTER_X("and he claims is love at first sight", 0),       SCREEN_CENTER_Y - 40 },
+        { "What do you do?",                            SET_TEXT_CENTER_X("What do you do?", 0),                            SCREEN_CENTER_Y - 32 },
     };
-
-
 
 
 
@@ -2839,6 +2883,7 @@ int main(int argc, char *argv[])
                                     printf("down: %d\n", character_data.model.los.front.is_down);
                                     printf("left: %d\n", character_data.model.los.front.is_left);
                                     printf("right: %d\n", character_data.model.los.front.is_right);
+
                                 }
 
                                 if (boulder_has_reached_end)
@@ -3917,7 +3962,9 @@ int main(int argc, char *argv[])
                                                 printf("overview next\n");
 
                                                 // Initialize/Reset the player starting here
-                                                Asset_SetPosition(&character_data.model, &player_starting_coords);
+                                                SetAssetPosition(&character_data.model, 
+                                                                 player_starting_coords.x,
+                                                                 player_starting_coords.y);
 
 
                                                 Sound_PlaySFX(&master_volume.sfx[1]->wav);
@@ -4151,7 +4198,7 @@ int main(int argc, char *argv[])
             RenderAssetInWorldSpace(&cursor[RIGHT_CURSOR].model);
            
             RenderText(SDLWindow.Renderer, font.atlas,
-                           CENTER_TEXT_X("Sound Settings", 0), 
+                           SET_TEXT_CENTER_X("Sound Settings", 0), 
                            SCREEN_CENTER_Y - 64,
                            "Sound Settings", 
                            color.white);
@@ -4279,13 +4326,13 @@ int main(int argc, char *argv[])
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
 
                 RenderText(SDLWindow.Renderer, font.atlas, 
-                           CENTER_TEXT_X("Back", -94),
+                           SET_TEXT_CENTER_X("Back", -94),
                            SCREEN_CENTER_Y - 96,
                            "Back",
                            color.white);
 
                 RenderText(SDLWindow.Renderer, font.atlas, 
-                           CENTER_TEXT_X("[ESC]", -64),
+                           SET_TEXT_CENTER_X("[ESC]", -64),
                            SCREEN_CENTER_Y - 96,
                            "[ESC]",
                            color.orange);
@@ -4405,23 +4452,23 @@ int main(int argc, char *argv[])
                 }
 
                 RenderText(SDLWindow.Renderer, font.atlas, 
-                           CENTER_TEXT_X("Back", -94),
+                           SET_TEXT_CENTER_X("Back", -94),
                            SCREEN_CENTER_Y - 96,
                            "Back",
                            color.white);
                 RenderText(SDLWindow.Renderer, font.atlas, 
-                           CENTER_TEXT_X("[ESC]", -64),
+                           SET_TEXT_CENTER_X("[ESC]", -64),
                            SCREEN_CENTER_Y - 96,
                            "[ESC]",
                            color.orange);
 
                 RenderText(SDLWindow.Renderer, font.atlas,
-                           CENTER_TEXT_X("How will you allocate your", 0),
+                           SET_TEXT_CENTER_X("How will you allocate your", 0),
                            SCREEN_CENTER_Y - 48,
                            "How will you allocate your",
                            color.white);
                 RenderText(SDLWindow.Renderer, font.atlas,
-                           CENTER_TEXT_X("points for your character?", 0),
+                           SET_TEXT_CENTER_X("points for your character?", 0),
                            SCREEN_CENTER_Y - 40,
                            "points for your character?",
                            color.white);
@@ -4609,24 +4656,24 @@ int main(int argc, char *argv[])
                     SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X(scenario_name, 0), 
+                                   SET_TEXT_CENTER_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    color.white);
 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("Silver coins drop from the hanging bag", 0), 
+                               SET_TEXT_CENTER_X("Silver coins drop from the hanging bag", 0), 
                                SCREEN_CENTER_Y - 88,
                                "Silver coins drop from the hanging bag", 
                                color.white); 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X(" of an elderly man's pocket as he walks", 0), 
+                               SET_TEXT_CENTER_X(" of an elderly man's pocket as he walks", 0), 
                                SCREEN_CENTER_Y - 80,
                                " of an elderly man's pocket as he walks", 
                                color.white);
 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X(" through the market. What do you do?", 0), 
+                               SET_TEXT_CENTER_X(" through the market. What do you do?", 0), 
                                SCREEN_CENTER_Y - 72,
                                " through the market. What do you do?", 
                                color.white);
@@ -4652,31 +4699,31 @@ int main(int argc, char *argv[])
                     SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X(scenario_name, 0), 
+                                   SET_TEXT_CENTER_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    color.white);
 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X("You are a man by day and a beast by", 0), 
+                                   SET_TEXT_CENTER_X("You are a man by day and a beast by", 0), 
                                    SCREEN_CENTER_Y - 88,
                                    "You are a man by day and a beast by", 
                                    color.white);                   
 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X("night. You prey off human flesh and blood", 0), 
+                                   SET_TEXT_CENTER_X("night. You prey off human flesh and blood", 0), 
                                    SCREEN_CENTER_Y - 80,
                                    "night. You prey off human flesh and blood", 
                                    color.white);  
 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X(" to survive. You come across a small and", 0), 
+                                   SET_TEXT_CENTER_X(" to survive. You come across a small and", 0), 
                                    SCREEN_CENTER_Y - 72,
                                    " to survive. You come across a small and", 
                                    color.white);
 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X(" quiet village. What do you do?", 0), 
+                                   SET_TEXT_CENTER_X(" quiet village. What do you do?", 0), 
                                    SCREEN_CENTER_Y - 64,
                                    " quiet village. What do you do?", 
                                    color.white);
@@ -4714,8 +4761,10 @@ int main(int argc, char *argv[])
                         first_forest_entrance = true;
                     }
 
-                    UpdateAssetMovement(&character_data.model, &sfx_move);
-                    UpdatePushableAsset(&boulder_asset, &character_data.model); 
+                    if (UpdateAssetMovement(&character_data.model, &sfx_move))
+                    {
+                        UpdatePushableAsset(&boulder_asset, &character_data.model); 
+                    }
 
                     for (i32 i = 0; i < ArraySize(forest_scenario_walls); ++i)
                     {
@@ -4877,7 +4926,7 @@ int main(int argc, char *argv[])
                                              SCREEN_CENTER_X + 88, SCREEN_CENTER_Y - 105); 
 
                         RenderText(SDLWindow.Renderer, font.atlas, 
-                               CENTER_TEXT_X(gold_coins, 104), SCREEN_CENTER_Y - 95,
+                               SET_TEXT_CENTER_X(gold_coins, 104), SCREEN_CENTER_Y - 95,
                                gold_coins,
                                color.green);
                     }
@@ -4933,38 +4982,38 @@ int main(int argc, char *argv[])
                     SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X(scenario_name, 0), 
+                                   SET_TEXT_CENTER_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    color.white);
 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X("You are near the end of your quest in", 0), 
+                                   SET_TEXT_CENTER_X("You are near the end of your quest in", 0), 
                                    SCREEN_CENTER_Y - 88,
                                    "You are near the end of your quest in ", 
                                    color.white); 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X("saving the princess, where the entrance", 0), 
+                                   SET_TEXT_CENTER_X("saving the princess, where the entrance", 0), 
                                    SCREEN_CENTER_Y - 80,
                                    "saving the princess, where the entrance ", 
                                    color.white); 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X("to her prison is in front of you. But two", 0), 
+                                   SET_TEXT_CENTER_X("to her prison is in front of you. But two", 0), 
                                    SCREEN_CENTER_Y - 72,
                                    "to her prison is in front of you. But two doors", 
                                    color.white); 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X("doors fork to the left and right, a", 0), 
+                                   SET_TEXT_CENTER_X("doors fork to the left and right, a", 0), 
                                    SCREEN_CENTER_Y - 64,
                                    "doors fork to the left and right, a", 
                                    color.white); 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X("door to take you deeper in and a door to", 0), 
+                                   SET_TEXT_CENTER_X("door to take you deeper in and a door to", 0), 
                                    SCREEN_CENTER_Y - 56,
                                    "door to take you deeper in and a door to", 
                                    color.white); 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X("a room of treasures. What do you do?", 0), 
+                                   SET_TEXT_CENTER_X("a room of treasures. What do you do?", 0), 
                                    SCREEN_CENTER_Y - 48,
                                    "a room of treasures. What do you do?", 
                                    color.white);
@@ -4998,38 +5047,38 @@ int main(int argc, char *argv[])
                     SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X(scenario_name, 0), 
+                                   SET_TEXT_CENTER_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    color.white);
 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("You carry with yourself a canteen of", 0), 
+                               SET_TEXT_CENTER_X("You carry with yourself a canteen of", 0), 
                                SCREEN_CENTER_Y - 88,
                                "You carry with yourself a canteen of", 
                                color.white);           
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("water with only a few sips worth left.", 0), 
+                               SET_TEXT_CENTER_X("water with only a few sips worth left.", 0), 
                                SCREEN_CENTER_Y - 80,
                                "water with only a few sips worth left.", 
                                color.white);
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("In the harsh and unforgiving desert,", 0), 
+                               SET_TEXT_CENTER_X("In the harsh and unforgiving desert,", 0), 
                                SCREEN_CENTER_Y - 72,
                                "In the harsh and unforgiving desert", 
                                color.white);           
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("you come across two men stranded, where", 0), 
+                               SET_TEXT_CENTER_X("you come across two men stranded, where", 0), 
                                SCREEN_CENTER_Y - 64,
                                "you come across two men stranded, where", 
                                color.white);
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("one is near death from thirst.", 0), 
+                               SET_TEXT_CENTER_X("one is near death from thirst.", 0), 
                                SCREEN_CENTER_Y - 56,
                                "one is near death from thirst.", 
                                color.white);
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("What do you do?", 0), 
+                               SET_TEXT_CENTER_X("What do you do?", 0), 
                                SCREEN_CENTER_Y - 48,
                                "What do you do?", 
                                color.white);
@@ -5061,28 +5110,28 @@ int main(int argc, char *argv[])
                     SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X(scenario_name, 0), 
+                                   SET_TEXT_CENTER_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    color.white);
 
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("You are disoriented and awake at", 0), 
+                               SET_TEXT_CENTER_X("You are disoriented and awake at", 0), 
                                SCREEN_CENTER_Y - 88,
                                "You are disoriented and awake at", 
                                color.white);           
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("the top of a seemingly endless tower.", 0), 
+                               SET_TEXT_CENTER_X("the top of a seemingly endless tower.", 0), 
                                SCREEN_CENTER_Y - 80,
                                "the top of a seemingly endless tower.", 
                                color.white);  
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("You see a staircase besides you that leads", 0), 
+                               SET_TEXT_CENTER_X("You see a staircase besides you that leads", 0), 
                                SCREEN_CENTER_Y - 72,
                                "You see a staircase besides you that leads", 
                                color.white);
                     RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("down to the unknown. What do you do?", 0), 
+                               SET_TEXT_CENTER_X("down to the unknown. What do you do?", 0), 
                                SCREEN_CENTER_Y - 64,
                                "down to the unknown. What do you do?", 
                                color.white);
@@ -5114,7 +5163,7 @@ int main(int argc, char *argv[])
                     SDL_RenderClear(SDLWindow.Renderer);
                     SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                     RenderText(SDLWindow.Renderer, font.atlas,
-                                   CENTER_TEXT_X(scenario_name, 0), 
+                                   SET_TEXT_CENTER_X(scenario_name, 0), 
                                    SCREEN_CENTER_Y - 108,
                                    scenario_name, 
                                    color.white);
@@ -5150,7 +5199,7 @@ int main(int argc, char *argv[])
                 SDL_RenderClear(SDLWindow.Renderer);
                 SDL_RenderCopy(SDLWindow.Renderer, blank_screen_asset.texture, NULL, &blank_screen_asset.body);
                 RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("Personality:", 0), 
+                               SET_TEXT_CENTER_X("Personality:", 0), 
                                SCREEN_CENTER_Y - 88,
                                "Personality:", 
                                color.white);
@@ -5236,7 +5285,7 @@ int main(int argc, char *argv[])
                 }    
                 
                 RenderText(SDLWindow.Renderer, font.atlas,
-                           CENTER_TEXT_X("Enter your name", 0), 
+                           SET_TEXT_CENTER_X("Enter your name", 0), 
                            SCREEN_CENTER_Y - 96,
                            "Enter your name", 
                            color.white);
@@ -5364,38 +5413,29 @@ int main(int argc, char *argv[])
             UpdateAssetProperties(&character_data.model);
             UpdateAssetProperties(&enemy_los_asset);
 
-            UpdateAssetMovement(&character_data.model, &sfx_move);
+            if (UpdateAssetMovement(&character_data.model, &sfx_move))
+            {
+                UpdateAssetNPCMovement(&enemy_los_asset, &sfx_move); 
+                
+
+
+            }
+
+            AABB_AdjHitboxResolution(&character_data.model, &enemy_los_asset);
+            AABB_LOSResolution(&character_data.model, &enemy_los_asset, &font);
+            AABB_ChaseRadiusResolution(&enemy_los_asset, &character_data.model, &font);
+            for (int i = 0; i < total_floor_tiles; ++i)
+            {
+               AABB_Resolution(&character_data.model, &map_rooms[0].floor_tiles[i].collision_tiles);
+               AABB_Resolution(&enemy_los_asset, &map_rooms[0].floor_tiles[i].collision_tiles);
+            } 
+
+
             GUI_UpdateCursor(&cursor[RIGHT_CURSOR].model, 
                              enemy_card_stack.asset[enemy_card_stack.index - 1].x,
                              enemy_card_stack.asset[enemy_card_stack.index - 1].y,
                              -4, -1);
             
-            AABB_Resolution(&character_data.model, &enemy_los_asset);
-            for (int i = 0; i < total_floor_tiles; ++i)
-            {
-               AABB_Resolution(&character_data.model, &map_rooms[0].floor_tiles[i].collision_tiles);
-               AABB_Resolution(&character_data.model, &map_rooms[0].floor_tiles[i].item_tiles);
-            } 
-
-            if (AABB_Detection(&character_data.model.body, &enemy_los_asset.chase_radius.range))
-            {
-               // printf("Inside chase radius, run!\n");
-            }
-            for (int i = 0; i < 4; ++i)
-            {
-                /*if (AABB_Detection(&character_data.model.body, &enemy_los_asset.los.range[i]))
-                {
-                    printf("player_model: %d\n", character_data.model.body.x);
-                    printf("enemy_los: %d\n", enemy_los_asset.los.range[i].x);
-                }*/
-
-                if (AABB_Detection(&character_data.model.los.range[i], &enemy_los_asset.body))
-                {
-                    printf("player_model: %d\n", character_data.model.body.x);
-                    printf("enemy_los: %d\n", enemy_los_asset.los.range[i].x);
-                }
-            }
-
             AttachCameraToPlayer(&character_data.model, &room_asset[0]);
             SDL_SetRenderTarget(SDLWindow.Renderer, SDLCamera.TargetTexture);
             SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 0, 0, 255);
@@ -5641,19 +5681,19 @@ int main(int argc, char *argv[])
                                                           (game_items[0].asset.w*2), (game_items[0].asset.h*2));*/
 
                         RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X(game_items[game_command_menu_items.index].name, -56),
+                               SET_TEXT_CENTER_X(game_items[game_command_menu_items.index].name, -56),
                                SCREEN_CENTER_Y + 68, 
                                game_items[game_command_menu_items.index].name,
                                color.white);
 
                         RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X(game_items[game_command_menu_items.index].description, -50),
+                               SET_TEXT_CENTER_X(game_items[game_command_menu_items.index].description, -50),
                                SCREEN_CENTER_Y + 80, 
                                game_items[game_command_menu_items.index].description,
                                color.white);
 
                         RenderText(SDLWindow.Renderer, font.atlas,
-                               CENTER_TEXT_X("Sell Value: 1", 56),
+                               SET_TEXT_CENTER_X("Sell Value: 1", 56),
                                SCREEN_CENTER_Y + 92, 
                                "Sell Value: 1",
                                color.white);
