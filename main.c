@@ -77,12 +77,9 @@ typedef struct
 
 typedef struct
 {
-    bool is_movable;
-    bool is_under_attack;
-    bool is_attacking;
-    bool is_defending;
-    bool is_using_item;
-    bool is_collidable;
+    bool has_movement;
+    bool has_renderer;
+    bool has_physics;
     bool is_occupied;
 } asset_conditions_t; // temp 
 
@@ -196,6 +193,8 @@ asset_t IdealLoadAsset(const char *filename)
     asset.body.w = asset.w;
     asset.body.h = asset.h;
 
+    // Prefer to initialize seperately, but here for noe
+
     stbi_image_free(data);  
 
     return asset;
@@ -221,22 +220,22 @@ bool AABB_Detection(SDL_Rect *a, SDL_Rect *b)
 void AABB_Resolution(asset_t *a, asset_t *b)
 {
     if (AABB_Detection(&a->body, &b->body) && 
-        (a->conditions.is_collidable && b->conditions.is_collidable))
+        (a->conditions.has_physics && b->conditions.has_physics))
     {
         a->body.x = a->x;
     }
 
     if (AABB_Detection(&a->body, &b->body) &&
-        (a->conditions.is_collidable && b->conditions.is_collidable))
+        (a->conditions.has_physics && b->conditions.has_physics))
     {
         a->body.y = a->y;
     }
 }
-
+/*
 void 
 CombatCheck(asset_t *player, asset_t* asset)
 {
-    if (AABB_Detection(&player->body, &asset->body) && asset->conditions.is_collidable)
+    if (AABB_Detection(&player->body, &asset->body) && asset->conditions.has_physics)
     {
         player->conditions.is_attacking = true;
         asset->conditions.is_under_attack = true;
@@ -248,9 +247,9 @@ CombatUpdate(asset_t *player, asset_t *asset, sound_wav_t *sound)
 {
     if (asset->conditions.is_under_attack)
     {
-       /* if (asset->stats.hp <= 0)
+       if (asset->stats.hp <= 0)
         {
-            asset->conditions.is_collidable = false;
+            asset->conditions.has_physics = false;
             player->stats.exp += asset->stats.exp;
             printf("Player has earned: %d exp\n", player->stats.exp);
 
@@ -260,9 +259,10 @@ CombatUpdate(asset_t *player, asset_t *asset, sound_wav_t *sound)
         }
         Sound_PlaySFX(sound);
         asset->stats.hp -= player->stats.atk;
-        printf("enemy took %d damage \n", player->stats.atk);*/
+        printf("enemy took %d damage \n", player->stats.atk);
     }
 }
+*/
 
 typedef enum
 {
@@ -272,48 +272,71 @@ typedef enum
     ASSET_RIGHT
 } asset_index_type;
 
+void TestUpdateAssetLOS(asset_t asset)
+{
+    asset.los.range[ASSET_TOP].x = asset.body.x - SDLCamera.X; 
+    asset.los.range[ASSET_TOP].y = (asset.body.y - (24*3)) - SDLCamera.Y;
+    asset.los.range[ASSET_TOP].w = 16;
+    asset.los.range[ASSET_TOP].h = (24*3);
+
+    asset.los.range[ASSET_BOT].x = asset.body.x - SDLCamera.X; 
+    asset.los.range[ASSET_BOT].y = (asset.body.y + 24) - SDLCamera.Y;
+    asset.los.range[ASSET_BOT].w = 16;
+    asset.los.range[ASSET_BOT].h = (24*3);
+
+    asset.los.range[ASSET_LEFT].x = (asset.body.x - (16*3)) - SDLCamera.X; 
+    asset.los.range[ASSET_LEFT].y = asset.body.y - SDLCamera.Y;
+    asset.los.range[ASSET_LEFT].w = (16*3);
+    asset.los.range[ASSET_LEFT].h = 24;
+
+    asset.los.range[ASSET_RIGHT].x = (asset.body.x + 16) - SDLCamera.X; 
+    asset.los.range[ASSET_RIGHT].y = asset.body.y - SDLCamera.Y;
+    asset.los.range[ASSET_RIGHT].w = (16*3);
+    asset.los.range[ASSET_RIGHT].h = 24;
+}
+
 void UpdateAssetLOS(asset_t *asset)
 {
-    asset->los.range[ASSET_TOP].x = asset->body.x - SDLCamera.X; 
-    asset->los.range[ASSET_TOP].y = (asset->body.y - (24*3)) - SDLCamera.Y;
+    asset->los.range[ASSET_TOP].x = asset->body.x; 
+    asset->los.range[ASSET_TOP].y = (asset->body.y - (24*3));
     asset->los.range[ASSET_TOP].w = 16;
     asset->los.range[ASSET_TOP].h = (24*3);
 
-    asset->los.range[ASSET_BOT].x = asset->body.x - SDLCamera.X; 
-    asset->los.range[ASSET_BOT].y = (asset->body.y + 24) - SDLCamera.Y;
+    asset->los.range[ASSET_BOT].x = asset->body.x; 
+    asset->los.range[ASSET_BOT].y = (asset->body.y + 24);
     asset->los.range[ASSET_BOT].w = 16;
     asset->los.range[ASSET_BOT].h = (24*3);
 
-    asset->los.range[ASSET_LEFT].x = (asset->body.x - (16*3)) - SDLCamera.X; 
-    asset->los.range[ASSET_LEFT].y = asset->body.y - SDLCamera.Y;
+    asset->los.range[ASSET_LEFT].x = (asset->body.x - (16*3)); 
+    asset->los.range[ASSET_LEFT].y = asset->body.y;
     asset->los.range[ASSET_LEFT].w = (16*3);
     asset->los.range[ASSET_LEFT].h = 24;
 
-    asset->los.range[ASSET_RIGHT].x = (asset->body.x + 16) - SDLCamera.X; 
-    asset->los.range[ASSET_RIGHT].y = asset->body.y - SDLCamera.Y;
+    asset->los.range[ASSET_RIGHT].x = (asset->body.x + 16); 
+    asset->los.range[ASSET_RIGHT].y = asset->body.y;
     asset->los.range[ASSET_RIGHT].w = (16*3);
     asset->los.range[ASSET_RIGHT].h = 24;
 }
 
 void UpdateAssetAdjHitboxes(asset_t *asset)
 {
-    asset->adjacent_hitboxes[ASSET_TOP].x = asset->body.x - SDLCamera.X; 
-    asset->adjacent_hitboxes[ASSET_TOP].y = (asset->body.y - 24) - SDLCamera.Y;
+    asset->adjacent_hitboxes[ASSET_TOP].x = asset->body.x; 
+    asset->adjacent_hitboxes[ASSET_TOP].y = (asset->body.y - 24);
     asset->adjacent_hitboxes[ASSET_TOP].w = 16;
     asset->adjacent_hitboxes[ASSET_TOP].h = 24;
 
-    asset->adjacent_hitboxes[ASSET_BOT].x = asset->body.x - SDLCamera.X; 
-    asset->adjacent_hitboxes[ASSET_BOT].y = (asset->body.y + 24) - SDLCamera.Y;
+    asset->adjacent_hitboxes[ASSET_BOT].x = asset->body.x; 
+    asset->adjacent_hitboxes[ASSET_BOT].y = (asset->body.y + 24);
     asset->adjacent_hitboxes[ASSET_BOT].w = 16;
     asset->adjacent_hitboxes[ASSET_BOT].h = 24;
 
-    asset->adjacent_hitboxes[ASSET_LEFT].x = (asset->body.x - SDLCamera.X - 16); 
-    asset->adjacent_hitboxes[ASSET_LEFT].y = asset->body.y - SDLCamera.Y;
+    asset->adjacent_hitboxes[ASSET_LEFT].x = (asset->body.x- 16); 
+    asset->adjacent_hitboxes[ASSET_LEFT].y = asset->body.y;
     asset->adjacent_hitboxes[ASSET_LEFT].w = 16;
     asset->adjacent_hitboxes[ASSET_LEFT].h = 24;
 
-    asset->adjacent_hitboxes[ASSET_RIGHT].x = (asset->body.x + 16) - SDLCamera.X; 
-    asset->adjacent_hitboxes[ASSET_RIGHT].y = asset->body.y - SDLCamera.Y;
+    asset->adjacent_hitboxes[ASSET_RIGHT].x = (asset->body.x + 16); 
+    asset->adjacent_hitboxes[ASSET_RIGHT].y = asset->body.y;
     asset->adjacent_hitboxes[ASSET_RIGHT].w = 16;
     asset->adjacent_hitboxes[ASSET_RIGHT].h = 24; 
 }
@@ -321,8 +344,8 @@ void UpdateAssetAdjHitboxes(asset_t *asset)
 void UpdateAssetChaseRadius(asset_t *asset)
 {
     // Asset chase radius -> 9x9
-    asset->chase_radius.range.x = (asset->body.x - SDLCamera.X) - (asset->w * 4); 
-    asset->chase_radius.range.y = (asset->body.y - SDLCamera.Y) - (asset->h * 4);
+    asset->chase_radius.range.x = (asset->body.x) - (asset->w * 4); 
+    asset->chase_radius.range.y = (asset->body.y) - (asset->h * 4);
     asset->chase_radius.range.w = asset->w * 9;
     asset->chase_radius.range.h = asset->h * 9;
 }
@@ -336,13 +359,12 @@ void UpdateAssetProperties(asset_t *asset)
 
 void UpdateAssetMovement(asset_t *asset, sound_wav_t *sound)
 {    
-
     // Not needed but will leave this here since we're doing 
     // this in RenderAssetInWorldSpace. 
     asset->x = asset->body.x; 
     asset->y = asset->body.y; 
 
-    if (asset->conditions.is_movable)
+    if (asset->conditions.has_movement)
     {
         if (asset->direction.up)
         {       
@@ -384,12 +406,12 @@ void UpdatePushableAsset(asset_t *asset, asset_t *player)
     asset->x = asset->body.x; 
     asset->y = asset->body.y; 
 
-    if (asset->conditions.is_movable)
+    if (asset->conditions.has_movement)
     {
         if (asset->direction.up)
         {      
             if (AABB_Detection(&asset->body, &player->body) && 
-                asset->conditions.is_collidable)
+                asset->conditions.has_physics)
             {
                 asset->body.y -= asset->body.h;
             }
@@ -400,7 +422,7 @@ void UpdatePushableAsset(asset_t *asset, asset_t *player)
         if (asset->direction.down)
         {
             if (AABB_Detection(&asset->body, &player->body) && 
-                asset->conditions.is_collidable)
+                asset->conditions.has_physics)
             {
                 asset->body.y += asset->body.h; 
             }
@@ -411,7 +433,7 @@ void UpdatePushableAsset(asset_t *asset, asset_t *player)
         if (asset->direction.left)
         {
             if (AABB_Detection(&asset->body, &player->body) && 
-                asset->conditions.is_collidable)
+                asset->conditions.has_physics)
             {
                 asset->body.x -= asset->body.w; 
             }
@@ -422,7 +444,7 @@ void UpdatePushableAsset(asset_t *asset, asset_t *player)
         if (asset->direction.right)
         {
             if (AABB_Detection(&asset->body, &player->body) && 
-                asset->conditions.is_collidable)
+                asset->conditions.has_physics)
             {
                 asset->body.x += asset->body.w; 
             }
@@ -430,12 +452,6 @@ void UpdatePushableAsset(asset_t *asset, asset_t *player)
             asset->direction.right = false;
         }
     }
-}
-
-void SetAssetPosition(asset_t *asset, i32 x, int y)
-{
-    asset->body.x = x;
-    asset->body.y = y;
 }
 
 void InitializeAssetToRender(asset_t *asset, i32 x, int y, int w, int h)
@@ -448,8 +464,79 @@ void InitializeAssetToRender(asset_t *asset, i32 x, int y, int w, int h)
 
 void InitializeAssetConditions(asset_t *asset)
 {
-    asset->conditions.is_collidable = true;
-    asset->conditions.is_movable = true;
+    asset->conditions.has_physics = true;
+    asset->conditions.has_movement = true;
+}
+
+void RenderAssetLOS(asset_t *asset)
+{
+    // THIS is to just so we can render the boxes, debug code.
+    asset->los.range[ASSET_TOP].x = asset->body.x - SDLCamera.X; 
+    asset->los.range[ASSET_TOP].y = (asset->body.y - (24*3)) - SDLCamera.Y;
+
+    asset->los.range[ASSET_BOT].x = asset->body.x - SDLCamera.X; 
+    asset->los.range[ASSET_BOT].y = (asset->body.y + 24) - SDLCamera.Y;
+
+    asset->los.range[ASSET_LEFT].x = (asset->body.x - (16*3)) - SDLCamera.X; 
+    asset->los.range[ASSET_LEFT].y = asset->body.y - SDLCamera.Y;
+
+    asset->los.range[ASSET_RIGHT].x = (asset->body.x + 16) - SDLCamera.X; 
+    asset->los.range[ASSET_RIGHT].y = asset->body.y - SDLCamera.Y;
+
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+    for (int i = 0; i < 4; ++i)
+    {
+        SDL_RenderDrawRect(SDLWindow.Renderer, &asset->los.range[i]);
+    }
+}
+
+void RenderAssetAdjHitboxes(asset_t *asset)
+{
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+    for (int i = 0; i < 4; ++i)
+    {
+        SDL_RenderDrawRect(SDLWindow.Renderer, &asset->adjacent_hitboxes[i]);
+    }
+}
+
+void RenderAssetChaseRadius(asset_t *asset)
+{
+    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
+    SDL_RenderDrawRect(SDLWindow.Renderer, &asset->chase_radius.range);
+}
+
+// Render and update any asset that moves in world space
+void RenderAssetInWorldSpace(asset_t *asset)
+{
+    // Temp store asset body's current position 
+    asset->x = asset->body.x;
+    asset->y = asset->body.y;
+
+    // Update asset body's position to be placed in world space by removing the camera coords
+    asset->body.x -= SDLCamera.X;
+    asset->body.y -= SDLCamera.Y;
+                                
+    if (asset->texture)
+    {
+        SDL_SetTextureBlendMode(asset->texture, SDL_BLENDMODE_BLEND);
+        if (SDL_RenderCopy(SDLWindow.Renderer, asset->texture, NULL, &asset->body) < 0)
+        {
+            fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
+            return;
+        }
+    }
+
+    // Only render in debug mode 
+    // This is also temporary, ideally this function is not using pointers, we're only
+    // doing so because we're updating above and below, fix!
+   // RenderAssetAdjHitboxes(asset);
+   // RenderAssetChaseRadius(asset);
+  
+    // Return the asset's current position into camera space
+    asset->body.x = asset->x;
+    asset->body.y = asset->y;
+    
+    RenderAssetLOS(asset);
 }
 
 void Asset_SetPosition(asset_t *asset, vec2_t *coords)
@@ -527,93 +614,6 @@ void Asset_RenderHitbox(asset_t *asset)
 {
     SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
     SDL_RenderDrawRect(SDLWindow.Renderer, &asset->body);
-}
-
-void SetAssetLOS(asset_t *asset)
-{
-    i32 TOP =   0;
-    i32 DOWN =  1;
-    i32 LEFT =  2;
-    i32 RIGHT = 3;
-
-    asset->los.range[TOP].x = asset->body.x - SDLCamera.X; 
-    asset->los.range[TOP].y = (asset->body.y - (24*3)) - SDLCamera.Y;
-    asset->los.range[TOP].w = 16;
-    asset->los.range[TOP].h = (24*3);
-
-    asset->los.range[DOWN].x = asset->body.x - SDLCamera.X; 
-    asset->los.range[DOWN].y = (asset->body.y + 24) - SDLCamera.Y;
-    asset->los.range[DOWN].w = 16;
-    asset->los.range[DOWN].h = (24*3);
-
-    asset->los.range[LEFT].x = (asset->body.x - (16*3)) - SDLCamera.X; 
-    asset->los.range[LEFT].y = asset->body.y - SDLCamera.Y;
-    asset->los.range[LEFT].w = (16*3);
-    asset->los.range[LEFT].h = 24;
-
-    asset->los.range[RIGHT].x = (asset->body.x + 16) - SDLCamera.X; 
-    asset->los.range[RIGHT].y = asset->body.y - SDLCamera.Y;
-    asset->los.range[RIGHT].w = (16*3);
-    asset->los.range[RIGHT].h = 24;
-
-}
-
-
-void RenderAssetLOS(asset_t asset)
-{
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-    for (int i = 0; i < 4; ++i)
-    {
-        SDL_RenderDrawRect(SDLWindow.Renderer, &asset.los.range[i]);
-    }
-}
-
-void RenderAssetAdjHitboxes(asset_t asset)
-{
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-    for (int i = 0; i < 4; ++i)
-    {
-        SDL_RenderDrawRect(SDLWindow.Renderer, &asset.adjacent_hitboxes[i]);
-    }
-}
-
-void RenderAssetChaseRadius(asset_t asset)
-{
-    SDL_SetRenderDrawColor(SDLWindow.Renderer, 0, 255, 0, 255);
-    SDL_RenderDrawRect(SDLWindow.Renderer, &asset.chase_radius.range);
-}
-
-// Render and update any asset that moves in world space
-void RenderAssetInWorldSpace(asset_t *asset)
-{
-    // Temp store asset body's current position 
-    asset->x = asset->body.x;
-    asset->y = asset->body.y;
-
-    // Update asset body's position to be placed in world space by removing the camera coords
-    asset->body.x -= SDLCamera.X;
-    asset->body.y -= SDLCamera.Y;
-                                
-    if (asset->texture)
-    {
-        SDL_SetTextureBlendMode(asset->texture, SDL_BLENDMODE_BLEND);
-        if (SDL_RenderCopy(SDLWindow.Renderer, asset->texture, NULL, &asset->body) < 0)
-        {
-            fprintf(stderr, "Failed to render asset: %s\n", SDL_GetError());
-            return;
-        }
-    }
-
-    // Only render in debug mode 
-    // This is also temporary, ideally this function is not using pointers, we're only
-    // doing so because we're updating above and below, fix!
-    RenderAssetLOS(*asset);
-    RenderAssetAdjHitboxes(*asset);
-    RenderAssetChaseRadius(*asset);
-  
-    // Return the asset's current position into camera space
-    asset->body.x = asset->x;
-    asset->body.y = asset->y;
 }
 
 // temp
@@ -695,59 +695,142 @@ void RenderAssetInCameraSpaceDIMENSION(asset_t asset, i32 x, int y, int w, int h
 
 void SetAssetAdjacentHitBoxes(asset_t *asset)
 {
-    i32 TOP =   0;
-    i32 DOWN =  1;
-    i32 LEFT =  2;
-    i32 RIGHT = 3;
+    asset->adjacent_hitboxes[ASSET_TOP].x = asset->body.x; 
+    asset->adjacent_hitboxes[ASSET_TOP].y = (asset->body.y - 24);
+    asset->adjacent_hitboxes[ASSET_TOP].w = 16;
+    asset->adjacent_hitboxes[ASSET_TOP].h = 24;
 
-    // We create an offset of 1px for the adj hitboxes, so the corners of the asset do not
-    // touch with incoming assets. 
-    // Visual:
-    // [][] -> This is what it looks like when two collide, they're overlapping just by a pixel
-    // even though it doesn't like it.
-    // [] [] -> This is what we're achieving here, a 1px offset for adjacent assets so they aren't
-    // touching, and only will touch if you're on that adj hitbox. 
-/*
-    asset->adjacent_hitboxes[TOP].x = asset->body.x - SDLCamera.X; 
-    asset->adjacent_hitboxes[TOP].y = (asset->body.y - 24) - SDLCamera.Y;
-    asset->adjacent_hitboxes[TOP].w = 16 - 1;
-    asset->adjacent_hitboxes[TOP].h = 24 - 1;
+    asset->adjacent_hitboxes[ASSET_BOT].x = asset->body.x; 
+    asset->adjacent_hitboxes[ASSET_BOT].y = (asset->body.y + 24);
+    asset->adjacent_hitboxes[ASSET_BOT].w = 16;
+    asset->adjacent_hitboxes[ASSET_BOT].h = 24;
 
-    asset->adjacent_hitboxes[DOWN].x = asset->body.x - SDLCamera.X; 
-    asset->adjacent_hitboxes[DOWN].y = (asset->body.y + 24) - SDLCamera.Y;
-    asset->adjacent_hitboxes[DOWN].w = 16 - 1;
-    asset->adjacent_hitboxes[DOWN].h = 24 - 1;
+    asset->adjacent_hitboxes[ASSET_LEFT].x = (asset->body.x - 16); 
+    asset->adjacent_hitboxes[ASSET_LEFT].y = asset->body.y;
+    asset->adjacent_hitboxes[ASSET_LEFT].w = 16;
+    asset->adjacent_hitboxes[ASSET_LEFT].h = 24;
 
-    asset->adjacent_hitboxes[LEFT].x = (asset->body.x - 16) - SDLCamera.X; 
-    asset->adjacent_hitboxes[LEFT].y = asset->body.y - SDLCamera.Y;
-    asset->adjacent_hitboxes[LEFT].w = 16 - 1;
-    asset->adjacent_hitboxes[LEFT].h = 24 - 1;
+    asset->adjacent_hitboxes[ASSET_RIGHT].x = (asset->body.x + 16); 
+    asset->adjacent_hitboxes[ASSET_RIGHT].y = asset->body.y;
+    asset->adjacent_hitboxes[ASSET_RIGHT].w = 16;
+    asset->adjacent_hitboxes[ASSET_RIGHT].h = 24;
+}
 
-    asset->adjacent_hitboxes[RIGHT].x = (asset->body.x + 16) - SDLCamera.X; 
-    asset->adjacent_hitboxes[RIGHT].y = asset->body.y - SDLCamera.Y;
-    asset->adjacent_hitboxes[RIGHT].w = 16 - 1;
-    asset->adjacent_hitboxes[RIGHT].h = 24 - 1;
-*/
+void SetAssetLOS(asset_t *asset)
+{
+    asset->los.range[ASSET_TOP].x = asset->body.x; 
+    asset->los.range[ASSET_TOP].y = (asset->body.y - (24*3));
+    asset->los.range[ASSET_TOP].w = 16;
+    asset->los.range[ASSET_TOP].h = (24*3);
 
-    asset->adjacent_hitboxes[TOP].x = asset->body.x; 
-    asset->adjacent_hitboxes[TOP].y = (asset->body.y - 24);
-    asset->adjacent_hitboxes[TOP].w = 16;
-    asset->adjacent_hitboxes[TOP].h = 24;
+    asset->los.range[ASSET_BOT].x = asset->body.x; 
+    asset->los.range[ASSET_BOT].y = (asset->body.y + 24);
+    asset->los.range[ASSET_BOT].w = 16;
+    asset->los.range[ASSET_BOT].h = (24*3);
 
-    asset->adjacent_hitboxes[DOWN].x = asset->body.x; 
-    asset->adjacent_hitboxes[DOWN].y = (asset->body.y + 24);
-    asset->adjacent_hitboxes[DOWN].w = 16;
-    asset->adjacent_hitboxes[DOWN].h = 24;
+    asset->los.range[ASSET_LEFT].x = (asset->body.x - (16*3)); 
+    asset->los.range[ASSET_LEFT].y = asset->body.y;
+    asset->los.range[ASSET_LEFT].w = (16*3);
+    asset->los.range[ASSET_LEFT].h = 24;
 
-    asset->adjacent_hitboxes[LEFT].x = (asset->body.x - 16); 
-    asset->adjacent_hitboxes[LEFT].y = asset->body.y;
-    asset->adjacent_hitboxes[LEFT].w = 16;
-    asset->adjacent_hitboxes[LEFT].h = 24;
+    asset->los.range[ASSET_RIGHT].x = (asset->body.x + 16); 
+    asset->los.range[ASSET_RIGHT].y = asset->body.y;
+    asset->los.range[ASSET_RIGHT].w = (16*3);
+    asset->los.range[ASSET_RIGHT].h = 24;
+}
 
-    asset->adjacent_hitboxes[RIGHT].x = (asset->body.x + 16); 
-    asset->adjacent_hitboxes[RIGHT].y = asset->body.y;
-    asset->adjacent_hitboxes[RIGHT].w = 16;
-    asset->adjacent_hitboxes[RIGHT].h = 24;
+void SetAssetChaseRadius(asset_t *asset)
+{
+    // Asset chase radius -> 9x9
+    asset->chase_radius.range.x = (asset->body.x) - (asset->w * 4); 
+    asset->chase_radius.range.y = (asset->body.y) - (asset->h * 4);
+    asset->chase_radius.range.w = asset->w * 9;
+    asset->chase_radius.range.h = asset->h * 9;
+}
+
+typedef enum
+{
+    ASSET_CONDITION_PHYSICS,
+    ASSET_CONDITION_RENDERER,
+    ASSET_CONDITION_MOVEMENT
+} asset_condition_type;
+
+void SetAssetConditionAllOn(asset_t *asset)
+{
+    asset->conditions.has_physics = true;
+    asset->conditions.has_renderer = true;
+    asset->conditions.has_movement = true;
+}
+
+void SetAssetConditionAllOff(asset_t *asset)
+{
+    asset->conditions.has_physics = false;
+    asset->conditions.has_renderer = false;
+    asset->conditions.has_movement = false;
+}
+
+void SetAssetConditionOn(asset_t *asset, i32 index)
+{
+    switch (index)
+    {
+        case ASSET_CONDITION_PHYSICS: 
+        {
+            asset->conditions.has_physics = true;
+        } break;
+        case ASSET_CONDITION_RENDERER: 
+        {
+            asset->conditions.has_renderer = true;
+        } break;
+        case ASSET_CONDITION_MOVEMENT: 
+        {
+            asset->conditions.has_movement = true;
+        } break;
+    }
+}
+
+void SetAssetConditionOff(asset_t *asset, i32 index)
+{
+    switch (index)
+    {
+        case ASSET_CONDITION_PHYSICS: 
+        {
+            asset->conditions.has_physics = false;
+        } break;
+        case ASSET_CONDITION_RENDERER: 
+        {
+            asset->conditions.has_renderer = false;
+        } break;
+        case ASSET_CONDITION_MOVEMENT: 
+        {
+            asset->conditions.has_movement = false;
+        } break;
+    }
+}
+
+vec2_t Vec2_SetPosition(i32 x, i32 y)
+{
+    vec2_t pos = {0};
+
+    pos.x = x;
+    pos.y = y;
+    
+    return pos;
+}
+
+void SetAssetPosition(asset_t *asset, i32 x, int y)
+{
+    asset->body.x = x;
+    asset->body.y = y;
+}
+
+void InitializeAsset(asset_t *asset, vec2_t *pos)
+{
+    SetAssetPosition(asset, pos->x, pos->y);
+    SetAssetConditionAllOn(asset);
+
+    SetAssetLOS(asset);
+    SetAssetAdjacentHitBoxes(asset);
+    SetAssetChaseRadius(asset);
 }
 
 
@@ -1510,18 +1593,18 @@ int main(int argc, char *argv[])
 
     asset_t forest_scenario_map = IdealLoadAsset("assets/forest_scenario.png");
     asset_t oldman_asset = IdealLoadAsset("assets/sprites/oldman.png");
-    oldman_asset.conditions.is_collidable = true;
+    oldman_asset.conditions.has_physics = true;
 
     i32 boulder_count = 0;
     asset_t boulder_asset = IdealLoadAsset("assets/sprites/boulder.png");
-    boulder_asset.conditions.is_collidable = true;
-    boulder_asset.conditions.is_movable = true;
+    boulder_asset.conditions.has_physics = true;
+    boulder_asset.conditions.has_movement = true;
  
     asset_t boulder_wall_asset[5] = {0};
     for (i32 i = 0; i < ArraySize(boulder_wall_asset); ++i)
     {
         boulder_wall_asset[i] = IdealLoadAsset("assets/sprites/boulder.png");
-        boulder_wall_asset[i].conditions.is_collidable = true;
+        boulder_wall_asset[i].conditions.has_physics = true;
     }
 
     asset_t forest_scenario_walls[2] = {0};
@@ -1529,13 +1612,13 @@ int main(int argc, char *argv[])
     forest_scenario_walls[0].body.y = 240 - (48 + 24);
     forest_scenario_walls[0].body.w = forest_scenario_map.w;
     forest_scenario_walls[0].body.h = 24;
-    forest_scenario_walls[0].conditions.is_collidable = true;
+    forest_scenario_walls[0].conditions.has_physics = true;
 
     forest_scenario_walls[1].body.x = 0;
     forest_scenario_walls[1].body.y = 240 - (48 - 24 - 24 - 24);
     forest_scenario_walls[1].body.w = forest_scenario_map.w;
     forest_scenario_walls[1].body.h = 24;
-    forest_scenario_walls[1].conditions.is_collidable = true;
+    forest_scenario_walls[1].conditions.has_physics = true;
   
     bool player_is_out_of_bounds = false;
     asset_t forest_out_of_bounds[2] = {0};
@@ -1554,7 +1637,7 @@ int main(int argc, char *argv[])
     forest_scenario_finish_line.body.y = 240 - (48);
     forest_scenario_finish_line.body.w = 16;
     forest_scenario_finish_line.body.h = 24 * 3;
-    forest_scenario_finish_line.conditions.is_collidable = true;
+    forest_scenario_finish_line.conditions.has_physics = true;
 
     asset_t dialogue_box = {0};
     dialogue_box.body.x = 16; //256 + (16 * 8);
@@ -1655,8 +1738,8 @@ int main(int argc, char *argv[])
         LoadAsset(&character_creation_screen.info[i].asset, class_files[i]);
         character_creation_screen.info[i].name = class_names[i];
         character_creation_screen.info[i].description = class_description[i];
-        character_creation_screen.info[i].asset.conditions.is_collidable = true;
-        character_creation_screen.info[i].asset.conditions.is_movable = true;
+        character_creation_screen.info[i].asset.conditions.has_physics = true;
+        character_creation_screen.info[i].asset.conditions.has_movement = true;
     }
     
     InitializeAssetToRender(&character_creation_screen.info[0].asset, SCREEN_CENTER_X - 96, SCREEN_CENTER_Y, 
@@ -2176,7 +2259,7 @@ int main(int argc, char *argv[])
     game_items[ITEM_HEALTH_POTION].asset = IdealLoadAsset("assets/items/health_potion.png");
     game_items[ITEM_HEALTH_POTION].asset.body.x = 16 * 11;
     game_items[ITEM_HEALTH_POTION].asset.body.y = 24 * 16;
-    game_items[ITEM_HEALTH_POTION].asset.conditions.is_collidable = true;
+    game_items[ITEM_HEALTH_POTION].asset.conditions.has_physics = true;
     SetAssetAdjacentHitBoxes(&game_items[ITEM_HEALTH_POTION].asset);
 
     game_items[ITEM_MANA_POTION].id = 1;
@@ -2284,7 +2367,7 @@ int main(int argc, char *argv[])
         u32 index;
         u32 selected_index;
         bool is_active;
-        bool is_movable;
+        bool has_movement;
 
         bool is_opened;
         game_command_menu_slots_t slots[COMMAND_MENU_ITEMS_SLOT_COUNT]; 
@@ -2332,13 +2415,13 @@ int main(int argc, char *argv[])
     typedef struct
     {
         u32 index;
-        bool is_movable;
+        bool has_movement;
         bool open_options;
     } game_slot_options_t;
 
     int item_slot_option_index = 0;
     bool item_slot_option = false;
-    bool item_slot_option_is_movable = false;
+    bool item_slot_option_has_movement = false;
     asset_t item_slot_asset = IdealLoadAsset("assets/ui/slot_options.png");
     asset_t item_menu_description_box = IdealLoadAsset("assets/ui/item_description_box.png");
     option_t item_slot_options[3] = {
@@ -2445,7 +2528,7 @@ int main(int argc, char *argv[])
         // Cursor package -> index and bool
         i32 index;
         bool is_active; 
-        bool is_movable;
+        bool has_movement;
         
         // Menu package
         bool is_opened;
@@ -2550,62 +2633,62 @@ int main(int argc, char *argv[])
     int col_start_index = 0;
     for (int i = col_start_index; i < main_room_cols; ++i)
     {
-        map_rooms[0].floor_tiles[i].collision_tiles.conditions.is_collidable = true;
+        map_rooms[0].floor_tiles[i].collision_tiles.conditions.has_physics = true;
     }
     // Bottom Wall
     int col_end_index = (main_room_rows - 1) * main_room_cols;
     for (int i = col_end_index; i < total_floor_tiles; ++i)
     {
-        map_rooms[0].floor_tiles[i].collision_tiles.conditions.is_collidable = true;
+        map_rooms[0].floor_tiles[i].collision_tiles.conditions.has_physics = true;
     }
     // Left Wall
     for (int i = 0; i < main_room_rows; ++i)
     {
         int index = i * main_room_cols;
-        map_rooms[0].floor_tiles[index].collision_tiles.conditions.is_collidable = true;
+        map_rooms[0].floor_tiles[index].collision_tiles.conditions.has_physics = true;
     }
     // Right Wall
     for (int i = 0; i < main_room_rows; ++i) 
     {
         int index = i * main_room_cols + main_room_cols - 1;
-        map_rooms[0].floor_tiles[index].collision_tiles.conditions.is_collidable = true;
+        map_rooms[0].floor_tiles[index].collision_tiles.conditions.has_physics = true;
     }
 
     // Main room -> Left Room
-    map_rooms[0].floor_tiles[117].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[118].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[119].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[120].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[121].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[117].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[118].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[119].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[120].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[121].collision_tiles.conditions.has_physics = true;
 
-    map_rooms[0].floor_tiles[123].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[124].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[125].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[126].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[127].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[123].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[124].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[125].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[126].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[127].collision_tiles.conditions.has_physics = true;
 
-    map_rooms[0].floor_tiles[128].collision_tiles.conditions.is_collidable = true;  
-    map_rooms[0].floor_tiles[41].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[70].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[99].collision_tiles.conditions.is_collidable = true;  
+    map_rooms[0].floor_tiles[128].collision_tiles.conditions.has_physics = true;  
+    map_rooms[0].floor_tiles[41].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[70].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[99].collision_tiles.conditions.has_physics = true;  
 
     // Main room -> Right Room
-    map_rooms[0].floor_tiles[45].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[74].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[103].collision_tiles.conditions.is_collidable = true;  
-    map_rooms[0].floor_tiles[132].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[45].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[74].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[103].collision_tiles.conditions.has_physics = true;  
+    map_rooms[0].floor_tiles[132].collision_tiles.conditions.has_physics = true;
     
-    map_rooms[0].floor_tiles[133].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[134].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[135].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[136].collision_tiles.conditions.is_collidable = true; 
-    map_rooms[0].floor_tiles[137].collision_tiles.conditions.is_collidable = true; 
+    map_rooms[0].floor_tiles[133].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[134].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[135].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[136].collision_tiles.conditions.has_physics = true; 
+    map_rooms[0].floor_tiles[137].collision_tiles.conditions.has_physics = true; 
 
-    map_rooms[0].floor_tiles[139].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[140].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[141].collision_tiles.conditions.is_collidable = true;
-    map_rooms[0].floor_tiles[142].collision_tiles.conditions.is_collidable = true; 
-    map_rooms[0].floor_tiles[143].collision_tiles.conditions.is_collidable = true;
+    map_rooms[0].floor_tiles[139].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[140].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[141].collision_tiles.conditions.has_physics = true;
+    map_rooms[0].floor_tiles[142].collision_tiles.conditions.has_physics = true; 
+    map_rooms[0].floor_tiles[143].collision_tiles.conditions.has_physics = true;
     
     asset_t tile_sparkle = IdealLoadAsset("assets/rooms/sparkle.png");
     asset_t loot_box = IdealLoadAsset("assets/chest_box.png");
@@ -2643,28 +2726,16 @@ int main(int argc, char *argv[])
     // case, if you are out of range.
     // Line of sight - Every enemy type will have a different line of sight range.
     // Sprite's Front - The front of a sprite is the direction in which they last turned. 
-   
-    bool player_facing_front = false;
 
-    vec2_t player_starting_coords = {0};
-    player_starting_coords.x = 16 * 10;
-    player_starting_coords.y = 24 * 16;
-
-    vec2_t enemy_starting_coords = {0};
-    enemy_starting_coords.x = 16 * 14;
-    enemy_starting_coords.y = 24 * 16;
+    vec2_t player_starting_coords = Vec2_SetPosition(16 * 10, 24 * 16);
+    vec2_t enemy_starting_coords = Vec2_SetPosition(16 * 14, 24 * 16);
     
     asset_t enemy_los_asset = IdealLoadAsset("assets/sprites/enemy1.png");
-    enemy_los_asset.conditions.is_collidable = true;
-    enemy_los_asset.body.x = enemy_starting_coords.x; 
-    enemy_los_asset.body.y = enemy_starting_coords.y;
+    InitializeAsset(&enemy_los_asset, &enemy_starting_coords);
 
     ////////////////////////////////////////////////////////////////////
-    
 
     static personality_results_t personality_result = {0};
-    i32 SCENARIO_INDEX = 0;
-
 
     typedef struct
     {
@@ -2802,7 +2873,7 @@ int main(int argc, char *argv[])
 
                                 Personality_MoveUpScenario(&scenarios);
 
-                                if (is_game_running && game_command_menu.is_opened && game_command_menu.is_movable)
+                                if (is_game_running && game_command_menu.is_opened && game_command_menu.has_movement)
                                 {
                                     game_command_menu.index--;
                                     if (game_command_menu.index < 0)
@@ -2811,14 +2882,14 @@ int main(int argc, char *argv[])
                                     Sound_PlaySFX(&master_volume.sfx[1]->wav); // Change the sfx
                                 }
 
-                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.is_movable)
+                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.has_movement)
                                 {
                                     item_slot_current_row = (item_slot_current_row - 1 + ITEMS_SLOT_GRID_ROWS) % ITEMS_SLOT_GRID_ROWS;
                                     game_command_menu_items.index = item_slot_current_row * ITEMS_SLOT_GRID_COLS + item_slot_current_col;
                                     Sound_PlaySFX(&master_volume.sfx[1]->wav); // Change the sfx
                                 }
 
-                                if (is_game_running && item_slot_option_is_movable)
+                                if (is_game_running && item_slot_option_has_movement)
                                 {
                                     item_slot_option_index--;
                                     if (item_slot_option_index < 0)
@@ -2883,7 +2954,7 @@ int main(int argc, char *argv[])
 
                                 Personality_MoveDownScenario(&scenarios);
 
-                                if (is_game_running && game_command_menu.is_opened && game_command_menu.is_movable)
+                                if (is_game_running && game_command_menu.is_opened && game_command_menu.has_movement)
                                 {
                                     game_command_menu.index++;
                                     if (game_command_menu.index >= ArraySize(game_command_menu.options))
@@ -2893,14 +2964,14 @@ int main(int argc, char *argv[])
                                     Sound_PlaySFX(&master_volume.sfx[1]->wav);
                                 }
                                
-                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.is_movable)
+                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.has_movement)
                                 {
                                     item_slot_current_row = (item_slot_current_row + 1) % ITEMS_SLOT_GRID_ROWS;
                                     game_command_menu_items.index = item_slot_current_row * ITEMS_SLOT_GRID_COLS + item_slot_current_col;
                                     Sound_PlaySFX(&master_volume.sfx[1]->wav); // Change the sfx
                                 }
                                 
-                                if (is_game_running && item_slot_option_is_movable)
+                                if (is_game_running && item_slot_option_has_movement)
                                 {
                                     item_slot_option_index++;
                                     if (item_slot_option_index >= ArraySize(item_slot_options))
@@ -3042,7 +3113,7 @@ int main(int argc, char *argv[])
                                         next_button.index = ArraySize(next_button.button) - 1;
                                 }
 
-                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.is_movable)
+                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.has_movement)
                                 {
                                     item_slot_current_col = (item_slot_current_col - 1 + ITEMS_SLOT_GRID_COLS) % ITEMS_SLOT_GRID_COLS;
                                     game_command_menu_items.index = item_slot_current_row * ITEMS_SLOT_GRID_COLS + item_slot_current_col;
@@ -3177,7 +3248,7 @@ int main(int argc, char *argv[])
                                         next_button.index = 0;
                                 }
 
-                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.is_movable)
+                                if (is_game_running && game_command_menu_items.is_opened && game_command_menu_items.has_movement)
                                 {
                                     item_slot_current_col = (item_slot_current_col + 1) % ITEMS_SLOT_GRID_COLS;
                                     game_command_menu_items.index = item_slot_current_row * ITEMS_SLOT_GRID_COLS + item_slot_current_col;
@@ -3216,10 +3287,10 @@ int main(int argc, char *argv[])
                                 {
                                     game_command_menu.is_opened = true;
                                     game_command_menu.is_active = true;
-                                    game_command_menu.is_movable = true;
+                                    game_command_menu.has_movement = true;
 
                                     // Player cannot move in this event
-                                    character_data.model.conditions.is_movable = false;
+                                    character_data.model.conditions.has_movement = false;
                                     printf("menu opened\n");
                                 }
                                 // If the the command menu is opened, AND only if the other menus are not opened/used, the command
@@ -3230,12 +3301,12 @@ int main(int argc, char *argv[])
                                 {
                                     game_command_menu.is_opened = false;
                                     game_command_menu.is_active = false;
-                                    game_command_menu.is_movable = false;
+                                    game_command_menu.has_movement = false;
                                    
                                     game_command_menu.index = 0; // Set the cursor back to the top of the list, items
 
                                     // Player can now move
-                                    character_data.model.conditions.is_movable = true;
+                                    character_data.model.conditions.has_movement = true;
                                     printf("menu closed\n");
                                 }
 
@@ -3243,24 +3314,24 @@ int main(int argc, char *argv[])
                                 if (is_game_running && game_command_menu_items.is_active)
                                 {
                                     game_command_menu_items.is_opened = false;
-                                    game_command_menu.is_movable = true;
+                                    game_command_menu.has_movement = true;
                                 }
 
                                 if (is_game_running && item_slot_option)
                                 {
-                                    game_command_menu_items.is_movable = true;
+                                    game_command_menu_items.has_movement = true;
                                     game_command_menu_items.is_active = true;
                                     game_command_menu.is_active = true;
                                     item_slot_option = false;
-                                    item_slot_option_is_movable = false;
+                                    item_slot_option_has_movement = false;
                                 }
 
                                 if (is_game_running && touch_item_on_floor)
                                 {
                                     game_command_menu.is_opened = false;
                                     game_command_menu.is_active = false;
-                                    game_command_menu.is_movable = false;
-                                    character_data.model.conditions.is_movable = true;
+                                    game_command_menu.has_movement = false;
+                                    character_data.model.conditions.has_movement = true;
                                     
                                     touch_item_on_floor = false;
                                 }
@@ -3799,7 +3870,7 @@ int main(int argc, char *argv[])
                                         if (dialogue_index > 5)
                                         {
                                             dialogue_index = 0;
-                                            character_data.model.conditions.is_movable = true;
+                                            character_data.model.conditions.has_movement = true;
                                             player_talking_to_oldman = false;
                                             hold_dialogue_box = false;
                                         }
@@ -3811,7 +3882,7 @@ int main(int argc, char *argv[])
                                         if (dialogue_index_2 > 1)
                                         {
                                             dialogue_index_2 = 0;
-                                            character_data.model.conditions.is_movable = true; 
+                                            character_data.model.conditions.has_movement = true; 
                                             hold_dialogue_box_return_boulder = false;
                                         }
                                     }
@@ -3846,8 +3917,6 @@ int main(int argc, char *argv[])
                                                 printf("overview next\n");
 
                                                 // Initialize/Reset the player starting here
-                                                SetAssetLOS(&character_data.model);
-                                                SetAssetLOS(&enemy_los_asset);
                                                 Asset_SetPosition(&character_data.model, &player_starting_coords);
 
 
@@ -3886,9 +3955,9 @@ int main(int argc, char *argv[])
                                                 if (i == game_command_menu_items.index)
                                                 {
                                                     item_slot_option = true;
-                                                    item_slot_option_is_movable = true;
+                                                    item_slot_option_has_movement = true;
 
-                                                    game_command_menu_items.is_movable = false;
+                                                    game_command_menu_items.has_movement = false;
                                                     game_command_menu_items.is_active = false;
                                                     game_command_menu.is_active = false;
                                                     printf("opening slot\n");
@@ -3919,10 +3988,10 @@ int main(int argc, char *argv[])
                                                     {
                                                         // Toss item then close item option
                                                         game_command_menu.is_active = true;
-                                                        game_command_menu_items.is_movable = true;
+                                                        game_command_menu_items.has_movement = true;
                                                         game_command_menu_items.is_active = true;
 
-                                                        item_slot_option_is_movable = false;
+                                                        item_slot_option_has_movement = false;
                                                         item_slot_option = false;
                                                     
                                                         printf("Move\n");
@@ -3956,13 +4025,13 @@ int main(int argc, char *argv[])
                                             case 0:
                                             {
                                                 game_command_menu_items.is_opened = true;
-                                                game_command_menu_items.is_movable = true;
-                                                game_command_menu.is_movable = false;
+                                                game_command_menu_items.has_movement = true;
+                                                game_command_menu.has_movement = false;
                                             } break;
                                             case 1:
                                             {
                                                 printf("EQUIP\n");
-                                                game_command_menu.is_movable = false;
+                                                game_command_menu.has_movement = false;
                                             } break;
                                             case 2:
                                             {
@@ -4250,8 +4319,8 @@ int main(int argc, char *argv[])
                         {
                             PushString(character_data.class.name, "Knight");
                             character_data.model = character_creation_screen.info[KNIGHT_ID].asset;
-                            character_data.model.conditions.is_collidable = true;
-                            character_data.model.conditions.is_movable = true;
+                            character_data.model.conditions.has_physics = true;
+                            character_data.model.conditions.has_movement = true;
                             character_data.model.direction.up = false;
                             character_data.model.direction.down = false;
                             character_data.model.direction.left = false;
@@ -4816,7 +4885,7 @@ int main(int argc, char *argv[])
 
                     if (hold_dialogue_box)
                     {
-                        character_data.model.conditions.is_movable = false; 
+                        character_data.model.conditions.has_movement = false; 
                         RenderAssetInCameraSpace(&dialogue_box_asset, 
                                              SCREEN_CENTER_X - (128 - 32), SCREEN_CENTER_Y + 32); 
                         RenderTextWithNewlines(SDLWindow.Renderer, font.atlas,
@@ -4837,7 +4906,7 @@ int main(int argc, char *argv[])
 
                     if (hold_dialogue_box_return_boulder)
                     {
-                        character_data.model.conditions.is_movable = false; 
+                        character_data.model.conditions.has_movement = false; 
                         RenderAssetInCameraSpace(&dialogue_box_asset, 
                                              SCREEN_CENTER_X - (128 - 32), SCREEN_CENTER_Y + 32); 
                             
@@ -5310,11 +5379,17 @@ int main(int argc, char *argv[])
 
             if (AABB_Detection(&character_data.model.body, &enemy_los_asset.chase_radius.range))
             {
-                printf("Inside chase radius, run!\n");
+               // printf("Inside chase radius, run!\n");
             }
             for (int i = 0; i < 4; ++i)
             {
-                if (AABB_Detection(&character_data.model.body, &enemy_los_asset.los.range[i]))
+                /*if (AABB_Detection(&character_data.model.body, &enemy_los_asset.los.range[i]))
+                {
+                    printf("player_model: %d\n", character_data.model.body.x);
+                    printf("enemy_los: %d\n", enemy_los_asset.los.range[i].x);
+                }*/
+
+                if (AABB_Detection(&character_data.model.los.range[i], &enemy_los_asset.body))
                 {
                     printf("player_model: %d\n", character_data.model.body.x);
                     printf("enemy_los: %d\n", enemy_los_asset.los.range[i].x);
@@ -5353,7 +5428,7 @@ int main(int argc, char *argv[])
 
             RenderAssetInWorldSpace(&enemy_los_asset);
             RenderAssetInWorldSpace(&character_data.model);
-          
+
             if (touch_item_on_floor)
             {
                 RenderAssetInCameraSpace(&loot_box, 
