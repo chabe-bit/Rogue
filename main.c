@@ -284,6 +284,9 @@ void AABB_AdjHitboxResolution(asset_t *A, asset_t *B)
     }
 }
 
+bool combat_mode_initiated = false;
+bool chase_initiated = false;
+
 void AABB_LOSResolution(asset_t *A, asset_t *B, font_t *font)
 {
     if ((AABB_Detection(&A->los.range[0], &B->body)) ||
@@ -295,11 +298,8 @@ void AABB_LOSResolution(asset_t *A, asset_t *B, font_t *font)
         printf("in los range!\n");
         
         // Initiate combat mode!
-        RenderText(SDLWindow.Renderer, font->atlas,
-                   SET_TEXT_CENTER_X("COMBAT MODE", 0),
-                   SCREEN_CENTER_Y,
-                   "COMBAT MODE",
-                   font->color[COLOR_WHITE]); 
+        combat_mode_initiated = true; 
+
     }
 }
 
@@ -307,43 +307,16 @@ void AABB_ChaseRadiusResolution(asset_t *A, asset_t *B, font_t *font)
 {
     if (AABB_Detection(&A->chase_radius.range, &B->body))
     {
-       // printf("in chase range!\n");
-        
-        
+        // If in combat mode and in range, chase
+        if (combat_mode_initiated)
+            chase_initiated = true; 
     }
-}
-
-bool AABB_DetectionV2(asset_t *A, asset_t *B)
-{
-    if(A->body.y + A->body.h <= B->body.y) 
-        return false;
-
-    if(A->body.y >= B->body.y + B->body.h) 
-        return false;
-
-    if(A->body.x + A->body.w <= B->body.x) 
-        return false;
-
-    if(A->body.x >= B->body.x + B->body.w) 
-        return false;
-
-    return true;
-}
-
-void AABB_ResolutionV2(asset_t *A, asset_t *B)
-{
-    if (AABB_DetectionV2(A, B) &&
-        (A->conditions.has_physics && B->conditions.has_physics))
+    else
     {
-        A->body.x = A->x;
-        A->body.y = A->y;
-
-        B->body.x = B->x;
-        B->body.y = B->y;
-
-        A->conditions.has_collided = true;
-        B->conditions.has_collided = true;
-    }
+        // End combat and chase, if out of chase range 
+        combat_mode_initiated = false;
+        chase_initiated = false;
+    } 
 }
 
 typedef enum
@@ -2818,7 +2791,6 @@ int main(int argc, char *argv[])
         { "and he claims is love at first sight.",      SET_TEXT_CENTER_X("and he claims is love at first sight", 0),       SCREEN_CENTER_Y - 40 },
         { "What do you do?",                            SET_TEXT_CENTER_X("What do you do?", 0),                            SCREEN_CENTER_Y - 32 },
     };
-
 
 
     while (Running) 
@@ -5426,7 +5398,7 @@ int main(int argc, char *argv[])
             }
 
             AABB_AdjHitboxResolution(&character_data.model, &enemy_los_asset);
-            AABB_LOSResolution(&character_data.model, &enemy_los_asset, &font);
+            AABB_LOSResolution(&enemy_los_asset, &character_data.model, &font);
             AABB_ChaseRadiusResolution(&enemy_los_asset, &character_data.model, &font);
             for (int i = 0; i < total_floor_tiles; ++i)
             {
@@ -5459,6 +5431,24 @@ int main(int argc, char *argv[])
             AssetCard_Render(&enemy_card_stack);
             GUI_RenderCursor(&cursor[RIGHT_CURSOR].model);
 
+            if (combat_mode_initiated)
+            {
+                RenderText(SDLWindow.Renderer, font.atlas,
+                           SET_TEXT_CENTER_X("COMBAT MODE", 0),
+                           SCREEN_CENTER_Y,
+                           "COMBAT MODE",
+                           font.color[COLOR_WHITE]); 
+            }
+
+            if (chase_initiated)
+            {
+                RenderText(SDLWindow.Renderer, font.atlas,
+                           SET_TEXT_CENTER_X("CHASING", 0),
+                           SCREEN_CENTER_Y + 16,
+                           "CHASING",
+                           font.color[COLOR_WHITE]); 
+            }
+
 
             for (int i = 0; i < total_floor_tiles; ++i)
             {
@@ -5478,8 +5468,6 @@ int main(int argc, char *argv[])
                 RenderAssetInCameraSpace(&loot_box, 
                                          SCREEN_CENTER_X - (loot_box.w / 2), 
                                          SCREEN_CENTER_Y - (loot_box.h / 2));
-
-
             }
 
             if (game_command_menu.is_opened)
