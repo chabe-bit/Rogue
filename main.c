@@ -50,6 +50,12 @@ typedef struct
 
 typedef struct
 {
+    // Default AI is randomly walking around
+    // Combat AI 
+} asset_ai_t;
+
+typedef struct
+{
     bool is_up;
     bool is_down;
     bool is_left;
@@ -95,7 +101,10 @@ typedef struct
 {
     i32 x, y;
     i32 w, h;
-    
+
+    bool spawn_card;
+    bool first_combat_encounter;
+
     asset_direction_t direction;
     asset_conditions_t conditions;
     asset_line_of_sight_t los; // line of sight
@@ -113,6 +122,11 @@ typedef struct
     SDL_Rect body;
     SDL_Texture *texture;
 } asset_cursor_t;
+
+typedef struct
+{
+    
+} los_event_t;
 
 void CursorForItems(option_t *title_screen_options, asset_t *cursor, i32 x_offset, int y_offset)
 {
@@ -284,6 +298,8 @@ void AABB_AdjHitboxResolution(asset_t *A, asset_t *B)
     }
 }
 
+bool first_combat_encounter = false;
+//bool enemy_los_asset.spawn_card = false;
 bool combat_mode_initiated = false;
 bool chase_initiated = false;
 
@@ -298,11 +314,24 @@ void AABB_LOSResolution(asset_t *A, asset_t *B, font_t *font)
         printf("in los range!\n");
         
         // Initiate combat mode!
-        combat_mode_initiated = true; 
+        combat_mode_initiated = true;
+
+        // Spawn that enemy card and only once
+        if (!A->first_combat_encounter)
+        {
+            //enemy_los_asset.spawn_card = true;
+            A->spawn_card = true;
+            A->first_combat_encounter = true;
+        }
 
     }
 }
 
+
+// Each asset should have their own instance of this condition because let's say two
+// enemies are encountered at the same time, this one instance would probably lag behind
+// by 1 or cause some sort of collision. If these were seperate we might not need to worry
+// about that.
 void AABB_ChaseRadiusResolution(asset_t *A, asset_t *B, font_t *font)
 {
     if (AABB_Detection(&A->chase_radius.range, &B->body))
@@ -444,23 +473,31 @@ bool UpdateAssetMovement(asset_t *asset, sound_wav_t *sound)
 
 typedef enum
 {
+    ASSET_NPC_IDLE,
     ASSET_NPC_UP,
     ASSET_NPC_DOWN,
     ASSET_NPC_LEFT,
     ASSET_NPC_RIGHT,
 } asset_npc_movement_type;
 
-void UpdateAssetNPCMovement(asset_t *asset, sound_wav_t *sound)
+void TestUpdateAssetNPCMovement(asset_t *asset, sound_wav_t *sound)
 {
     asset->x = asset->body.x; 
     asset->y = asset->body.y;
 
-    i32 direction = 2; //rand() % 4;
+    i32 direction = 3; // rand() % 5;
+    
+    asset_npc_movement_type npc = ASSET_NPC_IDLE;
+    npc = direction;
  
     if (asset->conditions.has_movement)
     {
-        switch (direction)
+        switch (npc)
         {
+            case ASSET_NPC_IDLE: 
+            {
+                // Do nothing
+            } break;
             case ASSET_NPC_UP:
             {
                 asset->body.y -= asset->body.h;
@@ -477,10 +514,54 @@ void UpdateAssetNPCMovement(asset_t *asset, sound_wav_t *sound)
             {
                 asset->body.x += asset->body.w; 
             } break;
+            default:
+            {
+                npc = ASSET_NPC_IDLE;
+            } break;
         }
-
     }
+}
 
+void UpdateAssetNPCMovement(asset_t *asset, sound_wav_t *sound)
+{
+    asset->x = asset->body.x; 
+    asset->y = asset->body.y;
+
+    i32 direction = 3; // rand() % 5;
+    
+    asset_npc_movement_type npc = ASSET_NPC_IDLE;
+    npc = direction;
+ 
+    if (asset->conditions.has_movement)
+    {
+        switch (npc)
+        {
+            case ASSET_NPC_IDLE: 
+            {
+                // Do nothing
+            } break;
+            case ASSET_NPC_UP:
+            {
+                asset->body.y -= asset->body.h;
+            } break;
+            case ASSET_NPC_DOWN:
+            {
+                asset->body.y += asset->body.h; 
+            } break;
+            case ASSET_NPC_LEFT:
+            {
+                asset->body.x -= asset->body.w;
+            } break;
+            case ASSET_NPC_RIGHT:
+            {
+                asset->body.x += asset->body.w; 
+            } break;
+            default:
+            {
+                npc = ASSET_NPC_IDLE;
+            } break;
+        }
+    }
 }
 
 void UpdatePushableAsset(asset_t *asset, asset_t *player)
@@ -2737,9 +2818,6 @@ int main(int argc, char *argv[])
     for (int i = 0; i < MAX_CARD_STACK; ++i)
         printf("enemy_card_stack: %d\n", enemy_card_stack.asset[i].x);
     
-    // Push and pop asset_t within a stack
-    printf("w: %d\n", enemy_card_mock.w);
-
     // Combat mode - Triggered event by being in the line of sight of an enemy
     // Enemy will have a line of sight that stems from their "front", and where their front is is where that
     // line renders. Then they have a chase radius that will be the same distance as their line of sight. The chase
@@ -2752,9 +2830,15 @@ int main(int argc, char *argv[])
 
     vec2_t player_starting_coords = Vec2_SetPosition(16 * 10, 24 * 16);
     vec2_t enemy_starting_coords = Vec2_SetPosition(16 * 14, 24 * 16);
+    vec2_t enemy_starting_coords2 = Vec2_SetPosition(16 * 15, 24 * 16);
     
     asset_t enemy_los_asset = IdealLoadAsset("assets/sprites/enemy1.png");
+    asset_t enemy_los_asset2 = IdealLoadAsset("assets/sprites/enemy1.png");
     InitializeAsset(&enemy_los_asset, &enemy_starting_coords);
+    InitializeAsset(&enemy_los_asset2, &enemy_starting_coords2);
+
+    // Test for now, ideal to hold all sprite assets in one arrray
+    asset_t all_sprites[100] = {0};
 
     ////////////////////////////////////////////////////////////////////
 
@@ -2792,6 +2876,27 @@ int main(int argc, char *argv[])
         { "What do you do?",                            SET_TEXT_CENTER_X("What do you do?", 0),                            SCREEN_CENTER_Y - 32 },
     };
 
+
+    int my_index = 3;
+    int num_arr[6] = {0, 1, 2, 3, 4, 5};
+    int i_counter = 0;
+    int j_counter = 0;
+   
+    // Method to isolate the current index to compare itself to the rest of the array
+    for (int i = my_index; i < ArraySize(num_arr); i++)
+    {
+        printf("%d\n", i);
+        i_counter++;
+    }
+ 
+    for (int j = my_index; j >= 0; j--)
+    {
+        printf("%d\n", j);
+        j_counter++;
+    }
+
+    printf("my_index i: %d\n", i_counter);
+    printf("my_index j: %d\n", j_counter);
 
     while (Running) 
     {
@@ -2860,6 +2965,23 @@ int main(int argc, char *argv[])
                                     printf("left: %d\n", character_data.model.los.front.is_left);
                                     printf("right: %d\n", character_data.model.los.front.is_right);
 
+                                    if (enemy_los_asset.spawn_card)
+                                    {
+                                        if (enemy_card_stack.index < MAX_CARD_STACK)
+                                        {
+                                            AssetCard_Push(&enemy_card_stack, enemy_card_mock);
+                                            enemy_los_asset.spawn_card = false;
+                                        }
+                                    }
+                                                            
+                                    if (enemy_los_asset2.spawn_card)
+                                    {
+                                        if (enemy_card_stack.index < MAX_CARD_STACK)
+                                        {
+                                            AssetCard_Push(&enemy_card_stack, enemy_card_mock);
+                                            enemy_los_asset2.spawn_card = false;
+                                        }
+                                    }
                                 }
 
                                 if (boulder_has_reached_end)
@@ -2939,6 +3061,24 @@ int main(int argc, char *argv[])
                                     printf("down: %d\n", character_data.model.los.front.is_down);
                                     printf("left: %d\n", character_data.model.los.front.is_left);
                                     printf("right: %d\n", character_data.model.los.front.is_right);
+                                                                 
+                                    if (enemy_los_asset.spawn_card)
+                                    {
+                                        if (enemy_card_stack.index < MAX_CARD_STACK)
+                                        {
+                                            AssetCard_Push(&enemy_card_stack, enemy_card_mock);
+                                            enemy_los_asset.spawn_card = false;
+                                        }
+                                    }
+
+                                    if (enemy_los_asset2.spawn_card)
+                                    {
+                                        if (enemy_card_stack.index < MAX_CARD_STACK)
+                                        {
+                                            AssetCard_Push(&enemy_card_stack, enemy_card_mock);
+                                            enemy_los_asset2.spawn_card = false;
+                                        }
+                                    }
                                 }
 
                                 if (boulder_has_reached_end)
@@ -3018,6 +3158,23 @@ int main(int argc, char *argv[])
                                     printf("down: %d\n", character_data.model.los.front.is_down);
                                     printf("left: %d\n", character_data.model.los.front.is_left);
                                     printf("right: %d\n", character_data.model.los.front.is_right);
+                                    
+                                    if (enemy_los_asset.spawn_card)
+                                    {
+                                        if (enemy_card_stack.index < MAX_CARD_STACK)
+                                        {
+                                            AssetCard_Push(&enemy_card_stack, enemy_card_mock);
+                                            enemy_los_asset.spawn_card = false;
+                                        }
+                                    }
+                                    if (enemy_los_asset2.spawn_card)
+                                    {
+                                        if (enemy_card_stack.index < MAX_CARD_STACK)
+                                        {
+                                            AssetCard_Push(&enemy_card_stack, enemy_card_mock);
+                                            enemy_los_asset2.spawn_card = false;
+                                        }
+                                    }
                                 }
 
                                 if (boulder_has_reached_end)
@@ -3160,6 +3317,23 @@ int main(int argc, char *argv[])
                                     printf("down: %d\n", character_data.model.los.front.is_down);
                                     printf("left: %d\n", character_data.model.los.front.is_left);
                                     printf("right: %d\n", character_data.model.los.front.is_right);
+                                    
+                                    if (enemy_los_asset.spawn_card)
+                                    {
+                                        if (enemy_card_stack.index < MAX_CARD_STACK)
+                                        {
+                                            AssetCard_Push(&enemy_card_stack, enemy_card_mock);
+                                            enemy_los_asset.spawn_card = false;
+                                        }
+                                    }
+                                    if (enemy_los_asset2.spawn_card)
+                                    {
+                                        if (enemy_card_stack.index < MAX_CARD_STACK)
+                                        {
+                                            AssetCard_Push(&enemy_card_stack, enemy_card_mock);
+                                            enemy_los_asset2.spawn_card = false;
+                                        }
+                                    }
                                 }
 
                                 if (boulder_has_reached_end)
@@ -4342,14 +4516,16 @@ int main(int argc, char *argv[])
                         {
                             PushString(character_data.class.name, "Knight");
                             character_data.model = character_creation_screen.info[KNIGHT_ID].asset;
-                            character_data.model.conditions.has_physics = true;
-                            character_data.model.conditions.has_movement = true;
-                            character_data.model.direction.up = false;
-                            character_data.model.direction.down = false;
-                            character_data.model.direction.left = false;
-                            character_data.model.direction.right = false;
+                            InitializeAsset(&character_data.model, &player_starting_coords);
+                        
+                            // All array starts here for now
+                            all_sprites[0] = character_data.model;
+                            all_sprites[1] = enemy_los_asset;
+                            all_sprites[2] = enemy_los_asset2;
 
                             character_data.base_stats = class_base_stats[KNIGHT_ID];
+
+                        
                             confirmation.is_active = true; 
                         } break;
                         case CLASS_SELECT_PALADIN:
@@ -5388,29 +5564,39 @@ int main(int argc, char *argv[])
         {
             UpdateAssetProperties(&character_data.model);
             UpdateAssetProperties(&enemy_los_asset);
-
-            if (UpdateAssetMovement(&character_data.model, &sfx_move))
-            {
-                UpdateAssetNPCMovement(&enemy_los_asset, &sfx_move); 
-                
-
-
-            }
-
-            AABB_AdjHitboxResolution(&character_data.model, &enemy_los_asset);
-            AABB_LOSResolution(&enemy_los_asset, &character_data.model, &font);
-            AABB_ChaseRadiusResolution(&enemy_los_asset, &character_data.model, &font);
-            for (int i = 0; i < total_floor_tiles; ++i)
-            {
-               AABB_Resolution(&character_data.model, &map_rooms[0].floor_tiles[i].collision_tiles);
-               AABB_Resolution(&enemy_los_asset, &map_rooms[0].floor_tiles[i].collision_tiles);
-            } 
-
+            UpdateAssetProperties(&enemy_los_asset2);
 
             GUI_UpdateCursor(&cursor[RIGHT_CURSOR].model, 
                              enemy_card_stack.asset[enemy_card_stack.index - 1].x,
                              enemy_card_stack.asset[enemy_card_stack.index - 1].y,
                              -4, -1);
+
+            if (UpdateAssetMovement(&character_data.model, &sfx_move))
+            {
+                UpdateAssetNPCMovement(&enemy_los_asset, &sfx_move); 
+                UpdateAssetNPCMovement(&enemy_los_asset2, &sfx_move); 
+                
+
+
+            }
+            
+
+
+            AABB_AdjHitboxResolution(&character_data.model, &enemy_los_asset);
+            AABB_AdjHitboxResolution(&character_data.model, &enemy_los_asset2);
+            AABB_LOSResolution(&enemy_los_asset, &character_data.model, &font);
+            AABB_LOSResolution(&enemy_los_asset2, &character_data.model, &font);
+            AABB_ChaseRadiusResolution(&enemy_los_asset, &character_data.model, &font);
+            AABB_ChaseRadiusResolution(&enemy_los_asset2, &character_data.model, &font);
+
+            for (int i = 0; i < total_floor_tiles; ++i)
+            {
+               AABB_Resolution(&character_data.model, &map_rooms[0].floor_tiles[i].collision_tiles);
+               AABB_Resolution(&enemy_los_asset, &map_rooms[0].floor_tiles[i].collision_tiles);
+               AABB_Resolution(&enemy_los_asset2, &map_rooms[0].floor_tiles[i].collision_tiles);
+            } 
+            
+            AABB_Resolution(&character_data.model, &character_data.model);
             
             AttachCameraToPlayer(&character_data.model, &room_asset[0]);
             SDL_SetRenderTarget(SDLWindow.Renderer, SDLCamera.TargetTexture);
@@ -5420,36 +5606,6 @@ int main(int argc, char *argv[])
             RenderAssetInWorldSpace(&room_asset[0]);
             RenderAssetInWorldSpace(&down_stairs_asset);
          
-            ///////////////////////////////////////////
-            
-            RenderAssetInCameraSpace(&player_card_mock, 
-                                     SCREEN_CENTER_X - 120, 
-                                     SCREEN_CENTER_Y - 112);
-    
-
-            // Only render together
-            AssetCard_Render(&enemy_card_stack);
-            GUI_RenderCursor(&cursor[RIGHT_CURSOR].model);
-
-            if (combat_mode_initiated)
-            {
-                RenderText(SDLWindow.Renderer, font.atlas,
-                           SET_TEXT_CENTER_X("COMBAT MODE", 0),
-                           SCREEN_CENTER_Y,
-                           "COMBAT MODE",
-                           font.color[COLOR_WHITE]); 
-            }
-
-            if (chase_initiated)
-            {
-                RenderText(SDLWindow.Renderer, font.atlas,
-                           SET_TEXT_CENTER_X("CHASING", 0),
-                           SCREEN_CENTER_Y + 16,
-                           "CHASING",
-                           font.color[COLOR_WHITE]); 
-            }
-
-
             for (int i = 0; i < total_floor_tiles; ++i)
             {
                 if (map_rooms[0].floor_tiles[i].collision_tiles.conditions.is_occupied)
@@ -5461,7 +5617,37 @@ int main(int argc, char *argv[])
             }
 
             RenderAssetInWorldSpace(&enemy_los_asset);
+            RenderAssetInWorldSpace(&enemy_los_asset2);
             RenderAssetInWorldSpace(&character_data.model);
+
+            // --------- HUD / GUI ----------
+
+            RenderAssetInCameraSpace(&player_card_mock, 
+                                     SCREEN_CENTER_X - 120, 
+                                     SCREEN_CENTER_Y - 112);
+
+
+            if (combat_mode_initiated)
+            {
+                RenderText(SDLWindow.Renderer, font.atlas,
+                           SET_TEXT_CENTER_X("COMBAT MODE", 0),
+                           SCREEN_CENTER_Y,
+                           "COMBAT MODE",
+                           font.color[COLOR_WHITE]); 
+                
+                AssetCard_Render(&enemy_card_stack);
+                GUI_RenderCursor(&cursor[RIGHT_CURSOR].model);
+            }
+
+            if (chase_initiated)
+            {
+                RenderText(SDLWindow.Renderer, font.atlas,
+                           SET_TEXT_CENTER_X("CHASING", 0),
+                           SCREEN_CENTER_Y + 16,
+                           "CHASING",
+                           font.color[COLOR_WHITE]); 
+            }
+
 
             if (touch_item_on_floor)
             {
