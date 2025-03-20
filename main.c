@@ -50,9 +50,15 @@ typedef struct
 
 typedef struct
 {
-    // Default AI is randomly walking around
-    // Combat AI 
-} asset_ai_t;
+    // Brain is in control of the asset's movement, AI and whatnot
+    // Depending on the state of the game, the asset can also change its state such
+    // as it's passive mode, combat mode and so on.
+    // Default brain is passive -> Idlely walk around
+    // Chase brain -> only if an npc, chase targeted asset's current position. 
+    // Combat brain -> if destination is reached, it will switch into combat mode
+    
+    // NOTE: The asset's brain will be a state machine that changes on event. 
+} asset_brain_t;
 
 typedef struct
 {
@@ -116,17 +122,67 @@ typedef struct
     SDL_Texture *texture;
 } asset_t;
 
+
+void Heuristic_Manhattan(i32 x1, i32 y1, i32 x2, i32 y2)
+{
+    // The manhattan heuristic is ideal for a game such as this, where we're 
+    // trying to find the shortest path possible on a grid-like map, such that
+    // we only have vertical and horizontal movements.
+
+    i32 result = 0;
+    
+    i32 x = abs(SET_TILE_SPACE_POS_X(x1) - SET_TILE_SPACE_POS_Y(x2));
+
+    i32 y = abs(SET_TILE_SPACE_POS_X(y1) - SET_TILE_SPACE_POS_Y(y2));
+
+    // (x1, y1) and (x2, y2) 
+    // |x1 - x2| + |y1 - y2|
+
+    result = x + y;
+
+    printf("manhattan x: %d\n", x);
+    printf("manhattan y: %d\n", y);
+    
+    printf("manhattan result: %d\n", result);
+
+
+   // return result;
+}
+
+
+void AStar()
+{
+    asset_t asset = {0};
+
+    vec2_t start = {0}; // start position
+    vec2_t end = {0}; // end position
+
+    start.x = SET_TILE_SPACE_POS_X(0);
+    start.y = SET_TILE_SPACE_POS_Y(0);
+    
+    end.x = SET_TILE_SPACE_POS_X(10);
+    end.y = SET_TILE_SPACE_POS_Y(10);
+   
+    
+    // Set asset's starting position
+    asset.x = start.x;
+    asset.y = start.y;
+
+
+
+    
+
+    
+
+}
+
+
 typedef struct
 {
     i32 x, y, w, h;
     SDL_Rect body;
     SDL_Texture *texture;
 } asset_cursor_t;
-
-typedef struct
-{
-    
-} los_event_t;
 
 void CursorForItems(option_t *title_screen_options, asset_t *cursor, i32 x_offset, int y_offset)
 {
@@ -298,12 +354,12 @@ void AABB_AdjHitboxResolution(asset_t *A, asset_t *B)
     }
 }
 
-bool first_combat_encounter = false;
+//bool first_combat_encounter = false;
 //bool enemy_los_asset.spawn_card = false;
 bool combat_mode_initiated = false;
 bool chase_initiated = false;
 
-void AABB_LOSResolution(asset_t *A, asset_t *B, font_t *font)
+void AABB_LOSResolution(asset_t *A, asset_t *B)
 {
     if ((AABB_Detection(&A->los.range[0], &B->body)) ||
      (AABB_Detection(&A->los.range[1], &B->body)) ||
@@ -332,7 +388,7 @@ void AABB_LOSResolution(asset_t *A, asset_t *B, font_t *font)
 // enemies are encountered at the same time, this one instance would probably lag behind
 // by 1 or cause some sort of collision. If these were seperate we might not need to worry
 // about that.
-void AABB_ChaseRadiusResolution(asset_t *A, asset_t *B, font_t *font)
+void AABB_ChaseRadiusResolution(asset_t *A, asset_t *B)
 {
     if (AABB_Detection(&A->chase_radius.range, &B->body))
     {
@@ -422,8 +478,8 @@ bool UpdateAssetMovement(asset_t *asset, sound_wav_t *sound)
 {    
     // Not needed but will leave this here since we're doing 
     // this in RenderAssetInWorldSpace. 
-    //asset->x = asset->body.x; 
-    //asset->y = asset->body.y; 
+    asset->x = asset->body.x; 
+    asset->y = asset->body.y; 
 
     if (asset->conditions.has_movement)
     {
@@ -2721,6 +2777,7 @@ int main(int argc, char *argv[])
         for (int j = 0; j < main_room_cols; ++j)
         {
             int index = i * main_room_cols + j;
+
             map_rooms[0].floor_tiles[index].collision_tiles.body.x = (j * TILE_WIDTH);
             map_rooms[0].floor_tiles[index].collision_tiles.body.y = (i * TILE_HEIGHT);
             map_rooms[0].floor_tiles[index].collision_tiles.body.w = TILE_WIDTH;
@@ -2897,6 +2954,10 @@ int main(int argc, char *argv[])
 
     printf("my_index i: %d\n", i_counter);
     printf("my_index j: %d\n", j_counter);
+
+
+    Heuristic_Manhattan(10, 14, 10, 28);
+
 
     while (Running) 
     {
@@ -5575,19 +5636,14 @@ int main(int argc, char *argv[])
             {
                 UpdateAssetNPCMovement(&enemy_los_asset, &sfx_move); 
                 UpdateAssetNPCMovement(&enemy_los_asset2, &sfx_move); 
-                
-
-
             }
             
-
-
             AABB_AdjHitboxResolution(&character_data.model, &enemy_los_asset);
             AABB_AdjHitboxResolution(&character_data.model, &enemy_los_asset2);
-            AABB_LOSResolution(&enemy_los_asset, &character_data.model, &font);
-            AABB_LOSResolution(&enemy_los_asset2, &character_data.model, &font);
-            AABB_ChaseRadiusResolution(&enemy_los_asset, &character_data.model, &font);
-            AABB_ChaseRadiusResolution(&enemy_los_asset2, &character_data.model, &font);
+            AABB_LOSResolution(&enemy_los_asset, &character_data.model);
+            AABB_LOSResolution(&enemy_los_asset2, &character_data.model);
+            AABB_ChaseRadiusResolution(&enemy_los_asset, &character_data.model);
+            AABB_ChaseRadiusResolution(&enemy_los_asset2, &character_data.model);
 
             for (int i = 0; i < total_floor_tiles; ++i)
             {
@@ -5596,7 +5652,6 @@ int main(int argc, char *argv[])
                AABB_Resolution(&enemy_los_asset2, &map_rooms[0].floor_tiles[i].collision_tiles);
             } 
             
-            AABB_Resolution(&character_data.model, &character_data.model);
             
             AttachCameraToPlayer(&character_data.model, &room_asset[0]);
             SDL_SetRenderTarget(SDLWindow.Renderer, SDLCamera.TargetTexture);
