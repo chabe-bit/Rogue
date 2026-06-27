@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="16" height="10" tilewidth="16" tileheight="24" infinite="0" nextlayerid="2" nextobjectid="1">
+ <tileset firstgid="1" name="oryx_roguelike_16x24" tilewidth="16" tileheight="24" tilecount="931" columns="19">
+  <image source="../../oryx_roguelike_2.0/V1/oryx_roguelike_16x24.png" width="304" height="1184"/>
+ </tileset>
+ <layer id="1" name="Tile Layer 1" width="16" height="10">
+  <data encoding="csv">
+12,13,14,15,16,17,17,17,17,12,13,11,12,13,14,15,
+15,16,17,17,17,16,17,11,11,12,11,12,11,12,13,14,
+16,17,13,14,15,16,17,11,11,12,11,12,11,12,13,14,
+17,17,13,685,689,689,689,689,689,689,689,689,686,12,13,14,
+17,12,13,690,15,11,12,13,11,11,12,13,690,12,13,14,
+17,12,13,690,15,11,12,13,11,11,12,13,690,12,13,14,
+17,12,13,687,689,689,689,689,689,689,689,689,688,12,13,14,
+17,12,13,11,12,13,14,15,11,12,13,14,11,12,13,14,
+16,17,14,11,12,13,14,15,11,12,13,11,12,13,14,15,
+13,14,15,16,17,14,15,16,11,12,13,11,12,13,14,15
+</data>
+ </layer>
+</map>
