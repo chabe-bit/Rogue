@@ -178,7 +178,6 @@ SDL_Texture* CreateFontAtlas(SDL_Renderer *renderer) {
     const int atlasWidth  = atlasCols * GLYPH_WIDTH;
     const int atlasHeight = atlasRows * GLYPH_HEIGHT;
 
-    // Create an RGBA surface with transparency.
     SDL_Surface *surface = SDL_CreateRGBSurface(0, atlasWidth, atlasHeight,
                                                 32,
                                                 0x00FF0000,
@@ -189,26 +188,18 @@ SDL_Texture* CreateFontAtlas(SDL_Renderer *renderer) {
         fprintf(stderr, "SDL_CreateRGBSurface Error: %s\n", SDL_GetError());
         return NULL;
     }
-    // Fill with transparent (0 alpha)
     SDL_FillRect(surface, NULL, SDL_MapRGBA(surface->format, 0, 0, 0, 0));
 
-    // For each glyph in our font data, draw it into the surface.
     for (int glyphIndex = 0; glyphIndex < NUM_GLYPHS; glyphIndex++) {
-        // Compute glyph’s position in atlas:
         int col = glyphIndex % atlasCols;
         int row = glyphIndex / atlasCols;
         int dstX = col * GLYPH_WIDTH;
         int dstY = row * GLYPH_HEIGHT;
 
-        // Draw the glyph pixel by pixel.
-        // For our font, each glyph is GLYPH_HEIGHT rows and GLYPH_WIDTH columns.
-        // We assume the most significant 6 bits in each byte represent the 6 columns.
         for (int y = 0; y < GLYPH_HEIGHT; y++) {
             u8 rowData = GUIFontData[glyphIndex][y];
             for (int x = 0; x < GLYPH_WIDTH; x++) {
-                // Check the bit corresponding to this column.
                 if (rowData & (0x80 >> x)) {
-                    // Set pixel to white (fully opaque).
                     Uint32 *pixel = (Uint32 *)((Uint8 *)surface->pixels +
                                         (dstY + y) * surface->pitch +
                                         (dstX + x) * 4);
@@ -217,8 +208,6 @@ SDL_Texture* CreateFontAtlas(SDL_Renderer *renderer) {
             }
         }
     }
-
-    // Create a texture from the surface.
     SDL_Texture *fontAtlas = SDL_CreateTextureFromSurface(renderer, surface);
     if (!fontAtlas) {
         fprintf(stderr, "SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
@@ -230,51 +219,39 @@ SDL_Texture* CreateFontAtlas(SDL_Renderer *renderer) {
 void RenderText(SDL_Renderer *renderer, SDL_Texture *fontAtlas, int x, int y,
                 const char *text, SDL_Color color)
 {
-    // Since our atlas is white, we can tint it by setting the texture color mod.
     SDL_SetTextureColorMod(fontAtlas, color.r, color.g, color.b);
     SDL_SetTextureAlphaMod(fontAtlas, color.a);
 
     const int atlasCols = 16;
 
-    // For each character in the text:
     for (const char *p = text; *p != '\0'; p++) {
         u8 ascii = (u8)*p;
-        // Look up the corresponding glyph index.
-        // (Assuming ASCII2Font is defined for your ASCII range.)
         u8 glyphIndex = ASCII2Font[ascii];
 
-        // Compute source rectangle in the atlas.
         SDL_Rect src;
         src.x = (glyphIndex % atlasCols) * GLYPH_WIDTH;
         src.y = (glyphIndex / atlasCols) * GLYPH_HEIGHT;
         src.w = GLYPH_WIDTH;
         src.h = GLYPH_HEIGHT;
 
-        // Destination rectangle on screen.
         SDL_Rect dst;
         dst.x = x;
         dst.y = y;
         dst.w = GLYPH_WIDTH;
         dst.h = GLYPH_HEIGHT;
 
-        // Render this glyph.
         SDL_RenderCopy(renderer, fontAtlas, &src, &dst);
-
-        // Advance the x position.
         x += GLYPH_WIDTH;
     }
 }
 
 char** WrapText(const char *text, int maxWidth, int *outLineCount)
 {
-    // Maximum number of characters per line for a fixed-width font:
     int maxCharsPerLine = maxWidth / GLYPH_WIDTH;
 
-    // Copy the input string because strtok_r modifies it.
     char *copy = strdup(text);
     if (!copy) return NULL;
 
-    // Prepare dynamic array for lines.
     int capacity = 32;
     char **lines = malloc(capacity * sizeof(*lines));
     if (!lines) {
@@ -283,27 +260,20 @@ char** WrapText(const char *text, int maxWidth, int *outLineCount)
     }
     int lineCount = 0;
 
-    // Temporary line buffer and pointer to the current end.
     char lineBuffer[512];
-    int bufferPos = 0;  // current length in lineBuffer
+    int bufferPos = 0;  
     lineBuffer[0] = '\0';
 
-    // Use strtok_r for reentrancy.
     char *saveptr = NULL;
     char *token = strtok_r(copy, " \t\n\r", &saveptr);
     while (token) {
         int wordLen = strlen(token);
-        // If lineBuffer is not empty, you need one extra character for the space.
         int needed = (bufferPos == 0) ? wordLen : (bufferPos + 1 + wordLen);
 
-        // If the word itself is longer than maxCharsPerLine, you may want to handle that
-        // separately (e.g., break the word). For now, we assume words are short enough.
         if (needed > maxCharsPerLine) {
-            // Finalize the current line if not empty.
             if (bufferPos > 0) {
                 lines[lineCount] = strdup(lineBuffer);
                 if (!lines[lineCount]) {
-                    // On allocation failure, free everything.
                     for (int i = 0; i < lineCount; i++) free(lines[i]);
                     free(lines);
                     free(copy);
@@ -321,25 +291,19 @@ char** WrapText(const char *text, int maxWidth, int *outLineCount)
                     }
                     lines = tmp;
                 }
-                // Start a new line.
                 bufferPos = 0;
                 lineBuffer[0] = '\0';
             }
-            // Place the long word on a new line (or split it if desired)
             strncpy(lineBuffer, token, sizeof(lineBuffer) - 1);
             lineBuffer[sizeof(lineBuffer) - 1] = '\0';
             bufferPos = strlen(lineBuffer);
         } else {
-            // Append the word to the current line.
             if (bufferPos == 0) {
-                // First word in the line.
                 snprintf(lineBuffer, sizeof(lineBuffer), "%s", token);
                 bufferPos = wordLen;
             } else {
-                // Append a space and then the word.
                 int written = snprintf(lineBuffer + bufferPos, sizeof(lineBuffer) - bufferPos, " %s", token);
                 if (written < 0 || written >= (int)(sizeof(lineBuffer) - bufferPos)) {
-                    // Handle error or overflow.
                     break;
                 }
                 bufferPos += written;
@@ -347,8 +311,6 @@ char** WrapText(const char *text, int maxWidth, int *outLineCount)
         }
         token = strtok_r(NULL, " \t\n\r", &saveptr);
     }
-
-    // If there's any remaining text in the buffer, push it as the last line.
     if (bufferPos > 0) {
         lines[lineCount] = strdup(lineBuffer);
         if (!lines[lineCount]) {
@@ -360,7 +322,6 @@ char** WrapText(const char *text, int maxWidth, int *outLineCount)
         lineCount++;
     }
 
-    // Null-terminate the array.
     lines[lineCount] = NULL;
     free(copy);
     *outLineCount = lineCount;
@@ -371,39 +332,29 @@ void RenderWrappedTextCentered(SDL_Renderer *renderer, SDL_Texture *fontAtlas,
                                const char *text, SDL_Color color,
                                int containerX, int containerY,
                                int containerW, int containerH,
-                               int lineSpacing /* extra spacing between lines */)
+                               int lineSpacing)
 {
-    // 1) Wrap the text
     int lineCount = 0;
     char **lines = WrapText(text, containerW, &lineCount);
     if (!lines) return;
 
-    // 2) Calculate total text block height
-    //    Each line is GLYPH_HEIGHT tall + lineSpacing (except maybe the last)
     int totalHeight = lineCount * GLYPH_HEIGHT + (lineCount - 1) * lineSpacing;
-
-    // 3) Compute the top coordinate so the block is vertically centered
     int startY = containerY + (containerH - totalHeight) / 2;
-
-    // 4) For each line, center it horizontally and render
     int currentY = startY;
     for (int i = 0; i < lineCount; i++) {
         char *line = lines[i];
         int lineLen = strlen(line);
         int lineWidth = lineLen * GLYPH_WIDTH;
-
-        // Horizontal center
         int x = containerX + (containerW - lineWidth) / 2;
         int y = currentY;
 
-        // Render the line
         RenderText(renderer, fontAtlas, x, y, line, color);
 
         currentY += GLYPH_HEIGHT + lineSpacing;
-        free(line); // free each line after rendering
+        free(line);
     }
 
-    free(lines); // free the array of line pointers
+    free(lines); 
 }
 
 void RenderWrappedText(SDL_Renderer *renderer, SDL_Texture *fontAtlas,
@@ -412,18 +363,14 @@ void RenderWrappedText(SDL_Renderer *renderer, SDL_Texture *fontAtlas,
                        int containerW, int containerH,
                        int lineSpacing)
 {
-    // Wrap the text into lines that fit within containerW.
     int lineCount = 0;
     char **lines = WrapText(text, containerW, &lineCount);
     if (!lines) return;
     
-    // Start rendering at containerY.
     int currentY = containerY;
     
-    // For each wrapped line, render it left-aligned at containerX.
     for (int i = 0; i < lineCount; i++) {
         char *line = lines[i];
-        // RenderText is assumed to render a single line of text at (x,y).
         RenderText(renderer, fontAtlas, containerX, currentY, line, color);
         currentY += GLYPH_HEIGHT + lineSpacing;
         free(line); // free each allocated line
@@ -436,21 +383,16 @@ void RenderTextWithNewlines(SDL_Renderer *renderer, SDL_Texture *fontAtlas,
                             int startX, int startY,
                             const char *text, SDL_Color color, int lineSpacing)
 {
-    // Make a copy of the text because strtok modifies the string.
     char *copy = strdup(text);
     if (!copy) return;
 
     int x = startX;
     int y = startY;
     
-    // Use strtok to split the text by newline.
     char *line = strtok(copy, "\n");
     while (line) {
-        // Render the current line at (x, y).
         RenderText(renderer, fontAtlas, x, y, line, color);
-        // Move y down for the next line (add line spacing if desired).
         y += GLYPH_HEIGHT + lineSpacing;
-        // Get the next line.
         line = strtok(NULL, "\n");
     }
     
