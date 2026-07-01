@@ -1,5 +1,3 @@
-# Rogue Makefile
-
 CC := gcc
 TARGET := build/rogue.exe
 
@@ -56,7 +54,7 @@ $(TARGET): $(SRC) $(HEADERS)
 	cp -f bin/SDL2.dll build/SDL2.dll
 
 run: $(TARGET)
-	./$(TARGET)
+	cd build && ./rogue.exe
 
 clean:
 	rm -rf build
