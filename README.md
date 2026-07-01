@@ -4,7 +4,7 @@ A 2D traditional roguelike inspired by Dragon Quest III.
 The project explores building game systems from scratch, including:
 
 * Character creation and class selection.
-* Personality test for character stat growth. 
+* Personality test to determine character stat growth. 
 * Menu and user-interface systems.
 * Sprite and asset rendering.
 * Camera movement and collision detection.
