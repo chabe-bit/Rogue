@@ -20,8 +20,8 @@ The project explores building game systems from scratch, including:
 
 # Build
 
-Clone the repository:
 ```
+# Clone
 git clone https://github.com/chabe-bit/Rogue.git
 cd Rogue
 
